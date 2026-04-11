@@ -1,0 +1,14 @@
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+node_modules/
+.next/
+out/
+.git/
+.gitignore
+README.md
+build_output.txt
+build_exit.txt
+tmp_*.js
+tmp_*.txt
