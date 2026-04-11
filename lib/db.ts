@@ -1,12 +1,11 @@
 import mongoose from "mongoose";
 
+const isProduction = process.env.NODE_ENV === "production";
 const envMongoUri = process.env.MONGODB_URI?.trim();
-const MONGO_URI =
-  envMongoUri && envMongoUri !== "your_mongo_url"
-    ? envMongoUri
-    : "mongodb://127.0.0.1:27017/salt-mill-system";
+const hasConfiguredMongoUri = Boolean(envMongoUri && envMongoUri !== "your_mongo_url");
+const LOCAL_MONGO_URI = "mongodb://127.0.0.1:27017/salt-mill-system";
 export const MONGO_ERROR_MESSAGE =
-  "Unable to connect to MongoDB. Start MongoDB locally or set MONGODB_URI to a valid database.";
+  "Unable to connect to MongoDB. Set a valid MONGODB_URI and allow your deployment to reach MongoDB Atlas.";
 
 const MONGO_CONNECTION_ERROR_PATTERN =
   /(unable to connect to mongodb|mongodb|mongo|server selection|ssl|tls|certificate|socket|econnreset|enotfound|etimedout|alert number 80)/i;
@@ -60,6 +59,16 @@ export function isValidMongoObjectId(value: string | undefined | null) {
   return Boolean(value) && mongoose.isValidObjectId(value);
 }
 
+function getMongoUri(): string {
+  if (isProduction && !hasConfiguredMongoUri) {
+    throw new Error(
+      "MONGODB_URI is missing in production. Add it in your Vercel project's Settings -> Environment Variables.",
+    );
+  }
+
+  return envMongoUri ?? LOCAL_MONGO_URI;
+}
+
 function logMongoConnectionFailure(error: unknown) {
   const now = Date.now();
   const LOG_COOLDOWN_MS = 30_000;
@@ -80,6 +89,7 @@ function logMongoConnectionFailure(error: unknown) {
 
 export async function connectDB() {
   const FAILURE_COOLDOWN_MS = 15_000;
+  const mongoUri = getMongoUri();
 
   if (mongoose.connection.readyState === 1) {
     mongooseCache.conn = mongoose;
@@ -97,8 +107,9 @@ export async function connectDB() {
 
   if (!mongooseCache.promise) {
     mongooseCache.promise = mongoose
-      .connect(MONGO_URI, {
-        serverSelectionTimeoutMS: 5000,
+      .connect(mongoUri, {
+        maxPoolSize: 10,
+        serverSelectionTimeoutMS: 10000,
       })
       .then((instance) => {
         mongooseCache.conn = instance;
