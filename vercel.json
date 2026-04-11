@@ -3,15 +3,6 @@
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "framework": "nextjs",
-  "env": {
-    "MONGODB_URI": "@mongodb_uri",
-    "JWT_SECRET": "@jwt_secret",
-    "SUPERUSER_EMAIL": "@superuser_email",
-    "SUPERUSER_PASSWORD": "@superuser_password",
-    "RESEND_API_KEY": "@resend_api_key",
-    "OTP_FROM_EMAIL": "@otp_from_email",
-    "OTP_HASH_SECRET": "@otp_hash_secret"
-  },
   "regions": [
     "iad1"
   ]
