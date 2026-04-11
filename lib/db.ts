@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 const isProduction = process.env.NODE_ENV === "production";
 const envMongoUri = process.env.MONGODB_URI?.trim();
 const hasConfiguredMongoUri = Boolean(envMongoUri && envMongoUri !== "your_mongo_url");
-const LOCAL_MONGO_URI = "mongodb:https://salt-management-information-system-gaur35xi5-mh-munirs-projects.vercel.app/";
+const LOCAL_MONGO_URI = "mongodb://127.0.0.1:27017/salt-mill-system";
 export const MONGO_ERROR_MESSAGE =
   "Unable to connect to MongoDB. Set a valid MONGODB_URI and allow your deployment to reach MongoDB Atlas.";
 
