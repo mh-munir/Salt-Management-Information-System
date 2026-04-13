@@ -4,6 +4,7 @@ import { useSyncExternalStore } from "react";
 import { normalizeSidebarBranding, loadStoredSidebarBranding, type SidebarBrandingSnapshot } from "@/lib/sidebar-branding";
 
 const defaultBrandingSnapshot = normalizeSidebarBranding();
+let cachedSnapshot = defaultBrandingSnapshot;
 
 const subscribe = (onStoreChange: () => void) => {
   window.addEventListener("storage", onStoreChange);
@@ -17,7 +18,24 @@ const subscribe = (onStoreChange: () => void) => {
   };
 };
 
-const getSnapshot = () => loadStoredSidebarBranding();
+const isSameSnapshot = (
+  currentSnapshot: SidebarBrandingSnapshot,
+  nextSnapshot: SidebarBrandingSnapshot
+) =>
+  currentSnapshot.sidebarLogoUrl === nextSnapshot.sidebarLogoUrl &&
+  currentSnapshot.sidebarHeading === nextSnapshot.sidebarHeading &&
+  currentSnapshot.sidebarSubheading === nextSnapshot.sidebarSubheading;
+
+const getSnapshot = () => {
+  const nextSnapshot = loadStoredSidebarBranding();
+
+  if (isSameSnapshot(cachedSnapshot, nextSnapshot)) {
+    return cachedSnapshot;
+  }
+
+  cachedSnapshot = nextSnapshot;
+  return cachedSnapshot;
+};
 
 export function useSidebarBranding(): SidebarBrandingSnapshot {
   return useSyncExternalStore(subscribe, getSnapshot, () => defaultBrandingSnapshot);
