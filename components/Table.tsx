@@ -10,7 +10,7 @@ type Props = {
 export default function Table({ columns, data }: Props) {
   return (
     <div className="overflow-x-auto rounded bg-white shadow">
-      <table className="w-full">
+      <table className="min-w-[36rem] w-full">
         <thead className="bg-[#003366] text-white">
           <tr>
             {columns.map((col) => (

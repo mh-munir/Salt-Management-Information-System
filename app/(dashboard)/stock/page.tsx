@@ -184,7 +184,7 @@ export default function StockPage() {
         </p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card
           title={translate(language, "currentStock")}
           value={`${formatNumber(availableStockMounds)} maund`}

@@ -1,5 +1,6 @@
 import { connectDB, isMongoConnectionError } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
+import { compareByLatestInput } from "@/lib/record-order";
 import Sale from "@/models/Sale";
 import Transaction from "@/models/Transaction";
 
@@ -40,13 +41,12 @@ export async function GET(request: Request) {
       supplierId: undefined,
     }));
 
-    const data = [...normalizedTransactions, ...normalizedSales].sort((left, right) => {
-      const leftTime = left.date ? new Date(left.date).getTime() : 0;
-      const rightTime = right.date ? new Date(right.date).getTime() : 0;
-
-      if (leftTime !== rightTime) return rightTime - leftTime;
-      return right._id.localeCompare(left._id);
-    });
+    const data = [...normalizedTransactions, ...normalizedSales].sort((left, right) =>
+      compareByLatestInput(
+        { id: left._id, date: left.date },
+        { id: right._id, date: right.date }
+      )
+    );
 
     return Response.json(data);
   } catch (error) {

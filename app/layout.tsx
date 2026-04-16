@@ -35,7 +35,7 @@ export default async function RootLayout({
       style={{ colorScheme: initialTheme }}
       suppressHydrationWarning
     >
-      <body>
+      <body suppressHydrationWarning>
         {children}
         <SiteFooter />
       </body>

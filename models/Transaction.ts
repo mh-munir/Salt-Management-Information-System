@@ -8,6 +8,11 @@ const TransactionSchema = new mongoose.Schema({
   totalAmount: Number,
   saltAmount: Number,
   date: { type: Date, default: Date.now },
+  editedByUserId: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+  editedByName: { type: String, default: "" },
+  editedByRole: { type: String, default: "" },
+  editedByEmail: { type: String, default: "" },
+  editedAt: { type: Date, default: null },
 });
 
 export default mongoose.models.Transaction || mongoose.model("Transaction", TransactionSchema);

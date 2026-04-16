@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import InvoiceActions from "@/components/InvoiceActions";
+import LoadMoreTable from "@/components/LoadMoreTable";
 import PlainImage from "@/components/PlainImage";
+import { getBalanceSummary } from "@/lib/balance";
 import { formatDisplayName } from "@/lib/display-format";
 import { getInvoiceBranding, getSupplierInvoiceData } from "@/lib/invoices";
 
@@ -52,6 +54,7 @@ export default async function SupplierInvoicePage({ params }: SupplierInvoicePag
   if (!invoice) notFound();
 
   const statementPeriod = getStatementPeriod(invoice.records.map((record) => record.date));
+  const balance = getBalanceSummary(invoice.totalDueAmount);
 
   return (
     <div className="invoice-page min-h-screen bg-white dark:bg-slate-950 px-4 py-6 md:px-6">
@@ -134,9 +137,9 @@ export default async function SupplierInvoicePage({ params }: SupplierInvoicePag
                 {invoice.invoiceNumber}
               </p>
               <p>
-                <span className="font-semibold text-slate-800">Total Due</span>
+                <span className="font-semibold text-slate-800">{balance.isAdvance ? "Advance Balance" : "Total Due"}</span>
                 <span className="mx-2 text-slate-300">:</span>
-                Tk {formatMoney(invoice.totalDueAmount)}
+                Tk {formatMoney(balance.absoluteAmount)}
               </p>
               <p>
                 <span className="font-semibold text-slate-800">Invoice Date</span>
@@ -152,50 +155,56 @@ export default async function SupplierInvoicePage({ params }: SupplierInvoicePag
           </div>
 
           <div className="mt-8 overflow-x-auto rounded-sm border border-slate-200">
-            <table className="min-w-180 text-left text-sm">
+            <table className="min-w-[48rem] text-left text-sm">
               <thead className="text-xs font-semibold uppercase tracking-[0.18em] text-white">
                 <tr>
                   <th className="bg-sky-500 px-5 py-3">Entry Description</th>
                   <th className="bg-slate-700 px-5 py-3 text-right">Purchase</th>
                   <th className="bg-slate-700 px-5 py-3 text-right">Paid</th>
-                  <th className="bg-slate-700 px-5 py-3 text-right">Due</th>
+                  <th className="bg-slate-700 px-5 py-3 text-right">Due / Advance</th>
                 </tr>
               </thead>
               <tbody>
-                {invoice.records.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-5 py-10 text-center text-slate-500">
-                      No invoice records available for this supplier.
-                    </td>
-                  </tr>
-                ) : (
-                  invoice.records.map((record, index) => (
-                    <tr key={record.id} className={index % 2 === 0 ? "bg-slate-50" : "bg-white"}>
-                      <td className="px-5 py-4 align-top">
-                        <p className="font-semibold text-slate-800">{record.label}</p>
-                        <p className="mt-1 text-xs uppercase tracking-[0.18em] text-slate-400">
-                          {[
-                            formatDate(record.date),
-                            record.quantityMaund > 0 ? `${formatQuantity(record.quantityMaund)} maund` : "",
-                            record.pricePerMaund > 0 ? `Per maund Tk ${formatMoney(record.pricePerMaund)}` : "",
-                          ]
-                            .filter(Boolean)
-                            .join(" • ")}
-                        </p>
-                        <p className="mt-2 text-sm leading-6 text-slate-500">{record.note}</p>
-                      </td>
-                      <td className="px-5 py-4 text-right font-medium text-slate-700">
-                        {record.totalAmount > 0 ? `Tk ${formatMoney(record.totalAmount)}` : "--"}
-                      </td>
-                      <td className="px-5 py-4 text-right font-medium text-slate-700">
-                        {record.paidAmount > 0 ? `Tk ${formatMoney(record.paidAmount)}` : "--"}
-                      </td>
-                      <td className="px-5 py-4 text-right font-medium text-slate-700">
-                        {record.dueAmount > 0 ? `Tk ${formatMoney(record.dueAmount)}` : "--"}
+                <LoadMoreTable
+                  items={invoice.records}
+                  colSpan={4}
+                  loadMoreLabel="Show more"
+                  emptyState={
+                    <tr>
+                      <td colSpan={4} className="px-5 py-10 text-center text-slate-500">
+                        No invoice records available for this supplier.
                       </td>
                     </tr>
-                  ))
-                )}
+                  }
+                  renderRows={(visibleRecords) =>
+                    visibleRecords.map((record, index) => (
+                      <tr key={record.id} className={index % 2 === 0 ? "bg-slate-50" : "bg-white"}>
+                        <td className="px-5 py-4 align-top">
+                          <p className="font-semibold text-slate-800">{record.label}</p>
+                          <p className="mt-1 text-xs uppercase tracking-[0.18em] text-slate-400">
+                            {[
+                              formatDate(record.date),
+                              record.quantityMaund > 0 ? `${formatQuantity(record.quantityMaund)} maund` : "",
+                              record.pricePerMaund > 0 ? `Per maund Tk ${formatMoney(record.pricePerMaund)}` : "",
+                            ]
+                              .filter(Boolean)
+                              .join(" • ")}
+                          </p>
+                          <p className="mt-2 text-sm leading-6 text-slate-500">{record.note}</p>
+                        </td>
+                        <td className="px-5 py-4 text-right font-medium text-slate-700">
+                          {record.totalAmount > 0 ? `Tk ${formatMoney(record.totalAmount)}` : "--"}
+                        </td>
+                        <td className="px-5 py-4 text-right font-medium text-slate-700">
+                          {record.paidAmount > 0 ? `Tk ${formatMoney(record.paidAmount)}` : "--"}
+                        </td>
+                        <td className="px-5 py-4 text-right font-medium text-slate-700">
+                          {record.dueAmount !== 0 ? `Tk ${formatMoney(record.dueAmount)}` : "--"}
+                        </td>
+                      </tr>
+                    ))
+                  }
+                />
               </tbody>
             </table>
           </div>
@@ -239,9 +248,11 @@ export default async function SupplierInvoicePage({ params }: SupplierInvoicePag
                 </p>
                 <p className="border-b border-slate-200 px-5 py-3 text-slate-600">VAT</p>
                 <p className="border-b border-slate-200 px-5 py-3 text-right font-medium text-slate-800">0.00</p>
-                <p className="bg-sky-500 px-5 py-3 font-semibold uppercase tracking-[0.16em] text-white">Grand Total</p>
+                <p className="bg-sky-500 px-5 py-3 font-semibold uppercase tracking-[0.16em] text-white">
+                  {balance.isAdvance ? "Advance Balance" : "Grand Total"}
+                </p>
                 <p className="bg-sky-500 px-5 py-3 text-right font-semibold text-white">
-                  Tk {formatMoney(invoice.totalDueAmount)}
+                  Tk {formatMoney(balance.absoluteAmount)}
                 </p>
               </div>
             </div>
@@ -268,7 +279,7 @@ export default async function SupplierInvoicePage({ params }: SupplierInvoicePag
             <div>
               <p className="text-sm font-semibold">Thanks For Your Partnership!</p>
               <p className="mt-2 max-w-md text-xs uppercase tracking-[0.16em] text-slate-300">
-                Terms: Ledger totals are based on recorded supplier purchases and payment entries only.
+                Terms: Ledger totals are based on recorded supplier purchases and payment entries only, including carried advance balances.
               </p>
             </div>
 

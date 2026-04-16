@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import PlainImage from "@/components/PlainImage";
 import {
+  DEFAULT_BRAND_LOGO_URL,
   DEFAULT_BRAND_HEADING,
   DEFAULT_BRAND_SUBHEADING,
   loadStoredSidebarBranding,
@@ -15,7 +16,7 @@ import {
 import { translate, type TranslationKey } from "@/lib/language";
 import { useLanguage } from "@/lib/useLanguage";
 
-type NavIconType = "dashboard" | "transactions" | "suppliers" | "customers" | "stock" | "settings";
+type NavIconType = "dashboard" | "transactions" | "suppliers" | "customers" | "stock" | "cost" | "settings";
 
 type NavItem = {
   href: string;
@@ -42,6 +43,7 @@ const navGroups: NavGroup[] = [
       { href: "/suppliers", label: "suppliers", icon: "suppliers" },
       { href: "/customers", label: "customers", icon: "customers" },
       { href: "/stock", label: "stock", icon: "stock" },
+      { href: "/cost", label: "cost", icon: "cost" },
     ],
   },
   {
@@ -121,6 +123,19 @@ function NavIcon({ type }: { type: NavIconType }) {
     );
   }
 
+  if (type === "cost") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className={iconClassName}>
+        <path d="M5 6.5h14" />
+        <path d="M8 4v5" />
+        <path d="M16 4v5" />
+        <rect x="4" y="6.5" width="16" height="13.5" rx="1.5" />
+        <path d="M8 12h8" />
+        <path d="M8 16h5" />
+      </svg>
+    );
+  }
+
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className={iconClassName}>
       <path d="M12 8.4a3.6 3.6 0 1 0 0 7.2 3.6 3.6 0 0 0 0-7.2Z" />
@@ -151,7 +166,7 @@ type SidebarProps = {
 
 export default function Sidebar({
   initialBranding = {
-    sidebarLogoUrl: "",
+    sidebarLogoUrl: DEFAULT_BRAND_LOGO_URL,
     sidebarHeading: DEFAULT_BRAND_HEADING,
     sidebarSubheading: DEFAULT_BRAND_SUBHEADING,
   },
@@ -262,7 +277,7 @@ export default function Sidebar({
       />
 
       <aside
-        className={`sidebar-shell fixed inset-y-0 left-0 z-50 w-[76vw] max-w-74 overflow-y-auto transition-transform duration-300 lg:z-40 lg:w-72 lg:max-w-none lg:shadow-none lg:translate-x-0 ${
+        className={`sidebar-shell fixed inset-y-0 left-0 z-50 max-w-[22rem] overflow-y-auto transition-transform duration-300 lg:z-40 w-[250px] lg:shadow-none lg:translate-x-0 ${
           isDarkTheme
             ? "bg-[#1F2128] text-slate-100 shadow-[18px_0_42px_rgba(15,23,42,0.28)] lg:border-r lg:border-slate-700/60"
             : "bg-[#ffffff] text-slate-800 shadow-[18px_0_42px_rgba(148,163,184,0.18)] lg:border-r lg:border-slate-200"
@@ -278,21 +293,21 @@ export default function Sidebar({
         <span className={`text-xs font-bold uppercase tracking-[0.3em] lg:hidden ${isDarkTheme ? "text-white/45" : "text-slate-500"}`}>{translate(language, "menu")}</span>
       </div>
 
-      <div className={`border-b px-6 py-3 lg:block ${isDarkTheme ? "border-indigo-900/50" : "border-slate-200"}`}>
+      <div className={`border-b px-5 py-3 lg:block lg:px-6 ${isDarkTheme ? "border-indigo-900/50" : "border-slate-200"}`}>
           <div className="space-y-1 flex flex-col items-center ">
             <div className="flex flex-col items-center gap-2 mb-2">
               {sidebarLogoUrl ? (
                 <PlainImage
                   src={sidebarLogoUrl}
                   alt="Sidebar logo"
-                  className="h-auto w-32 object-contain"
+                  className="h-auto w-28 object-contain sm:w-32"
                 />
               ) : (
                 <BrandMark />
               )}
               <div className="min-w-0">
                 <p
-                  className={`text-lg font-semibold leading-tight tracking-[-0.02em] sm:text-xl ${isDarkTheme ? "text-white" : "text-slate-900"}`}
+                  className={`text-sm md:text-center font-semibold leading-tight tracking-[-0.02em] sm:text-base ${isDarkTheme ? "text-white" : "text-slate-900"}`}
                   style={{ overflowWrap: "anywhere" }}
                 >
                   {sidebarHeading}
@@ -307,9 +322,9 @@ export default function Sidebar({
               {sidebarSubheading}
             </p>
           </div>
-        </div>
+      </div>
 
-      <nav className="space-y-7 px-5 py-6 lg:space-y-8 lg:px-4 lg:py-5">
+      <nav className="space-y-6 px-4 py-5 sm:px-5 sm:py-6 lg:space-y-8 lg:px-4 lg:py-5">
         {navGroups.map((group) => (
           <div key={group.title}>
             <p
@@ -329,7 +344,7 @@ export default function Sidebar({
                     key={item.href}
                     href={item.href}
                     onClick={() => setMobileOpen(false)}
-                    className={`group flex items-center gap-2 rounded-2xl px-3.5 py-3.5 text-base font-medium transition lg:rounded-xl lg:px-3.5 lg:py-3 lg:text-[1.05rem] ${
+                    className={`group flex items-center gap-2 rounded-2xl px-3 py-3 text-[0.98rem] font-medium transition sm:px-3.5 sm:py-3.5 sm:text-base lg:rounded-xl lg:px-3.5 lg:py-3 lg:text-[1.05rem] ${
                       isDarkTheme
                         ? isActive
                           ? "bg-white/12 text-white lg:bg-indigo-700/30 lg:text-indigo-100 lg:shadow-[inset_0_0_0_1px_rgba(165,180,252,0.22)]"

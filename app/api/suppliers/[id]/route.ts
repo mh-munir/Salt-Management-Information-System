@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { requireAuth, validateSameOrigin } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
+import { buildEditAuditFields } from "@/lib/edit-audit";
 import Supplier from "@/models/Supplier";
 import Transaction from "@/models/Transaction";
 
@@ -32,11 +33,106 @@ export async function PATCH(req: Request, context: RouteContext<"/api/suppliers/
 
   const authResult = requireAuth(req, ["admin", "superadmin"]);
   if (authResult instanceof Response) return authResult;
+  const auth = authResult;
 
   const { id } = await context.params;
   await connectDB();
 
   const body = await req.json();
+  const action = body.action === "edit-price" ? "edit-price" : "payment";
+
+  if (action === "edit-price") {
+    const transactionId = String(body.transactionId ?? "").trim();
+    const pricePerMaund = Number(body.pricePerMaund);
+
+    if (!transactionId) {
+      return new Response(JSON.stringify({ message: "Purchase record is required for editing price." }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    if (Number.isNaN(pricePerMaund) || pricePerMaund < 0) {
+      return new Response(JSON.stringify({ message: "Price per Maund must be a valid non-negative number." }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const supplier = await Supplier.findById(id);
+    if (!supplier) {
+      return new Response(JSON.stringify({ message: "Supplier not found." }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const record = await Transaction.findOne({
+      _id: transactionId,
+      supplierId: supplier._id,
+      type: "supplier-buy",
+    }).lean();
+
+    if (!record) {
+      return new Response(JSON.stringify({ message: "Purchase record not found." }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const quantityMaund = Number(record.saltAmount ?? 0);
+    if (quantityMaund <= 0) {
+      return new Response(JSON.stringify({ message: "This purchase has no quantity to recalculate price." }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const currentTotal = Number(record.totalAmount ?? 0);
+    const nextTotal = Number((quantityMaund * pricePerMaund).toFixed(2));
+    const totalDelta = nextTotal - currentTotal;
+    const auditFields = await buildEditAuditFields(auth);
+
+    await Transaction.updateOne(
+      { _id: record._id },
+      {
+        $set: {
+          totalAmount: nextTotal,
+          ...auditFields,
+        },
+      },
+      { strict: false }
+    );
+
+    const updatedRecord = await Transaction.findById(record._id).lean();
+    if (!updatedRecord) {
+      return new Response(JSON.stringify({ message: "Purchase record not found after update." }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    supplier.totalDue = Number((Number(supplier.totalDue ?? 0) + totalDelta).toFixed(2));
+    await supplier.save();
+
+    return new Response(
+      JSON.stringify({
+        message: "Supplier price updated.",
+        supplier,
+        record: {
+          _id: updatedRecord._id,
+          totalAmount: updatedRecord.totalAmount,
+          editedByName: updatedRecord.editedByName,
+          editedByRole: updatedRecord.editedByRole,
+          editedAt: updatedRecord.editedAt,
+        },
+      }),
+      {
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+  }
+
   const paymentAmount = Number(body.paymentAmount);
 
   if (Number.isNaN(paymentAmount) || paymentAmount <= 0) {
@@ -55,14 +151,7 @@ export async function PATCH(req: Request, context: RouteContext<"/api/suppliers/
   }
 
   const currentDue = supplier.totalDue ?? 0;
-  if (paymentAmount > currentDue) {
-    return new Response(JSON.stringify({ message: "Paid amount cannot exceed current due." }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-
-  supplier.totalDue = Math.max(0, currentDue - paymentAmount);
+  supplier.totalDue = currentDue - paymentAmount;
   supplier.totalPaid = (supplier.totalPaid ?? 0) + paymentAmount;
   await supplier.save();
 

@@ -53,7 +53,7 @@ export function summarizeCustomerLedger(
   const fallbackSaltKg = toNumber(fallback.totalSaltKg ?? fallback.saltAmount);
   const totalSaltKg = calculatedSaltKg > 0 || fallbackSaltKg === 0 ? calculatedSaltKg : fallbackSaltKg;
 
-  const calculatedDueAmount = Math.max(0, totalSalesAmount - totalReceivedAmount);
+  const calculatedDueAmount = totalSalesAmount - totalReceivedAmount;
   const fallbackDueAmount = toNumber(fallback.totalDueAmount ?? fallback.totalDue);
   const totalDueAmount =
     totalSalesAmount > 0 || totalReceivedAmount > 0 ? calculatedDueAmount : fallbackDueAmount;
@@ -70,6 +70,8 @@ export function summarizeCustomerLedger(
     totalReceivedAmount,
     totalPaidAmount,
     totalDueAmount,
+    outstandingDueAmount: Math.max(totalDueAmount, 0),
+    advanceAmount: Math.max(-totalDueAmount, 0),
   };
 }
 
@@ -116,7 +118,7 @@ export function summarizeSupplierLedger(
     : Math.max(calculatedPurchaseAmount, fallbackPurchaseAmount);
 
   const totalDueAmount = canUseCalculatedPurchase
-    ? Math.max(0, totalPurchaseAmount - totalPaidAmount)
+    ? totalPurchaseAmount - totalPaidAmount
     : fallbackDueAmount;
 
   return {
@@ -124,5 +126,7 @@ export function summarizeSupplierLedger(
     totalPaidAmount,
     totalPurchaseAmount,
     totalDueAmount,
+    outstandingDueAmount: Math.max(totalDueAmount, 0),
+    advanceAmount: Math.max(-totalDueAmount, 0),
   };
 }

@@ -4,8 +4,11 @@ import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import CompactDateInput from "@/components/CompactDateInput";
+import LoadMoreTable from "@/components/LoadMoreTable";
 import ModalShell from "@/components/ModalShell";
+import { getBalanceSummary } from "@/lib/balance";
 import { translate } from "@/lib/language";
+import { compareByLatestInput } from "@/lib/record-order";
 import { useLanguage } from "@/lib/useLanguage";
 import { formatDisplayName, formatLocalizedNumber } from "@/lib/display-format";
 
@@ -14,10 +17,25 @@ type Customer = {
   name: string;
   phone?: string;
   address?: string;
+  totalSalesAmount?: number;
   totalDue?: number;
   saltAmount?: number;
   totalPaid?: number;
+  lastActivityAt?: number;
+  latestSaleId?: string | null;
+  latestPricePerKg?: number;
+  editedByName?: string;
+  editedByRole?: string;
+  editedAt?: string | null;
 };
+
+const sortCustomersByLatestInput = (items: Customer[]) =>
+  [...items].sort((left, right) =>
+    compareByLatestInput(
+      { id: left._id, date: left.lastActivityAt },
+      { id: right._id, date: right.lastActivityAt }
+    )
+  );
 
 export default function CustomersPage() {
   const { language } = useLanguage();
@@ -26,6 +44,27 @@ export default function CustomersPage() {
   const searchParams = useSearchParams();
   const formatAmount = (value: number, maximumFractionDigits = 0) =>
     formatLocalizedNumber(value, language, { maximumFractionDigits });
+  const getEditorRoleLabel = (role?: string) => (role === "superadmin" ? "Super Admin" : "Admin");
+  const getEditedByText = (item: Pick<Customer, "editedByName" | "editedByRole">) => {
+    const name = item.editedByName?.trim();
+    const role = item.editedByRole?.trim();
+    if (!name && !role) return "Not edited yet";
+
+    const roleLabel = getEditorRoleLabel(role);
+    if (!name) return roleLabel;
+
+    return `${name} (${roleLabel})`;
+  };
+  const formatBalanceText = (value: number) => {
+    const balance = getBalanceSummary(value);
+    if (balance.isAdvance) {
+      return `${translate(language, "advanceBalance")} Tk ${formatAmount(balance.absoluteAmount)}`;
+    }
+
+    return `Tk ${formatAmount(balance.absoluteAmount)}`;
+  };
+  const getBalanceClassName = (value: number) =>
+    getBalanceSummary(value).isAdvance ? "text-emerald-600" : "text-slate-600";
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -41,6 +80,11 @@ export default function CustomersPage() {
   const [saleDue, setSaleDue] = useState("");
   const [saleStatus, setSaleStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [salePopupMessage, setSalePopupMessage] = useState("");
+  const [showEditPopup, setShowEditPopup] = useState(false);
+  const [editTarget, setEditTarget] = useState<Customer | null>(null);
+  const [editPrice, setEditPrice] = useState("");
+  const [editError, setEditError] = useState("");
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   // Payment popup states
   const [showPaymentPopup, setShowPaymentPopup] = useState(false);
@@ -49,7 +93,9 @@ export default function CustomersPage() {
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split("T")[0]);
   const [paymentError, setPaymentError] = useState("");
   const requestedPaymentCustomerId = searchParams.get("paymentId");
+  const returnTo = searchParams.get("returnTo");
   const isProfilePaymentFlow = Boolean(requestedPaymentCustomerId);
+  const profileReturnPath = returnTo?.startsWith("/customers/") ? returnTo : null;
 
   // Payment popup handlers
   function closePaymentPopup() {
@@ -59,7 +105,7 @@ export default function CustomersPage() {
     setPaymentDate(new Date().toISOString().split("T")[0]);
     setPaymentError("");
     if (requestedPaymentCustomerId) {
-      router.replace(pathname, { scroll: false });
+      router.replace(profileReturnPath ?? pathname, { scroll: false });
     }
   }
 
@@ -103,13 +149,7 @@ export default function CustomersPage() {
     }
 
     // Update local state
-    fetch("/api/customers", { cache: "no-store" })
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data)) {
-          setCustomers(data.map((c: Customer) => ({ ...c, totalPaid: c.totalPaid ?? 0 })));
-        }
-      });
+    refreshCustomers();
 
     closePaymentPopup();
   }
@@ -117,7 +157,7 @@ export default function CustomersPage() {
   const totalSalt = customers.reduce((sum, customer) => sum + (customer.saltAmount ?? 0), 0);
   const totalDue = customers.reduce((sum, customer) => sum + (customer.totalDue ?? 0), 0);
   const totalPaid = customers.reduce((sum, customer) => sum + (customer.totalPaid ?? 0), 0);
-  const totalAmount = totalDue + totalPaid;
+  const totalAmount = customers.reduce((sum, customer) => sum + (customer.totalSalesAmount ?? 0), 0);
   const firstCustomerId = customers[0]?._id;
 
   const isValidPhone = (value: string) => /^\d{11}$/.test(value);
@@ -127,6 +167,22 @@ export default function CustomersPage() {
     const text = await res.text();
     return text ? JSON.parse(text) : null;
   };
+
+  const refreshCustomers = () =>
+    fetch("/api/customers", { cache: "no-store" })
+      .then(parseJson)
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setCustomers(
+            sortCustomersByLatestInput(
+              data.map((customer: Customer) => ({
+                ...customer,
+                totalPaid: customer.totalPaid ?? 0,
+              }))
+            )
+          );
+        }
+      });
 
   const calculateTotalPrice = (quantity: string, price: string) => {
     const quantityValue = Number(quantity);
@@ -156,10 +212,14 @@ export default function CustomersPage() {
       .then(parseJson)
       .then((data) => {
         if (Array.isArray(data)) {
-          setCustomers(data.map((customer: Customer) => ({
-            ...customer,
-            totalPaid: customer.totalPaid ?? 0,
-          })));
+          setCustomers(
+            sortCustomersByLatestInput(
+              data.map((customer: Customer) => ({
+                ...customer,
+                totalPaid: customer.totalPaid ?? 0,
+              }))
+            )
+          );
         }
       });
   }, []);
@@ -213,7 +273,9 @@ export default function CustomersPage() {
       }
 
       if (data?._id) {
-        setCustomers((prev) => [...prev, { ...data, totalPaid: data.totalPaid ?? 0 }]);
+        setCustomers((prev) =>
+          sortCustomersByLatestInput([...prev, { ...data, totalPaid: data.totalPaid ?? 0 }] as Customer[])
+        );
         setName("");
         setPhone("");
         setAddress("");
@@ -223,6 +285,68 @@ export default function CustomersPage() {
       setError(translate(language, "unableToAddCustomer"));
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const openEditPopup = (customer: Customer) => {
+    if (!customer.latestSaleId) return;
+
+    setEditTarget(customer);
+    setEditPrice(customer.latestPricePerKg ? customer.latestPricePerKg.toFixed(2) : "");
+    setEditError("");
+    setShowEditPopup(true);
+  };
+
+  const closeEditPopup = () => {
+    setShowEditPopup(false);
+    setEditTarget(null);
+    setEditPrice("");
+    setEditError("");
+    setIsSavingEdit(false);
+  };
+
+  const handleEditSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!editTarget?.latestSaleId) {
+      setEditError("No sale record found for this customer.");
+      return;
+    }
+
+    const nextPrice = Number(editPrice);
+    if (editPrice.trim() === "" || Number.isNaN(nextPrice) || nextPrice < 0) {
+      setEditError("Enter a valid price per KG.");
+      return;
+    }
+
+    setIsSavingEdit(true);
+    setEditError("");
+
+    try {
+      const response = await fetch(`/api/customers/${editTarget._id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "edit-price",
+          saleId: editTarget.latestSaleId,
+          pricePerKg: nextPrice,
+        }),
+      });
+
+      const responseBody = await response.text();
+      const data = responseBody ? JSON.parse(responseBody) : null;
+
+      if (!response.ok) {
+        setEditError(data?.message ?? "Failed to update price.");
+        return;
+      }
+
+      await refreshCustomers();
+      closeEditPopup();
+    } catch {
+      setEditError("Failed to update price.");
+    } finally {
+      setIsSavingEdit(false);
     }
   };
 
@@ -265,14 +389,9 @@ export default function CustomersPage() {
       return;
     }
 
-    if (paidValue > total) {
-      setSaleStatus({ type: "error", message: translate(language, "paidAmountCannotExceedTotal") });
-      return;
-    }
-
     const dueValue = Number(total - paidValue);
-    if (Number.isNaN(dueValue) || dueValue < 0) {
-      setSaleStatus({ type: "error", message: translate(language, "dueAmountNonNegative") });
+    if (Number.isNaN(dueValue)) {
+      setSaleStatus({ type: "error", message: translate(language, "enterValidAmount") });
       return;
     }
 
@@ -304,23 +423,18 @@ export default function CustomersPage() {
     setSalePaid("");
     setSaleDue("");
 
-    fetch("/api/customers", { cache: "no-store" })
-      .then(parseJson)
-      .then((data) => {
-        if (Array.isArray(data)) {
-          setCustomers(data.map((customer: Customer) => ({ ...customer, totalPaid: customer.totalPaid ?? 0 })));
-        }
-      });
+    refreshCustomers();
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-3xl font-semibold text-slate-900">{translate(language, "customers")}</h1>
+          <h1 className="text-2xl font-semibold text-slate-900 sm:text-3xl">{translate(language, "customers")}</h1>
           <p className="mt-2 text-slate-500">{translate(language, "customerSummary")}</p>
         </div>
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+        <div className="print-hidden flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+         
           <button
             type="button"
             onClick={() => setShowForm((prev) => !prev)}
@@ -340,7 +454,7 @@ export default function CustomersPage() {
       </div>
 
       {showForm && (
-        <div className="rounded-md bg-white p-5 shadow-sm sm:p-6">
+        <div className="print-hidden rounded-md bg-white p-5 shadow-sm sm:p-6">
           <h2 className="text-lg font-semibold text-slate-900">{translate(language, "newCustomer")}</h2>
           <form className="mt-5 space-y-4" onSubmit={handleAddCustomer}>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -391,7 +505,7 @@ export default function CustomersPage() {
         </div>
       )}
 
-      <div className="rounded-md bg-white p-5 shadow-sm sm:p-6">
+      <div className="print-hidden rounded-md bg-white p-5 shadow-sm sm:p-6">
         <h2 className="text-lg font-semibold text-slate-900">{translate(language, "newSaleEntry")}</h2>
         <p className="mt-2 text-xs text-slate-500">{translate(language, "recordCustomerSale")}</p>
 
@@ -489,7 +603,6 @@ export default function CustomersPage() {
                 readOnly
                 type="number"
                 step="0.01"
-                min="0"
                 placeholder="0"
                 className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3 text-base text-slate-900 outline-none"
               />
@@ -537,7 +650,14 @@ export default function CustomersPage() {
       </div>
 
       {/* Payment Now Button */}
-      <div className="mb-4 flex justify-stretch sm:justify-end">
+      <div className="print-hidden mb-4 flex justify-between items-center">
+        <button
+            type="button"
+            onClick={() => window.print()}
+            className="inline-flex w-full items-center justify-center rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow hover:bg-slate-800 sm:w-auto"
+          >
+            {translate(language, "printCustomerList")}
+        </button>
         <button
           className="w-full rounded-lg bg-blue-600 px-6 py-2 text-base font-semibold text-white shadow hover:bg-blue-700 sm:w-auto"
           onClick={() => setShowPaymentPopup(true)}
@@ -614,6 +734,15 @@ export default function CustomersPage() {
               />
             </label>
 
+            {paymentCustomerId ? (
+              <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-slate-700">
+                {translate(language, "balanceLabel")}:{" "}
+                <span className={getBalanceClassName(customers.find((c) => c._id === paymentCustomerId)?.totalDue ?? 0)}>
+                  {formatBalanceText(customers.find((c) => c._id === paymentCustomerId)?.totalDue ?? 0)}
+                </span>
+              </div>
+            ) : null}
+
             {paymentError ? (
               <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
                 {paymentError}
@@ -639,74 +768,157 @@ export default function CustomersPage() {
         </ModalShell>
       )}
 
-      <div className="overflow-x-auto rounded-md bg-white p-4 shadow-sm">
-        <table className="w-full text-left">
+      {showEditPopup && editTarget ? (
+        <ModalShell
+          title="Edit customer price"
+          description="Update the latest sale price for this customer."
+          tone="emerald"
+          widthClassName="max-w-lg"
+          onClose={closeEditPopup}
+        >
+          <form onSubmit={handleEditSubmit} className="space-y-4">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+              <p className="font-semibold text-slate-900">{formatDisplayName(editTarget.name, "Unnamed customer")}</p>
+              <p className="mt-1">Current price: Tk {formatAmount(editTarget.latestPricePerKg ?? 0, 2)} per KG</p>
+              <p className="mt-1 text-xs text-slate-500">{getEditedByText(editTarget)}</p>
+            </div>
+
+            <label className="block">
+              <span className="text-sm font-medium text-slate-700">New price per KG</span>
+              <input
+                name="editCustomerPrice"
+                type="number"
+                step="0.01"
+                min="0"
+                value={editPrice}
+                onChange={(e) => setEditPrice(e.target.value)}
+                className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:bg-white"
+                required
+              />
+            </label>
+
+            {editError ? (
+              <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                {editError}
+              </div>
+            ) : null}
+
+            <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-2.5 text-base font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                onClick={closeEditPopup}
+              >
+                {translate(language, "cancel")}
+              </button>
+              <button
+                type="submit"
+                disabled={isSavingEdit}
+                className="inline-flex items-center justify-center rounded-2xl bg-emerald-600 px-5 py-2.5 text-base font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
+              >
+                {isSavingEdit ? "Updating..." : "Update price"}
+              </button>
+            </div>
+          </form>
+        </ModalShell>
+      ) : null}
+
+      <div className="print-list-shell overflow-x-auto rounded-md bg-white p-4 shadow-sm">
+        <table className="min-w-[60rem] w-full text-left">
           <thead className="border-b border-slate-200 text-slate-500">
             <tr>
-              <th className="px-4 py-3">{translate(language, "nameLabel")}</th>
-              <th className="px-4 py-3">{translate(language, "phoneLabelShort")}</th>
-              <th className="px-4 py-3">{translate(language, "totalSaltKg")}</th>
+              <th className="print-table-hidden px-4 py-3">{translate(language, "nameLabel")}</th>
+              <th className="print-table-hidden px-4 py-3">{translate(language, "phoneLabelShort")}</th>
+              <th className="print-table-hidden px-4 py-3">{translate(language, "totalSaltKg")}</th>
               <th className="px-4 py-3">{translate(language, "totalSalesLabel")}</th>
               <th className="px-4 py-3">{translate(language, "totalReceived")}</th>
-              <th className="px-4 py-3">{translate(language, "totalDue")}</th>
-              <th className="px-4 py-3">{translate(language, "action")}</th>
-              <th className="px-4 py-3">{translate(language, "printInvoice")}</th>
+              <th className="px-4 py-3">{translate(language, "dueOrAdvance")}</th>
+              <th className="print-table-hidden px-4 py-3">Latest price</th>
+              <th className="print-table-hidden px-4 py-3">Edited by</th>
+              <th className="print-table-hidden px-4 py-3">{translate(language, "action")}</th>
+              <th className="print-table-hidden px-4 py-3">{translate(language, "printInvoice")}</th>
             </tr>
           </thead>
           <tbody>
-            {customers.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
-                  {translate(language, "noCustomersFound")}
-                </td>
-              </tr>
-            ) : (
-              customers.map((customer, index) => (
-                <tr key={customer._id} className={`border-b border-slate-100 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
-                  <td className="px-4 py-4 text-slate-800">{formatDisplayName(customer.name, "Unnamed customer")}</td>
-                  <td className="px-4 py-4 text-slate-600">{customer.phone || "-"}</td>
-                  <td className="px-4 py-4 text-slate-600">{formatAmount(customer.saltAmount ?? 0)}</td>
-                  <td className="px-4 py-4 text-slate-600">Tk {formatAmount((customer.totalDue ?? 0) + (customer.totalPaid ?? 0))}</td>
-                  <td className="px-4 py-4 text-slate-600">Tk {formatAmount(customer.totalPaid ?? 0)}</td>
-                  <td className="px-4 py-4 text-slate-600">Tk {formatAmount(customer.totalDue ?? 0)}</td>
-                  <td className="px-4 py-4">
-                    <Link href={`/customers/${customer._id}`} className="text-[#003366] font-medium hover:underline">
-                      {translate(language, "view")}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-4">
-                    <span
-                      onClick={() => {
-                        const invoiceWindow = window.open(`/invoices/customers/${customer._id}`, '_blank');
-                        invoiceWindow?.addEventListener('load', () => {
-                          invoiceWindow.print();
-                        });
-                      }}
-                      style={{
-                        cursor: 'pointer',
-                        color: '#059669',
-                        textDecoration: 'none',
-                        fontSize: '14px',
-                        fontWeight: 500
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
-                      onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
-                    >
-                      {translate(language, "print")}
-                    </span>
+            <LoadMoreTable
+              items={customers}
+              colSpan={10}
+              loadMoreLabel={language === "bn" ? "আরও দেখুন" : "Show more"}
+              emptyState={
+                <tr>
+                  <td colSpan={10} className="px-4 py-8 text-center text-slate-500">
+                    {translate(language, "noCustomersFound")}
                   </td>
                 </tr>
-              ))
-            )}
+              }
+              renderRows={(visibleCustomers) =>
+                visibleCustomers.map((customer, index) => (
+                  <tr key={customer._id} className={`border-b border-slate-100 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                    <td className="print-table-hidden px-4 py-4 text-slate-800">{formatDisplayName(customer.name, "Unnamed customer")}</td>
+                    <td className="print-table-hidden px-4 py-4 text-slate-600">{customer.phone || "-"}</td>
+                    <td className="print-table-hidden px-4 py-4 text-slate-600">{formatAmount(customer.saltAmount ?? 0)}</td>
+                    <td className="px-4 py-4 text-slate-600">Tk {formatAmount(customer.totalSalesAmount ?? 0)}</td>
+                    <td className="px-4 py-4 text-slate-600">Tk {formatAmount(customer.totalPaid ?? 0)}</td>
+                    <td className={`px-4 py-4 ${getBalanceClassName(customer.totalDue ?? 0)}`}>{formatBalanceText(customer.totalDue ?? 0)}</td>
+                    <td className="print-table-hidden px-4 py-4 text-slate-600">
+                      {customer.latestSaleId ? `Tk ${formatAmount(customer.latestPricePerKg ?? 0, 2)}` : "-"}
+                    </td>
+                    <td className="print-table-hidden px-4 py-4">
+                      <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+                        {getEditedByText(customer)}
+                      </span>
+                    </td>
+                    <td className="print-table-hidden px-4 py-4">
+                      <div className="flex flex-col items-start gap-2">
+                        <Link href={`/customers/${customer._id}`} className="text-[#003366] font-medium hover:underline">
+                          {translate(language, "view")}
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => openEditPopup(customer)}
+                          disabled={!customer.latestSaleId}
+                          className="rounded-lg border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+                        >
+                          Edit
+                        </button>
+                      </div>
+                    </td>
+                    <td className="print-table-hidden px-4 py-4">
+                      <span
+                        onClick={() => {
+                          const invoiceWindow = window.open(`/invoices/customers/${customer._id}`, '_blank');
+                          invoiceWindow?.addEventListener('load', () => {
+                            invoiceWindow.print();
+                          });
+                        }}
+                        style={{
+                          cursor: 'pointer',
+                          color: '#059669',
+                          textDecoration: 'none',
+                          fontSize: '14px',
+                          fontWeight: 500,
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+                        onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
+                      >
+                        {translate(language, "print")}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              }
+            />
             <tr className="border-t border-slate-200 bg-slate-50 font-semibold text-slate-800">
-              <td className="px-4 py-4">{translate(language, "totals")}</td>
-              <td className="px-4 py-4"></td>
-              <td className="px-4 py-4">{formatAmount(totalSalt)}</td>
+              <td className="print-table-hidden px-4 py-4">{translate(language, "totals")}</td>
+              <td className="print-table-hidden px-4 py-4"></td>
+              <td className="print-table-hidden px-4 py-4">{formatAmount(totalSalt)}</td>
               <td className="px-4 py-4">Tk {formatAmount(totalAmount)}</td>
               <td className="px-4 py-4">Tk {formatAmount(totalPaid)}</td>
-              <td className="px-4 py-4">Tk {formatAmount(totalDue)}</td>
-              <td className="px-4 py-4"></td>
-              <td className="px-4 py-4"></td>
+              <td className={`px-4 py-4 ${getBalanceClassName(totalDue)}`}>{formatBalanceText(totalDue)}</td>
+              <td className="print-table-hidden px-4 py-4"></td>
+              <td className="print-table-hidden px-4 py-4"></td>
+              <td className="print-table-hidden px-4 py-4"></td>
+              <td className="print-table-hidden px-4 py-4"></td>
             </tr>
           </tbody>
         </table>

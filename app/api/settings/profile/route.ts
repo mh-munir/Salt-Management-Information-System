@@ -1,6 +1,7 @@
 import { connectDB, isMongoConnectionError, isValidMongoObjectId } from "@/lib/db";
 import { requireAuth, validateSameOrigin } from "@/lib/auth";
 import { ensureEnvSuperadminUser } from "@/lib/superadmin";
+import { getSharedSidebarBrandingSnapshot } from "@/lib/sidebar-branding.server";
 import User from "@/models/User";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +28,7 @@ export async function GET(request: Request) {
     let user = await User.findOne(buildUserLookup(authResult.userId, authResult.email)).select(
       "name email role avatarUrl sidebarLogoUrl sidebarHeading sidebarSubheading"
     );
+    const sharedBranding = await getSharedSidebarBrandingSnapshot();
 
     if (!user) {
       user = await ensureEnvSuperadminUser(authResult);
@@ -39,9 +41,9 @@ export async function GET(request: Request) {
           email: authResult.email,
           role: authResult.role,
           avatarUrl: "",
-          sidebarLogoUrl: "",
-          sidebarHeading: "",
-          sidebarSubheading: "",
+          sidebarLogoUrl: sharedBranding.sidebarLogoUrl,
+          sidebarHeading: sharedBranding.sidebarHeading,
+          sidebarSubheading: sharedBranding.sidebarSubheading,
         },
         {
           headers: {
@@ -57,9 +59,9 @@ export async function GET(request: Request) {
         email: user.email,
         role: user.role,
         avatarUrl: user.avatarUrl ?? "",
-        sidebarLogoUrl: user.sidebarLogoUrl ?? "",
-        sidebarHeading: user.sidebarHeading ?? "",
-        sidebarSubheading: user.sidebarSubheading ?? "",
+        sidebarLogoUrl: sharedBranding.sidebarLogoUrl,
+        sidebarHeading: sharedBranding.sidebarHeading,
+        sidebarSubheading: sharedBranding.sidebarSubheading,
       },
       {
         headers: {
@@ -143,15 +145,37 @@ export async function PUT(request: Request) {
 
   await connectDB();
   await ensureEnvSuperadminUser(authResult);
-  const user = await User.findOneAndUpdate(
-    buildUserLookup(authResult.userId, authResult.email),
-    { $set: updatePayload },
-    { returnDocument: "after" }
-  ).select("name email role avatarUrl sidebarLogoUrl sidebarHeading sidebarSubheading");
+  if (hasSidebarLogoUrl || hasSidebarHeading || hasSidebarSubheading) {
+    const sharedBrandingUpdate: Record<string, string> = {};
+    if (hasSidebarLogoUrl) sharedBrandingUpdate.sidebarLogoUrl = sidebarLogoUrl;
+    if (hasSidebarHeading) sharedBrandingUpdate.sidebarHeading = sidebarHeading;
+    if (hasSidebarSubheading) sharedBrandingUpdate.sidebarSubheading = sidebarSubheading;
+
+    await User.updateMany(
+      { role: { $in: ["admin", "superadmin"] } },
+      { $set: sharedBrandingUpdate },
+      { strict: false }
+    );
+  }
+
+  let user = null;
+  if (hasAvatarUrl) {
+    user = await User.findOneAndUpdate(
+      buildUserLookup(authResult.userId, authResult.email),
+      { $set: { avatarUrl } },
+      { returnDocument: "after" }
+    ).select("name email role avatarUrl sidebarLogoUrl sidebarHeading sidebarSubheading");
+  } else {
+    user = await User.findOne(buildUserLookup(authResult.userId, authResult.email)).select(
+      "name email role avatarUrl sidebarLogoUrl sidebarHeading sidebarSubheading"
+    );
+  }
 
   if (!user) {
     return Response.json({ message: "User not found." }, { status: 404 });
   }
+
+  const sharedBranding = await getSharedSidebarBrandingSnapshot();
 
   return Response.json({
     message: "Profile updated.",
@@ -160,9 +184,9 @@ export async function PUT(request: Request) {
       email: user.email,
       role: user.role,
       avatarUrl: user.avatarUrl ?? "",
-      sidebarLogoUrl: user.sidebarLogoUrl ?? "",
-      sidebarHeading: user.sidebarHeading ?? "",
-      sidebarSubheading: user.sidebarSubheading ?? "",
+      sidebarLogoUrl: sharedBranding.sidebarLogoUrl,
+      sidebarHeading: sharedBranding.sidebarHeading,
+      sidebarSubheading: sharedBranding.sidebarSubheading,
     },
   });
 }

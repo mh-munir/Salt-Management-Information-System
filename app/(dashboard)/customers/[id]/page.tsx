@@ -3,9 +3,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import mongoose from "mongoose";
+import { getBalanceSummary } from "@/lib/balance";
 import { connectDB } from "@/lib/db";
 import { formatDisplayName, formatLocalizedDate, formatLocalizedNumber } from "@/lib/display-format";
+import LoadMoreTable from "@/components/LoadMoreTable";
 import { translate } from "@/lib/language";
+import { summarizeCustomerLedger } from "@/lib/live-ledgers";
+import { compareByEarliestInput, compareByLatestInput } from "@/lib/record-order";
 import { cookies } from "next/headers";
 import Customer from "@/models/Customer";
 import Sale from "@/models/Sale";
@@ -21,7 +25,6 @@ type UnifiedRecord = {
   type: "sale" | "payment";
   totalAmount: number;
   paidAmount: number;
-  dueAmount: number;
   quantityKg: number;
 };
 
@@ -54,15 +57,17 @@ const resolveSaleQuantity = (sale: { items?: Array<{ quantity?: number }>; saltA
   if (Array.isArray(sale.items) && sale.items.length > 0) {
     return sale.items.reduce((sum, item) => sum + Number(item?.quantity ?? 0), 0);
   }
+
   return Number(sale.saltAmount ?? 0);
 };
+
+const getRecordKey = (record: UnifiedRecord, index: number) => record._id || `${record.type}-${index}`;
 
 export default async function CustomerDetailPage({ params }: CustomerPageProps) {
   const { id } = await params;
   await connection();
   await connectDB();
 
-  // Get language from cookies
   const cookieStore = await cookies();
   const language = (cookieStore.get("salt-mill-language")?.value as "en" | "bn") || "en";
   const formatDate = (value?: string | Date) => formatLocalizedDate(value, language);
@@ -85,7 +90,6 @@ export default async function CustomerDetailPage({ params }: CustomerPageProps) 
     type: "sale",
     totalAmount: Number(sale.total ?? 0),
     paidAmount: Number(sale.paid ?? 0),
-    dueAmount: Number(sale.due ?? 0),
     quantityKg: resolveSaleQuantity(sale),
   }));
 
@@ -95,43 +99,48 @@ export default async function CustomerDetailPage({ params }: CustomerPageProps) 
     type: "payment",
     totalAmount: 0,
     paidAmount: Number(transaction.amount ?? 0),
-    dueAmount: 0,
     quantityKg: 0,
   }));
 
-  const records = [...saleRecords, ...paymentRecords].sort((a, b) => {
-    const aTime = a.date ? new Date(a.date).getTime() : 0;
-    const bTime = b.date ? new Date(b.date).getTime() : 0;
-    return bTime - aTime;
-  });
+  const records = [...saleRecords, ...paymentRecords].sort((left, right) =>
+    compareByLatestInput(
+      { id: String(left._id ?? ""), date: left.date },
+      { id: String(right._id ?? ""), date: right.date }
+    )
+  );
 
-  const totalSalesAmount = saleRecords.reduce((sum, record) => sum + record.totalAmount, 0);
-  const totalReceivedFromSales = saleRecords.reduce((sum, record) => sum + record.paidAmount, 0);
-  const totalReceivedFromPayments = paymentRecords.reduce((sum, record) => sum + record.paidAmount, 0);
-  const totalReceived = totalReceivedFromSales + totalReceivedFromPayments;
-  const calculatedSaltDelivered = saleRecords.reduce((sum, record) => sum + record.quantityKg, 0);
-  const fallbackSaltDelivered = Number(customer.saltAmount ?? 0);
-  const totalSaltDelivered =
-    calculatedSaltDelivered > 0 || fallbackSaltDelivered === 0 ? calculatedSaltDelivered : fallbackSaltDelivered;
-  const totalDue = totalSalesAmount - totalReceived;
+  const summary = summarizeCustomerLedger(sales, payments, {
+    saltAmount: customer.saltAmount,
+    totalDue: customer.totalDue,
+    totalPaid: customer.totalPaid,
+  });
+  const totalSalesAmount = summary.totalSalesAmount;
+  const totalReceived = summary.totalReceivedAmount;
+  const totalSaltDelivered = summary.totalSaltKg;
+  const totalDue = summary.totalDueAmount;
+  const balance = getBalanceSummary(totalDue);
   const profileImage = createProfileAvatar(String(customer.name ?? "Customer"), "customer");
 
-  // Calculate running due for each record
-  let currentDue = totalDue;
-  const reversedRecords = [...records].reverse();
-  const dues: number[] = [];
-  for (const rec of reversedRecords) {
-    if (rec.type === 'sale') {
-      currentDue += rec.dueAmount;
-    } else if (rec.type === 'payment') {
-      currentDue -= rec.paidAmount;
+  let runningBalance = 0;
+  const runningBalanceByKey = new Map<string, number>();
+  const chronologicalRecords = [...records].sort((left, right) =>
+    compareByEarliestInput(
+      { id: String(left._id ?? ""), date: left.date },
+      { id: String(right._id ?? ""), date: right.date }
+    )
+  );
+  for (const [index, record] of chronologicalRecords.entries()) {
+    if (record.type === "sale") {
+      runningBalance += record.totalAmount - record.paidAmount;
+    } else {
+      runningBalance -= record.paidAmount;
     }
-    dues.push(currentDue);
+
+    runningBalanceByKey.set(getRecordKey(record, index), runningBalance);
   }
-  dues.reverse();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <section className="relative ">
         <div className="pointer-events-none absolute -right-12 -top-16 h-36 w-36 rounded-full bg-emerald-200/40 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-12 -left-12 h-32 w-32 rounded-full bg-sky-200/40 blur-3xl" />
@@ -154,9 +163,7 @@ export default async function CustomerDetailPage({ params }: CustomerPageProps) 
                 <h1 className="mt-3 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
                   {formatDisplayName(String(customer.name ?? ""), "Customer")}
                 </h1>
-                <p className="mt-2 text-sm text-slate-600">
-                  {translate(language, "customerSummary")}
-                </p>
+                <p className="mt-2 text-sm text-slate-600">{translate(language, "customerSummary")}</p>
               </div>
             </div>
 
@@ -178,7 +185,7 @@ export default async function CustomerDetailPage({ params }: CustomerPageProps) 
                 {translate(language, "printInvoice")}
               </Link>
               <Link
-                href={`/customers?paymentId=${id}`}
+                href={`/customers?paymentId=${id}&returnTo=${encodeURIComponent(`/customers/${id}`)}`}
                 className="inline-flex w-full items-center justify-center rounded-full bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 sm:w-auto"
               >
                 {translate(language, "paymentNow")}
@@ -192,8 +199,12 @@ export default async function CustomerDetailPage({ params }: CustomerPageProps) 
               <p className="mt-3 text-2xl font-semibold text-indigo-600">Tk {formatAmount(totalSalesAmount)}</p>
             </div>
             <div className="rounded-md border border-slate-200 bg-white/90 p-5 shadow-sm backdrop-blur">
-              <p className="text-xs uppercase tracking-wide text-slate-500">{translate(language, "outstandingDue")}</p>
-              <p className="mt-3 text-2xl font-semibold text-rose-600">Tk {formatAmount(totalDue)}</p>
+              <p className="text-xs uppercase tracking-wide text-slate-500">
+                {translate(language, balance.isAdvance ? "advanceBalance" : "outstandingDue")}
+              </p>
+              <p className={`mt-3 text-2xl font-semibold ${balance.isAdvance ? "text-emerald-600" : "text-rose-600"}`}>
+                Tk {formatAmount(balance.absoluteAmount)}
+              </p>
             </div>
             <div className="rounded-md border border-slate-200 bg-white/90 p-5 shadow-sm backdrop-blur">
               <p className="text-xs uppercase tracking-wide text-slate-500">{translate(language, "totalReceived")}</p>
@@ -201,15 +212,13 @@ export default async function CustomerDetailPage({ params }: CustomerPageProps) 
             </div>
             <div className="rounded-md border border-slate-200 bg-white/90 p-5 shadow-sm backdrop-blur">
               <p className="text-xs uppercase tracking-wide text-slate-500">{translate(language, "saltDelivered")}</p>
-              <p className="mt-3 text-2xl font-semibold text-slate-900">
-                {formatAmount(totalSaltDelivered)} KG
-              </p>
+              <p className="mt-3 text-2xl font-semibold text-slate-900">{formatAmount(totalSaltDelivered)} KG</p>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="rounded-md border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="rounded-md border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="text-xl font-semibold text-slate-900">{translate(language, "customerActivityTimeline")}</h2>
@@ -221,58 +230,75 @@ export default async function CustomerDetailPage({ params }: CustomerPageProps) 
         </div>
 
         <div className="mt-5 overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="min-w-[44rem] w-full text-left">
             <thead className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="px-4 py-3">{translate(language, "dateLabel")}</th>
                 <th className="px-4 py-3">{translate(language, "typeLabel")}</th>
                 <th className="px-4 py-3">Salt (KG)</th>
                 <th className="px-4 py-3">{translate(language, "paidAmount")}</th>
-                <th className="px-4 py-3">{translate(language, "remainingDue")}</th>
+                <th className="px-4 py-3">{translate(language, "dueOrAdvance")}</th>
                 <th className="px-4 py-3">{translate(language, "note")}</th>
               </tr>
             </thead>
             <tbody>
-              {records.length > 0 ? (
-                records.map((record, index) => (
-                  <tr
-                    key={record._id || `${record.type}-${index}`}
-                    className={`border-b border-slate-100 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
-                  >
-                    <td className="px-4 py-4 text-sm text-slate-800">{formatDate(record.date)}</td>
-                    <td className="px-4 py-4">
-                      <span
-                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
-                          record.type === "sale" ? "bg-indigo-100 text-indigo-700" : "bg-emerald-100 text-emerald-700"
-                        }`}
-                      >
-                        {record.type === "sale" ? translate(language, "sale") : translate(language, "payment")}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 text-sm text-slate-700">{formatAmount(record.quantityKg)}</td>
-                    <td className="px-4 py-4 text-sm text-slate-700">Tk {formatAmount(record.paidAmount)}</td>
-                    <td className={`px-4 py-4 text-sm ${dues[index] > 0 ? "text-rose-600" : "text-emerald-600"}`}>
-                      Tk {formatAmount(dues[index])}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-slate-500">
-                      {record.type === "sale" ? "Salt sale entry" : "Customer payment entry"}
+              <LoadMoreTable
+                items={records}
+                colSpan={6}
+                loadMoreLabel={language === "bn" ? "আরও দেখুন" : "Show more"}
+                emptyState={
+                  <tr>
+                    <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">
+                      No records found for this customer.
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">
-                    No records found for this customer.
-                  </td>
-                </tr>
-              )}
+                }
+                renderRows={(visibleRecords) =>
+                  visibleRecords.map((record, index) => {
+                    const recordBalance = runningBalanceByKey.get(getRecordKey(record, index)) ?? 0;
+                    const recordBalanceSummary = getBalanceSummary(recordBalance);
+
+                    return (
+                      <tr
+                        key={getRecordKey(record, index)}
+                        className={`border-b border-slate-100 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
+                      >
+                        <td className="px-4 py-4 text-sm text-slate-800">{formatDate(record.date)}</td>
+                        <td className="px-4 py-4">
+                          <span
+                            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+                              record.type === "sale" ? "bg-indigo-100 text-indigo-700" : "bg-emerald-100 text-emerald-700"
+                            }`}
+                          >
+                            {record.type === "sale" ? translate(language, "sale") : translate(language, "payment")}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 text-sm text-slate-700">{formatAmount(record.quantityKg)}</td>
+                        <td className="px-4 py-4 text-sm text-slate-700">Tk {formatAmount(record.paidAmount)}</td>
+                        <td className={`px-4 py-4 text-sm ${recordBalanceSummary.isAdvance ? "text-emerald-600" : "text-rose-600"}`}>
+                          {recordBalanceSummary.isAdvance
+                            ? `${translate(language, "advanceBalance")} Tk ${formatAmount(recordBalanceSummary.absoluteAmount)}`
+                            : `Tk ${formatAmount(recordBalanceSummary.absoluteAmount)}`}
+                        </td>
+                        <td className="px-4 py-4 text-sm text-slate-500">
+                          {record.type === "sale" ? "Salt sale entry" : "Customer payment entry"}
+                        </td>
+                      </tr>
+                    );
+                  })
+                }
+              />
 
               <tr className="border-t border-slate-200 bg-slate-50/70 text-sm font-semibold text-slate-800">
                 <td className="px-4 py-4">Totals</td>
                 <td className="px-4 py-4">-</td>
                 <td className="px-4 py-4">{formatAmount(totalSaltDelivered)}</td>
                 <td className="px-4 py-4">Tk {formatAmount(totalReceived)}</td>
-                <td className="px-4 py-4">Tk {formatAmount(totalDue)}</td>
+                <td className={`px-4 py-4 ${balance.isAdvance ? "text-emerald-600" : "text-rose-600"}`}>
+                  {balance.isAdvance
+                    ? `${translate(language, "advanceBalance")} Tk ${formatAmount(balance.absoluteAmount)}`
+                    : `Tk ${formatAmount(balance.absoluteAmount)}`}
+                </td>
                 <td className="px-4 py-4">-</td>
               </tr>
             </tbody>
@@ -282,4 +308,3 @@ export default async function CustomerDetailPage({ params }: CustomerPageProps) 
     </div>
   );
 }
-

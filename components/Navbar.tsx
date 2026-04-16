@@ -57,6 +57,7 @@ export default function Navbar({ initialLanguage }: NavbarProps) {
     if (pathname.startsWith("/suppliers")) return translate(language, "suppliers");
     if (pathname.startsWith("/customers")) return translate(language, "customers");
     if (pathname.startsWith("/stock")) return translate(language, "stock");
+    if (pathname.startsWith("/cost")) return translate(language, "cost");
     if (pathname.startsWith("/settings")) return translate(language, "settings");
     return translate(language, "dashboard");
   }, [language, pathname]);
@@ -177,12 +178,12 @@ export default function Navbar({ initialLanguage }: NavbarProps) {
   ];
 
   return (
-    <div className="navbar-shell fixed left-0 right-0 top-0 z-30 flex items-center justify-between bg-white px-4 py-3 shadow-sm sm:px-6 lg:left-72">
+    <div className="navbar-shell mobile-navbar-shell fixed left-0 right-0 top-0 z-30 flex items-center justify-between gap-3 bg-white px-4 py-3 shadow-sm sm:px-6 lg:left-[250px]">
       <div className="flex min-w-0 items-center gap-3">
         <button
           type="button"
           onClick={toggleSidebar}
-          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 lg:hidden"
+          className="mobile-menu-button inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 lg:hidden"
           aria-label="Open navigation menu"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-5 w-5">
@@ -191,15 +192,15 @@ export default function Navbar({ initialLanguage }: NavbarProps) {
             <path d="M4 17h16" />
           </svg>
         </button>
-        <h1 className="truncate font-bold text-slate-900">{pageTitle}</h1>
+        <h1 className="mobile-navbar-title truncate text-base font-bold text-slate-900 sm:text-lg">{pageTitle}</h1>
       </div>
 
-      <div className="flex items-center gap-2 sm:gap-3">
+      <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
         <div className="relative" ref={languageMenuRef}>
           <button
             type="button"
             onClick={() => setLanguageMenuOpen((open) => !open)}
-            className="theme-toggle-button light-navbar-button inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-base font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100 dark:hover:bg-slate-800"
+            className="theme-toggle-button light-navbar-button inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 sm:px-3 sm:text-base dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100 dark:hover:bg-slate-800"
             aria-label={translate(language, "changeLanguage")}
             aria-expanded={languageMenuOpen}
           >
@@ -245,7 +246,7 @@ export default function Navbar({ initialLanguage }: NavbarProps) {
               alt="Admin avatar"
               className="profile-avatar h-9 w-9 rounded-full border border-slate-200 object-cover"
             />
-            <div className="min-w-0 text-left">
+            <div className="hidden min-w-0 text-left md:block">
               <p className="max-w-24 truncate text-sm font-medium leading-tight text-sky-700 sm:max-w-30">
                 {profileName}
               </p>
@@ -261,7 +262,7 @@ export default function Navbar({ initialLanguage }: NavbarProps) {
           </button>
 
           {menuOpen ? (
-            <div className="absolute right-0 mt-2 w-60 rounded-xl border border-slate-200 bg-white py-3 shadow-xl sm:w-full">
+            <div className="absolute right-0 mt-2 w-52 rounded-xl border border-slate-200 bg-white py-3 shadow-xl sm:w-60">
               <p className="px-4 text-base font-medium text-slate-700">{translate(language, "welcomeBack")}</p>
 
               <div className="mt-2 space-y-0.5 px-2">

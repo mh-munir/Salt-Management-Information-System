@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, useEffect, useState } from "react";
+import { ChangeEvent, useEffect, useId, useRef, useState } from "react";
 
 type CompactDateInputProps = {
   name: string;
@@ -62,6 +62,8 @@ export default function CompactDateInput({
   required = false,
   inputClassName = "",
 }: CompactDateInputProps) {
+  const inputId = useId();
+  const nativeDateInputRef = useRef<HTMLInputElement>(null);
   const [displayValue, setDisplayValue] = useState(() => isoToCompactDate(value));
 
   useEffect(() => {
@@ -96,24 +98,84 @@ export default function CompactDateInput({
     }
   };
 
+  const handleNativeDateChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const nextValue = event.target.value;
+
+    if (!nextValue) {
+      setDisplayValue("");
+      onChange("");
+      return;
+    }
+
+    setDisplayValue(isoToCompactDate(nextValue));
+    onChange(nextValue);
+  };
+
+  const openCalendar = () => {
+    const nativeInput = nativeDateInputRef.current;
+    if (!nativeInput) return;
+
+    if (typeof nativeInput.showPicker === "function") {
+      nativeInput.showPicker();
+      return;
+    }
+
+    nativeInput.focus();
+    nativeInput.click();
+  };
+
   return (
     <label className="block">
       <span className="text-sm font-medium text-slate-700">{label}</span>
-      <input
-        name={name}
-        type="text"
-        inputMode="numeric"
-        autoComplete="off"
-        placeholder="dd/mm/yyyy"
-        className={inputClassName}
-        value={displayValue}
-        onChange={handleChange}
-        onBlur={handleBlur}
-        maxLength={10}
-        pattern="\d{2}/\d{2}/\d{4}"
-        title="Use dd/mm/yyyy format"
-        required={required}
-      />
+      <div className="relative mt-2">
+        <input
+          id={inputId}
+          name={`${name}Display`}
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
+          placeholder="dd/mm/yyyy"
+          className={`${inputClassName.replace("mt-2", "").trim()} pr-12`}
+          value={displayValue}
+          onChange={handleChange}
+          onBlur={handleBlur}
+          onClick={openCalendar}
+          maxLength={10}
+          pattern="\d{2}/\d{2}/\d{4}"
+          title="Use dd/mm/yyyy format"
+          required={required}
+        />
+        <input
+          ref={nativeDateInputRef}
+          name={name}
+          type="date"
+          value={value}
+          onChange={handleNativeDateChange}
+          max={max}
+          required={required}
+          tabIndex={-1}
+          aria-hidden="true"
+          className="pointer-events-none absolute right-0 top-0 h-full w-0 opacity-0"
+        />
+        <button
+          type="button"
+          onClick={openCalendar}
+          aria-label={`Open ${label.toLowerCase()} calendar`}
+          className="absolute right-3 top-1/2 inline-flex -translate-y-1/2 items-center justify-center rounded-lg p-1 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            className="h-5 w-5"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8 2v4M16 2v4M3.5 9.5h17M5 5.5h14A1.5 1.5 0 0 1 20.5 7v12A1.5 1.5 0 0 1 19 20.5H5A1.5 1.5 0 0 1 3.5 19V7A1.5 1.5 0 0 1 5 5.5Z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8 13h3v3H8z" />
+          </svg>
+        </button>
+      </div>
     </label>
   );
 }

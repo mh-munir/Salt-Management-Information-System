@@ -5,6 +5,7 @@ export type TranslationKey =
   | "suppliers"
   | "customers"
   | "stock"
+  | "cost"
   | "settings"
   | "main"
   | "management"
@@ -47,6 +48,9 @@ export type TranslationKey =
   | "phoneLabel"
   | "addressLabel"
   | "outstandingDue"
+  | "advanceBalance"
+  | "balanceLabel"
+  | "dueOrAdvance"
   | "totalSalesLabel"
   | "totalReceived"
   | "totalDue"
@@ -156,6 +160,8 @@ export type TranslationKey =
   | "noCustomersFound"
   | "view"
   | "print"
+  | "printSupplierList"
+  | "printCustomerList"
   | "totalSales"
   | "suppliersLabel"
   | "customersLabel"
@@ -212,7 +218,31 @@ export type TranslationKey =
   | "customerSuffix"
   | "supplierTodaySuffix"
   | "kgUnit"
-  | "maundUnit";
+  | "maundUnit"
+  | "costSummary"
+  | "newCostEntry"
+  | "recordDailyCost"
+  | "costForLabel"
+  | "costForPlaceholder"
+  | "costAmountLabel"
+  | "costDateLabel"
+  | "purposeLabel"
+  | "purposePlaceholder"
+  | "saveCost"
+  | "savingCost"
+  | "totalCost"
+  | "todayCost"
+  | "costEntries"
+  | "dailyCostHistory"
+  | "dailyCostHistoryDescription"
+  | "dailyCost"
+  | "todaysExpenses"
+  | "noCostsFound"
+  | "unableToSaveCost"
+  | "costSavedSuccessfully"
+  | "personNameRequired"
+  | "purposeRequired"
+  | "unknownPerson";
 
 const LANGUAGE_STORAGE_KEY = "salt-mill-language";
 
@@ -223,6 +253,7 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     suppliers: "Suppliers",
     customers: "Customers",
     stock: "Stock",
+    cost: "Cost",
     settings: "Settings",
     main: "MAIN",
     management: "MANAGEMENT",
@@ -265,6 +296,9 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     phoneLabel: "Phone",
     addressLabel: "Address",
     outstandingDue: "Outstanding due",
+    advanceBalance: "Advance balance",
+    balanceLabel: "Balance",
+    dueOrAdvance: "Due / Advance",
     totalDue: "Total due",
     totalSalesLabel: "Total amount",
     totalReceived: "Paid amount",
@@ -367,6 +401,8 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     noCustomersFound: "No customers found.",
     view: "View",
     print: "Print",
+    printSupplierList: "Print Supplier List",
+    printCustomerList: "Print Customer List",
     totalSales: "Total Amount",
     suppliersLabel: "Suppliers",
     customersLabel: "Customers",
@@ -421,6 +457,30 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     supplierTodaySuffix: "supplier today",
     kgUnit: "KG",
     maundUnit: "Maund",
+    costSummary: "Track daily expenses, who received the money, and the purpose of each cost entry.",
+    newCostEntry: "New cost entry",
+    recordDailyCost: "Add your daily operating costs with person name, amount, purpose, and date.",
+    costForLabel: "Paid to",
+    costForPlaceholder: "Enter person name",
+    costAmountLabel: "Cost amount (Tk)",
+    costDateLabel: "Cost date",
+    purposeLabel: "Purpose",
+    purposePlaceholder: "Why did you spend this money?",
+    saveCost: "Save cost",
+    savingCost: "Saving...",
+    totalCost: "Total cost",
+    todayCost: "Today's cost",
+    costEntries: "Cost entries",
+    dailyCostHistory: "Daily cost history",
+    dailyCostHistoryDescription: "Latest cost entries for day-to-day expense tracking.",
+    dailyCost: "Daily Cost",
+    todaysExpenses: "Today's expenses",
+    noCostsFound: "No cost entries found.",
+    unableToSaveCost: "Unable to save cost entry.",
+    costSavedSuccessfully: "Cost entry saved successfully.",
+    personNameRequired: "Person name is required.",
+    purposeRequired: "Purpose is required.",
+    unknownPerson: "Unknown person",
   },
   bn: {
     dashboard: "ড্যাশবোর্ড",
@@ -428,6 +488,7 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     suppliers: "সরবরাহকারী",
     customers: "গ্রাহক",
     stock: "স্টক",
+    cost: "খরচ",
     settings: "সেটিংস",
     main: "প্রধান",
     management: "ম্যানেজমেন্ট",
@@ -470,6 +531,9 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     phoneLabel: "ফোন",
     addressLabel: "ঠিকানা",
     outstandingDue: "বাকী বাকি",
+    advanceBalance: "অগ্রিম ব্যালেন্স",
+    balanceLabel: "ব্যালেন্স",
+    dueOrAdvance: "বাকি / অগ্রিম",
     totalDue: "মোট বকেয়া",
     totalSalesLabel: "মোট পরিমাণ",
     totalReceived: "পরিশোধিত পরিমাণ",
@@ -522,6 +586,8 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     noCustomersFound: "কোনো গ্রাহক পাওয়া যায়নি।",
     view: "দেখুন",
     print: "প্রিন্ট",
+    printSupplierList: "প্রিন্ট সরবরাহকারী লিস্ট",
+    printCustomerList: "প্রিন্ট গ্রাহক লিস্ট",
     totalSales: "মোট বিক্রয়",
     suppliersLabel: "সরবরাহকারী",
     customersLabel: "গ্রাহক",
@@ -626,6 +692,30 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     supplierTodaySuffix: "সরবরাহকারী আজ",
     kgUnit: "কেজি",
     maundUnit: "মণ",
+    costSummary: "দৈনিক খরচ, কাকে টাকা দেওয়া হয়েছে, এবং কী উদ্দেশ্যে খরচ হয়েছে তা হিসাব রাখুন।",
+    newCostEntry: "নতুন খরচ এন্ট্রি",
+    recordDailyCost: "নাম, টাকার পরিমাণ, উদ্দেশ্য এবং তারিখসহ দৈনিক খরচ যোগ করুন।",
+    costForLabel: "যাকে দেওয়া হয়েছে",
+    costForPlaceholder: "ব্যক্তির নাম লিখুন",
+    costAmountLabel: "খরচের পরিমাণ (টাকা)",
+    costDateLabel: "খরচের তারিখ",
+    purposeLabel: "উদ্দেশ্য",
+    purposePlaceholder: "কী উদ্দেশ্যে এই খরচ করা হয়েছে?",
+    saveCost: "খরচ সেভ করুন",
+    savingCost: "সেভ হচ্ছে...",
+    totalCost: "মোট খরচ",
+    todayCost: "আজকের খরচ",
+    costEntries: "খরচ এন্ট্রি",
+    dailyCostHistory: "দৈনিক খরচের তালিকা",
+    dailyCostHistoryDescription: "দিনভিত্তিক খরচের সর্বশেষ এন্ট্রিগুলো এখানে দেখা যাবে।",
+    dailyCost: "দৈনিক খরচ",
+    todaysExpenses: "আজকের খরচ",
+    noCostsFound: "কোনো খরচ এন্ট্রি পাওয়া যায়নি।",
+    unableToSaveCost: "খরচ এন্ট্রি সেভ করা যায়নি।",
+    costSavedSuccessfully: "খরচ এন্ট্রি সফলভাবে সেভ হয়েছে।",
+    personNameRequired: "ব্যক্তির নাম প্রয়োজন।",
+    purposeRequired: "উদ্দেশ্য লিখতে হবে।",
+    unknownPerson: "অজানা ব্যক্তি",
   },
 };
 

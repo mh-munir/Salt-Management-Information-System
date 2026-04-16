@@ -51,13 +51,6 @@ export async function POST(req: Request) {
     });
   }
 
-  if (paid > totalPrice) {
-    return new Response(JSON.stringify({ message: "Paid amount cannot exceed total price." }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-
   let supplier = null;
   if (supplierId) {
     supplier = await Supplier.findById(supplierId);

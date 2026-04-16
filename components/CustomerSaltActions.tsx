@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 type Props = {
@@ -16,6 +16,13 @@ const CustomerSaltActions = ({ customerId }: Props) => {
   const [due, setDue] = useState("");
   const [status, setStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const totalValue = Number(total) || 0;
+    const paidValue = Number(paid) || 0;
+    const dueValue = Math.max(0, totalValue - paidValue);
+    setDue(dueValue.toFixed(2));
+  }, [total, paid]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -41,8 +48,8 @@ const CustomerSaltActions = ({ customerId }: Props) => {
       return;
     }
 
-    if (due.trim() === "" || Number.isNaN(dueValue) || dueValue < 0) {
-      setStatus({ type: "error", message: "Due amount must be a valid non-negative number." });
+    if (paidValue > totalValue) {
+      setStatus({ type: "error", message: "Paid amount cannot be greater than total amount." });
       return;
     }
 
@@ -160,12 +167,12 @@ const CustomerSaltActions = ({ customerId }: Props) => {
             <input
               name="dueAmount"
               value={due}
-              onChange={(event) => setDue(event.target.value)}
               type="number"
               step="0.01"
               min="0"
               placeholder="0"
-              className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-lg text-slate-900 outline-none focus:border-slate-400 focus:bg-white"
+              readOnly
+              className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3 text-lg text-slate-900 outline-none"
             />
           </label>
         </div>
@@ -174,7 +181,7 @@ const CustomerSaltActions = ({ customerId }: Props) => {
           <p className="text-sm text-slate-500">
             {mode === "sale"
               ? "Sale salt will be added to customer salt totals and due will be recorded."
-              : "Buy salt will be added to customer salt totals and due will be recorded."}
+              : "Buy salt will reduce customer salt totals and adjust due accordingly."}
           </p>
 
           <button

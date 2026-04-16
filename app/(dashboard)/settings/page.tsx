@@ -619,7 +619,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-semibold text-slate-900">Settings</h1>
         <p className="mt-1 text-sm text-slate-600">
@@ -636,7 +636,7 @@ export default function SettingsPage() {
         </div>
       ) : null}
 
-      <div className="grid gap-6 2xl:grid-cols-[1.2fr_1fr]">
+      <div className="grid gap-4 2xl:grid-cols-[1.2fr_1fr]">
         <section className="rounded-md border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900">Top Navbar Image</h2>
           <p className="mt-1 text-sm text-slate-600">
@@ -709,7 +709,7 @@ export default function SettingsPage() {
                   <div className="h-10 w-14 rounded-lg border border-dashed border-slate-300 bg-white" />
                 )}
                 <div className="min-w-0">
-                  <p className="text-[22px] font-semibold leading-tight tracking-[-0.02em] text-slate-900">
+                  <p className="text-base font-semibold leading-tight tracking-[-0.02em] text-slate-900">
                     {sidebarHeading.trim() || DEFAULT_BRAND_HEADING}
                   </p>
                 </div>

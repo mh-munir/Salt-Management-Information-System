@@ -3,6 +3,7 @@ import Link from "next/link";
 import { startTransition, useEffect, useMemo, useState } from "react";
 import Card from "@/components/Card";
 import SalesChart from "@/components/Chart";
+import { getBalanceSummary } from "@/lib/balance";
 import { formatDisplayName } from "@/lib/display-format";
 import { useLanguage } from "@/lib/useLanguage";
 import { translate } from "@/lib/language";
@@ -49,6 +50,18 @@ const getRatioPercent = (value: number, total: number) => {
   return Math.max(0, Math.min(100, percent));
 };
 
+const toLocalIsoDate = (value?: string | Date | null) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
+
 export default function Dashboard() {
   const { language } = useLanguage();
   const numberLocale = language === "bn" ? "bn-BD" : "en-BD";
@@ -73,6 +86,8 @@ export default function Dashboard() {
   const [todaySalesSaltKg, setTodaySalesSaltKg] = useState<number>(0);
   const [todayBuy, setTodayBuy] = useState<number>(0);
   const [todayBuySaltMaund, setTodayBuySaltMaund] = useState<number>(0);
+  const [todayCost, setTodayCost] = useState<number>(0);
+  const [totalCost, setTotalCost] = useState<number>(0);
   const [totalBuy, setTotalBuy] = useState<number>(0);
   const [totalSaltBuy, setTotalSaltBuy] = useState<number>(0);
   const [customerDue, setCustomerDue] = useState<number>(0);
@@ -155,10 +170,10 @@ export default function Dashboard() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    let todayOrders = 0;
-    let todayRefunds = 0;
-    let yesterdayOrders = 0;
-    let yesterdayRefunds = 0;
+    let todaySalesAmount = 0;
+    let todayBuyAmount = 0;
+    let yesterdaySales = 0;
+    let yesterdayBuy = 0;
     let todaySaltSoldKg = 0;
 
     for (const item of rawTransactions) {
@@ -171,28 +186,28 @@ export default function Dashboard() {
 
       const amount = getSafeAmount(item.amount);
       const saltAmount = getSafeAmount(item.saltAmount);
-      const isRefund = item.type?.startsWith("supplier") || Boolean(item.supplierId);
+      const isSupplierTransaction = item.type?.startsWith("supplier") || Boolean(item.supplierId);
 
       if (diffDays === 0) {
-        if (isRefund) {
-          todayRefunds += amount;
+        if (isSupplierTransaction) {
+          todayBuyAmount += amount;
         } else {
-          todayOrders += amount;
+          todaySalesAmount += amount;
           todaySaltSoldKg += saltAmount;
         }
       }
 
       if (diffDays === 1) {
-        if (isRefund) {
-          yesterdayRefunds += amount;
+        if (isSupplierTransaction) {
+          yesterdayBuy += amount;
         } else {
-          yesterdayOrders += amount;
+          yesterdaySales += amount;
         }
       }
     }
 
-    const net = todayOrders - todayRefunds;
-    const previousNet = yesterdayOrders - yesterdayRefunds;
+    const net = todaySalesAmount + todayBuyAmount;
+    const previousNet = yesterdaySales + yesterdayBuy;
     const change = getPercentChange(net, previousNet);
 
     return {
@@ -213,12 +228,13 @@ export default function Dashboard() {
   );
 
   const supplierDueEquivalentMaund = useMemo(() => {
-    if (supplierDue <= 0 || totalBuy <= 0 || totalSaltBuy <= 0) return 0;
+    const dueAmount = getBalanceSummary(supplierDue).dueAmount;
+    if (dueAmount <= 0 || totalBuy <= 0 || totalSaltBuy <= 0) return 0;
 
     const averagePurchasePricePerMaund = totalBuy / totalSaltBuy;
     if (!Number.isFinite(averagePurchasePricePerMaund) || averagePurchasePricePerMaund <= 0) return 0;
 
-    return supplierDue / averagePurchasePricePerMaund;
+    return dueAmount / averagePurchasePricePerMaund;
   }, [supplierDue, totalBuy, totalSaltBuy]);
 
   const stockOfPurchasePercent = useMemo(() => {
@@ -237,6 +253,12 @@ export default function Dashboard() {
     return Number.isFinite(average) ? average : 0;
   }, [totalBuy, totalSaltBuy]);
 
+  const totalPurchaseCost = useMemo(() => Math.max(0, totalBuy + totalCost), [totalBuy, totalCost]);
+  const totalCostSharePercent = useMemo(
+    () => getRatioPercent(totalCost, totalPurchaseCost),
+    [totalCost, totalPurchaseCost]
+  );
+
   const totalSoldMaund = useMemo(
     () => Math.max(0, stockData.totalBought - stockData.stockMounds),
     [stockData.stockMounds, stockData.totalBought]
@@ -249,10 +271,12 @@ export default function Dashboard() {
 
   const totalTradeVolume = totalBuy + totalSales;
   const todayTradeVolume = dailyTransactionSection.amount;
+  const supplierBalance = getBalanceSummary(supplierDue);
+  const customerBalance = getBalanceSummary(customerDue);
   const totalPurchaseRingPercent = getRatioPercent(totalBuy, totalTradeVolume);
   const totalSalesRingPercent = getRatioPercent(totalSales, totalTradeVolume);
-  const supplierDueRingPercent = getRatioPercent(supplierDue, totalBuy);
-  const customerDueRingPercent = getRatioPercent(customerDue, totalSales);
+  const supplierDueRingPercent = getRatioPercent(supplierBalance.dueAmount, totalBuy);
+  const customerDueRingPercent = getRatioPercent(customerBalance.dueAmount, totalSales);
   const dailySalesRingPercent = getRatioPercent(todaySales, todayTradeVolume);
   const dailyPurchaseRingPercent = getRatioPercent(todayBuy, todayTradeVolume);
   const dailyTransactionRingPercent = getRatioPercent(todayTradeVolume, totalTradeVolume);
@@ -321,12 +345,13 @@ export default function Dashboard() {
     let isActive = true;
 
     const refreshDashboardData = async () => {
-      const [dashboardData, stockDataResponse, transactionData, customersData, suppliersData] = await Promise.all([
+      const [dashboardData, stockDataResponse, transactionData, customersData, suppliersData, costsData] = await Promise.all([
         fetch("/api/dashboard", { cache: "no-store" }).then(parseJson),
         fetch("/api/stock", { cache: "no-store" }).then(parseJson),
         fetch("/api/transactions", { cache: "no-store" }).then(parseJson),
         fetch("/api/customers", { cache: "no-store" }).then(parseJson),
         fetch("/api/suppliers", { cache: "no-store" }).then(parseJson),
+        fetch("/api/costs", { cache: "no-store" }).then(parseJson),
       ]);
 
       if (!isActive) return;
@@ -339,8 +364,8 @@ export default function Dashboard() {
         setTodayBuySaltMaund(dashboardData?.todayBuySaltMaund || 0);
         setTotalBuy(dashboardData?.totalBuy || 0);
         setTotalSaltBuy(dashboardData?.totalSaltBuy || 0);
-        setCustomerDue(dashboardData?.customerDue || 0);
-        setSupplierDue(dashboardData?.supplierDue || 0);
+        setCustomerDue(dashboardData?.customerDue ?? 0);
+        setSupplierDue(dashboardData?.supplierDue ?? 0);
 
         if (stockDataResponse) {
           setStockData({
@@ -359,10 +384,42 @@ export default function Dashboard() {
         } else {
           setRawTransactions([]);
         }
+
+        if (Array.isArray(costsData)) {
+          const todayString = toLocalIsoDate(new Date());
+
+          const todayCostAmount = costsData
+            .filter((cost: any) => {
+              const costDateString = toLocalIsoDate(cost.date ?? cost.createdAt);
+              return costDateString === todayString;
+            })
+            .reduce((sum: number, cost: any) => sum + Number(cost.amount ?? 0), 0);
+
+          const totalCostAmount = costsData.reduce((sum: number, cost: any) => sum + Number(cost.amount ?? 0), 0);
+
+          setTodayCost(todayCostAmount);
+          setTotalCost(totalCostAmount);
+        } else {
+          setTodayCost(0);
+          setTotalCost(0);
+        }
       });
     };
 
     void refreshDashboardData();
+
+    // Check if there was a recent cost update while we were away
+    const lastCostUpdate = localStorage.getItem('costUpdated');
+    if (lastCostUpdate) {
+      const updateTime = parseInt(lastCostUpdate);
+      const now = Date.now();
+      // If the update was within the last 5 minutes, refresh immediately
+      if (now - updateTime < 5 * 60 * 1000) {
+        void refreshDashboardData();
+        // Clear the flag so we don't refresh again unnecessarily
+        localStorage.removeItem('costUpdated');
+      }
+    }
 
     const intervalId = window.setInterval(() => {
       void refreshDashboardData();
@@ -372,93 +429,71 @@ export default function Dashboard() {
       void refreshDashboardData();
     };
 
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        // Check if there was a recent cost update when page becomes visible
+        const lastCostUpdate = localStorage.getItem('costUpdated');
+        if (lastCostUpdate) {
+          const updateTime = parseInt(lastCostUpdate);
+          const now = Date.now();
+          // If the update was within the last 10 minutes, refresh immediately
+          if (now - updateTime < 10 * 60 * 1000) {
+            void refreshDashboardData();
+            // Clear the flag so we don't refresh again unnecessarily
+            localStorage.removeItem('costUpdated');
+          }
+        }
+      }
+    };
+
+    const handleCostAdded = () => {
+      void refreshDashboardData();
+    };
+
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === 'costUpdated') {
+        void refreshDashboardData();
+      }
+    };
+
+    // BroadcastChannel for reliable cross-page communication
+    let broadcastChannel: BroadcastChannel | null = null;
+    if (typeof BroadcastChannel !== 'undefined') {
+      broadcastChannel = new BroadcastChannel('dashboard-updates');
+      broadcastChannel.onmessage = (event) => {
+        if (event.data.type === 'costAdded') {
+          void refreshDashboardData();
+        }
+      };
+    }
+
     window.addEventListener("focus", handleWindowFocus);
+    window.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("costAdded", handleCostAdded);
+    window.addEventListener("storage", handleStorageChange);
 
     return () => {
       isActive = false;
       window.clearInterval(intervalId);
       window.removeEventListener("focus", handleWindowFocus);
+      window.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("costAdded", handleCostAdded);
+      window.removeEventListener("storage", handleStorageChange);
+      if (broadcastChannel) {
+        broadcastChannel.close();
+      }
     };
   }, []);
 
   return (
-    <div className="space-y-8">
-      <section className="space-y-4">
-        <div>
-          <h2 className="text-2xl font-semibold text-slate-900">{translate(language, "totalCalculationSection")}</h2>
-          <p className="mt-1 text-sm text-slate-500">{translate(language, "totalSalesDetail")}</p>
-        </div>
-
-        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-          <Card
-            title={translate(language, "totalStock")}
-            value={`${formatFullCurrency(stockData.stockMounds)} ${translate(language, "maundUnit")}`}
-            className="xl:row-span-2"
-            emphasis="featured"
-            pieSegments={stockMixSegments}
-            trendPercent={`${formatPercent(stockOfPurchasePercent)}%`}
-            trendDetail={`${translate(language, "totalPurchase")}: ${formatFullCurrency(stockData.totalBought)} ${translate(language, "maundUnit")}`}
-            trendDirection="neutral"
-            visual="ring"
-            ringPercent={stockOfPurchasePercent}
-            icon="activity"
-            tone="amber"
-          />
-          <Card
-            title={translate(language, "totalPurchase")}
-            value={`Tk ${formatFullCurrency(totalBuy)}`}
-            trendPercent={`Tk ${formatWeight(averagePurchasePricePerMaund)}`}
-            trendDetail={`Average / ${translate(language, "maundUnit")}`}
-            trendDirection="neutral"
-            visual="ring"
-            ringPercent={totalPurchaseRingPercent}
-            icon="suppliers"
-            tone="rose"
-          />
-          <Card
-            title={translate(language, "suppliersDue")}
-            value={`Tk ${formatFullCurrency(supplierDue)}`}
-            trendPercent={`Tk ${formatWeight(averagePurchasePricePerMaund)}`}
-            trendDetail={`Approx. ${formatWeight(supplierDueEquivalentMaund)} ${translate(language, "maundUnit")} due`}
-            trendDirection="neutral"
-            visual="ring"
-            ringPercent={supplierDueRingPercent}
-            icon="warning"
-            tone="amber"
-            accentValue
-          />
-          <Card
-            title={translate(language, "totalSalesTransactions")}
-            value={`Tk ${formatFullCurrency(totalSales)}`}
-            trendPercent="0.00%"
-            trendDetail={translate(language, "totalSalesDetail")}
-            trendDirection="neutral"
-            visual="ring"
-            ringPercent={totalSalesRingPercent}
-            icon="sales"
-            tone="emerald"
-          />
-          <Card
-            title={translate(language, "customerDueCard")}
-            value={`Tk ${formatFullCurrency(customerDue)}`}
-            trendPercent={customerDuePercentLabel}
-            trendDetail={customerDueTrendDetail}
-            trendDirection="neutral"
-            visual="ring"
-            ringPercent={customerDueRingPercent}
-            icon="users"
-            tone="violet"
-          />
-        </div>
-      </section>
-
+    <div className="space-y-4">
       <section className="space-y-4">
         <div>
           <h2 className="text-2xl font-semibold text-slate-900">{translate(language, "dailyCalculationSection")}</h2>
           <p className="mt-1 text-sm text-slate-500">{translate(language, "dailyTransaction")}</p>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Card
             title={translate(language, "dailySales")}
             value={`Tk ${formatFullCurrency(todaySales)}`}
@@ -492,13 +527,112 @@ export default function Dashboard() {
             icon="activity"
             tone="rose"
           />
+          <Card
+            title={translate(language, "dailyCost")}
+            value={`Tk ${formatFullCurrency(todayCost)}`}
+            trendPercent="0.00%"
+            trendDetail={translate(language, "todaysExpenses")}
+            trendDirection="neutral"
+            visual="ring"
+            ringPercent={0}
+            icon="warning"
+            tone="amber"
+          />
+        </div>
+      </section>
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-2xl font-semibold text-slate-900">{translate(language, "totalCalculationSection")}</h2>
+          <p className="mt-1 text-sm text-slate-500">{translate(language, "totalSalesDetail")}</p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <Card
+            title={translate(language, "totalStock")}
+            value={`${formatFullCurrency(stockData.stockMounds)} ${translate(language, "maundUnit")}`}
+            trendPercent={`${formatPercent(stockOfPurchasePercent)}%`}
+            trendDetail={`${translate(language, "totalPurchase")}: ${formatFullCurrency(stockData.totalBought)} ${translate(language, "maundUnit")}`}
+            trendDirection="neutral"
+            visual="ring"
+            ringPercent={stockOfPurchasePercent}
+            icon="activity"
+            tone="amber"
+            accentValue
+          />
+          <Card
+            title={translate(language, "totalPurchase")}
+            value={`Tk ${formatFullCurrency(totalBuy)}`}
+            trendPercent={`Tk ${formatWeight(averagePurchasePricePerMaund)}`}
+            trendDetail={`Average / ${translate(language, "maundUnit")}`}
+            trendDirection="neutral"
+            visual="ring"
+            ringPercent={totalPurchaseRingPercent}
+            icon="suppliers"
+            tone="rose"
+          />
+          <Card
+            title={translate(language, "totalCost")}
+            value={`Tk ${formatFullCurrency(totalPurchaseCost)}`}
+            trendPercent={`Tk ${formatFullCurrency(totalCost)}`}
+            trendDetail={
+              language === "bn"
+                ? `ক্রয়: Tk ${formatFullCurrency(totalBuy)}\nখরচ: Tk ${formatFullCurrency(totalCost)}`
+                : `Purchase: Tk ${formatFullCurrency(totalBuy)}\nCost: Tk ${formatFullCurrency(totalCost)}`
+            }
+            trendDirection="neutral"
+            visual="ring"
+            ringPercent={totalCostSharePercent}
+            icon="warning"
+            tone="amber"
+            accentValue
+          />
+          <Card
+            title={supplierBalance.isAdvance ? translate(language, "advanceBalance") : translate(language, "suppliersDue")}
+            value={`Tk ${formatFullCurrency(supplierBalance.absoluteAmount)}`}
+            trendPercent={`Tk ${formatWeight(averagePurchasePricePerMaund)}`}
+            trendDetail={
+              supplierBalance.isAdvance
+                ? language === "bn"
+                  ? `সরবরাহকারীদের কাছে অগ্রিম Tk ${formatFullCurrency(supplierBalance.absoluteAmount)}`
+                  : `Advance already paid to suppliers Tk ${formatFullCurrency(supplierBalance.absoluteAmount)}`
+                : `Approx. ${formatWeight(supplierDueEquivalentMaund)} ${translate(language, "maundUnit")} due`
+            }
+            trendDirection="neutral"
+            visual="ring"
+            ringPercent={supplierDueRingPercent}
+            icon="warning"
+            tone="amber"
+            accentValue
+          />
+          <Card
+            title={translate(language, "totalSalesTransactions")}
+            value={`Tk ${formatFullCurrency(totalSales)}`}
+            trendPercent="0.00%"
+            trendDetail={translate(language, "totalSalesDetail")}
+            trendDirection="neutral"
+            visual="ring"
+            ringPercent={totalSalesRingPercent}
+            icon="sales"
+            tone="emerald"
+          />
+          <Card
+            title={customerBalance.isAdvance ? translate(language, "advanceBalance") : translate(language, "customerDueCard")}
+            value={`Tk ${formatFullCurrency(customerBalance.absoluteAmount)}`}
+            trendPercent={customerDuePercentLabel}
+            trendDetail={customerDueTrendDetail}
+            trendDirection="neutral"
+            visual="ring"
+            ringPercent={customerDueRingPercent}
+            icon="users"
+            tone="violet"
+          />
         </div>
       </section>
 
       <div>
-        <section className="rounded-md bg-white p-6 shadow-sm">
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
-            <div>
+        <section className="space-y-4">
+          <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+            <div className="bg-white p-6 rounded-xl border border-gray-200">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <p className="text-lg font-semibold text-slate-700">{translate(language, "dailyRevenue")}</p>

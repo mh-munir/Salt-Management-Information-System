@@ -34,9 +34,9 @@ export default async function DashboardLayout({ children }: { children: ReactNod
       <div className="min-h-screen">
         <Sidebar initialTheme={initialTheme} initialBranding={initialBranding} />
 
-        <div className="dashboard-main min-h-screen min-w-0 lg:ml-72">
+        <div className="dashboard-main min-h-screen min-w-0 overflow-x-hidden w-full lg:pl-[250px]">
           <Navbar initialLanguage={initialLanguage} />
-          <main className="dashboard-content min-h-screen min-w-0 px-3 pb-6 pt-20 sm:px-6 lg:p-6 lg:pt-24">
+          <main className="dashboard-content min-h-screen overflow-x-hidden px-3 pb-6 pt-20 sm:px-5 md:px-4 lg:p-4 lg:pt-24">
             {children}
           </main>
         </div>

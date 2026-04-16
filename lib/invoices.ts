@@ -1,13 +1,14 @@
 import { cookies } from "next/headers";
 import mongoose from "mongoose";
-import { connectDB, isValidMongoObjectId } from "@/lib/db";
+import { connectDB } from "@/lib/db";
 import { AUTH_COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
 import Customer from "@/models/Customer";
 import Sale from "@/models/Sale";
 import Supplier from "@/models/Supplier";
 import Transaction from "@/models/Transaction";
-import User from "@/models/User";
 import { summarizeCustomerLedger, summarizeSupplierLedger, sumSaleQuantity, toNumber } from "@/lib/live-ledgers";
+import { compareByLatestInput } from "@/lib/record-order";
+import { getSharedSidebarBrandingSnapshot } from "@/lib/sidebar-branding.server";
 
 type RawDoc = Record<string, unknown>;
 
@@ -79,34 +80,13 @@ const DEFAULT_INVOICE_BRANDING: InvoiceBranding = {
   subheading: "Salt Mill System",
 };
 
-const sortInvoiceRecordsByDateDesc = <T extends { date?: Date }>(records: T[]) =>
-  [...records].sort((left, right) => {
-    const leftTime = left.date ? left.date.getTime() : 0;
-    const rightTime = right.date ? right.date.getTime() : 0;
-    return rightTime - leftTime;
-  });
-
-const pinLatestPaymentRecordFirst = <T extends { date?: Date; type: string }>(
-  records: T[],
-  paymentType: T["type"]
-) => {
-  const sortedRecords = sortInvoiceRecordsByDateDesc(records);
-  const latestPaymentIndex = sortedRecords.findIndex((record) => record.type === paymentType);
-
-  if (latestPaymentIndex <= 0) return sortedRecords;
-
-  const [latestPaymentRecord] = sortedRecords.splice(latestPaymentIndex, 1);
-  return [latestPaymentRecord, ...sortedRecords];
-};
-
-const buildUserLookup = (userId: string | undefined, email: string) => {
-  const filters: Array<{ _id?: string; email?: string }> = [{ email: email.toLowerCase() }];
-  if (isValidMongoObjectId(userId)) {
-    filters.unshift({ _id: userId });
-  }
-
-  return { $or: filters };
-};
+const sortInvoiceRecordsByLatestInput = <T extends { id: string; date?: Date }>(records: T[]) =>
+  [...records].sort((left, right) =>
+    compareByLatestInput(
+      { id: left.id, date: left.date },
+      { id: right.id, date: right.date }
+    )
+  );
 
 const toDate = (value: unknown): Date | undefined => {
   if (value instanceof Date) {
@@ -128,18 +108,12 @@ export async function getInvoiceBranding(): Promise<InvoiceBranding> {
 
   if (!auth) return DEFAULT_INVOICE_BRANDING;
 
-  await connectDB();
-
-  const user = await User.findOne(buildUserLookup(auth.userId, auth.email)).select(
-    "sidebarLogoUrl sidebarHeading sidebarSubheading"
-  );
-
-  if (!user) return DEFAULT_INVOICE_BRANDING;
+  const sharedBranding = await getSharedSidebarBrandingSnapshot();
 
   return {
-    logoUrl: user.sidebarLogoUrl?.toString().trim() ?? "",
-    heading: user.sidebarHeading?.toString().trim() || DEFAULT_INVOICE_BRANDING.heading,
-    subheading: user.sidebarSubheading?.toString().trim() || DEFAULT_INVOICE_BRANDING.subheading,
+    logoUrl: sharedBranding.sidebarLogoUrl?.toString().trim() ?? DEFAULT_INVOICE_BRANDING.logoUrl,
+    heading: sharedBranding.sidebarHeading?.toString().trim() || DEFAULT_INVOICE_BRANDING.heading,
+    subheading: sharedBranding.sidebarSubheading?.toString().trim() || DEFAULT_INVOICE_BRANDING.subheading,
   };
 }
 
@@ -188,7 +162,7 @@ export async function getCustomerInvoiceData(id: string): Promise<CustomerInvoic
     note: payment.type === "payment" ? "Customer payment" : "Customer transaction",
   }));
 
-  const records = pinLatestPaymentRecordFirst([...saleRecords, ...paymentRecords], "payment");
+  const records = sortInvoiceRecordsByLatestInput([...saleRecords, ...paymentRecords]);
 
   const summary = summarizeCustomerLedger(sales, payments, {
     saltAmount: customer.saltAmount,
@@ -223,7 +197,7 @@ export async function getSupplierInvoiceData(id: string): Promise<SupplierInvoic
 
   const transactions = ((await Transaction.find({ supplierId: id }).sort({ date: -1 }).lean()) ?? []) as RawDoc[];
 
-  const records: SupplierInvoiceRecord[] = pinLatestPaymentRecordFirst(
+  const records: SupplierInvoiceRecord[] = sortInvoiceRecordsByLatestInput(
     transactions.map<SupplierInvoiceRecord>((transaction, index) => {
       const totalAmount = toNumber(transaction.totalAmount);
       const paidAmount = toNumber(transaction.amount);
@@ -239,7 +213,7 @@ export async function getSupplierInvoiceData(id: string): Promise<SupplierInvoic
         pricePerMaund,
         totalAmount,
         paidAmount,
-        dueAmount: totalAmount > 0 ? Math.max(0, totalAmount - paidAmount) : 0,
+        dueAmount: totalAmount > 0 ? totalAmount - paidAmount : 0,
         note:
           transaction.type === "supplier-buy"
             ? totalAmount > 0
@@ -247,8 +221,7 @@ export async function getSupplierInvoiceData(id: string): Promise<SupplierInvoic
               : "Legacy purchase entry"
             : "Payment adjustment",
       };
-    }),
-    "payment"
+    })
   );
 
   const summary = summarizeSupplierLedger(transactions, {

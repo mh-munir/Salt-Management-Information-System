@@ -98,7 +98,7 @@ const buildPieSegments = (
 
       return {
         ...segment,
-        path: describePieSlice(50, 50, 42, startAngle, endAngle),
+        path: describePieSlice(50, 50, 46, startAngle, endAngle),
       };
     });
 };
@@ -343,7 +343,7 @@ export default function Card({
 
         {hasPieChart ? (
           <div className="mt-5 flex flex-col gap-4 md:flex-row md:items-center">
-            <div className="dashboard-card-surface mx-auto grid h-36 w-36 shrink-0 place-items-center rounded-full bg-white/80 p-2 ring-1 ring-slate-200/70 backdrop-blur-sm dark:bg-slate-900/80 dark:ring-slate-800 md:mx-0">
+            <div className="dashboard-card-surface mx-auto grid h-48 w-48 shrink-0 place-items-center rounded-full bg-white/80 p-2 ring-1 ring-slate-200/70 backdrop-blur-sm dark:bg-slate-900/80 dark:ring-slate-800 md:mx-0">
               <svg viewBox="0 0 100 100" className="h-full w-full">
                 {pieChartSegments.map((segment) => (
                   <path
