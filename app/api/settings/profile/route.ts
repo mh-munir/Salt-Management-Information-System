@@ -2,6 +2,7 @@ import { connectDB, isMongoConnectionError, isValidMongoObjectId } from "@/lib/d
 import { requireAuth, validateSameOrigin } from "@/lib/auth";
 import { ensureEnvSuperadminUser } from "@/lib/superadmin";
 import { getSharedSidebarBrandingSnapshot } from "@/lib/sidebar-branding.server";
+import { getCurrentUserProfileSnapshot } from "@/lib/user-profile.server";
 import User from "@/models/User";
 
 export const dynamic = "force-dynamic";
@@ -24,45 +25,9 @@ export async function GET(request: Request) {
   if (authResult instanceof Response) return authResult;
 
   try {
-    await connectDB();
-    let user = await User.findOne(buildUserLookup(authResult.userId, authResult.email)).select(
-      "name email role avatarUrl sidebarLogoUrl sidebarHeading sidebarSubheading"
-    );
-    const sharedBranding = await getSharedSidebarBrandingSnapshot();
-
-    if (!user) {
-      user = await ensureEnvSuperadminUser(authResult);
-    }
-
-    if (!user) {
-      return Response.json(
-        {
-          name: authResult.role === "superadmin" ? "Super Admin" : "",
-          email: authResult.email,
-          role: authResult.role,
-          avatarUrl: "",
-          sidebarLogoUrl: sharedBranding.sidebarLogoUrl,
-          sidebarHeading: sharedBranding.sidebarHeading,
-          sidebarSubheading: sharedBranding.sidebarSubheading,
-        },
-        {
-          headers: {
-            "Cache-Control": "no-store, no-cache, must-revalidate",
-          },
-        }
-      );
-    }
-
+    const profile = await getCurrentUserProfileSnapshot(authResult);
     return Response.json(
-      {
-        name: user.name ?? "",
-        email: user.email,
-        role: user.role,
-        avatarUrl: user.avatarUrl ?? "",
-        sidebarLogoUrl: sharedBranding.sidebarLogoUrl,
-        sidebarHeading: sharedBranding.sidebarHeading,
-        sidebarSubheading: sharedBranding.sidebarSubheading,
-      },
+      profile,
       {
         headers: {
           "Cache-Control": "no-store, no-cache, must-revalidate",
@@ -74,22 +39,11 @@ export async function GET(request: Request) {
       throw error;
     }
 
-    return Response.json(
-      {
-        name: authResult.role === "superadmin" ? "Super Admin" : "",
-        email: authResult.email,
-        role: authResult.role,
-        avatarUrl: "",
-        sidebarLogoUrl: "",
-        sidebarHeading: "",
-        sidebarSubheading: "",
+    return Response.json(await getCurrentUserProfileSnapshot(authResult), {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate",
       },
-      {
-        headers: {
-          "Cache-Control": "no-store, no-cache, must-revalidate",
-        },
-      }
-    );
+    });
   }
 }
 

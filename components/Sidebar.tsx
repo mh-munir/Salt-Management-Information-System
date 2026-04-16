@@ -226,7 +226,6 @@ export default function Sidebar({
     };
 
     saveStoredSidebarBranding(initialBranding);
-    refreshBranding();
     window.addEventListener("profile-updated", refreshBranding);
     window.addEventListener("sidebar-branding-updated", handleBrandingUpdated as EventListener);
     window.addEventListener("storage", handleStorage);
@@ -344,7 +343,7 @@ export default function Sidebar({
                     key={item.href}
                     href={item.href}
                     onClick={() => setMobileOpen(false)}
-                    className={`group flex items-center gap-2 rounded-2xl px-3 py-3 text-[0.98rem] font-medium transition sm:px-3.5 sm:py-3.5 sm:text-base lg:rounded-xl lg:px-3.5 lg:py-3 lg:text-[1.05rem] ${
+                    className={`group flex items-center gap-2 rounded-md px-3 py-3 text-[0.98rem] font-medium transition sm:px-3.5 sm:py-3.5 sm:text-base lg:rounded-md lg:px-3.5 lg:py-3 lg:text-[1.05rem] ${
                       isDarkTheme
                         ? isActive
                           ? "bg-white/12 text-white lg:bg-indigo-700/30 lg:text-indigo-100 lg:shadow-[inset_0_0_0_1px_rgba(165,180,252,0.22)]"

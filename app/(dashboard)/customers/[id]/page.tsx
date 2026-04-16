@@ -139,6 +139,39 @@ export default async function CustomerDetailPage({ params }: CustomerPageProps) 
     runningBalanceByKey.set(getRecordKey(record, index), runningBalance);
   }
 
+  const recordRows = records.map((record, index) => {
+    const recordBalance = runningBalanceByKey.get(getRecordKey(record, index)) ?? 0;
+    const recordBalanceSummary = getBalanceSummary(recordBalance);
+
+    return (
+      <tr
+        key={getRecordKey(record, index)}
+        className={`border-b border-slate-100 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
+      >
+        <td className="px-4 py-4 text-sm text-slate-800">{formatDate(record.date)}</td>
+        <td className="px-4 py-4">
+          <span
+            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+              record.type === "sale" ? "bg-indigo-100 text-indigo-700" : "bg-emerald-100 text-emerald-700"
+            }`}
+          >
+            {record.type === "sale" ? translate(language, "sale") : translate(language, "payment")}
+          </span>
+        </td>
+        <td className="px-4 py-4 text-sm text-slate-700">{formatAmount(record.quantityKg)}</td>
+        <td className="px-4 py-4 text-sm text-slate-700">Tk {formatAmount(record.paidAmount)}</td>
+        <td className={`px-4 py-4 text-sm ${recordBalanceSummary.isAdvance ? "text-emerald-600" : "text-rose-600"}`}>
+          {recordBalanceSummary.isAdvance
+            ? `${translate(language, "advanceBalance")} Tk ${formatAmount(recordBalanceSummary.absoluteAmount)}`
+            : `Tk ${formatAmount(recordBalanceSummary.absoluteAmount)}`}
+        </td>
+        <td className="px-4 py-4 text-sm text-slate-500">
+          {record.type === "sale" ? "Salt sale entry" : "Customer payment entry"}
+        </td>
+      </tr>
+    );
+  });
+
   return (
     <div className="space-y-4">
       <section className="relative ">
@@ -180,7 +213,7 @@ export default async function CustomerDetailPage({ params }: CustomerPageProps) 
               <Link
                 href={`/invoices/customers/${id}`}
                 target="_blank"
-                className="inline-flex w-full items-center justify-center rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 sm:w-auto"
+                className="inline-flex w-full items-center justify-center rounded-full bg-[#348CD4] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#2F7FC0] sm:w-auto"
               >
                 {translate(language, "printInvoice")}
               </Link>
@@ -243,7 +276,7 @@ export default async function CustomerDetailPage({ params }: CustomerPageProps) 
             </thead>
             <tbody>
               <LoadMoreTable
-                items={records}
+                rows={recordRows}
                 colSpan={6}
                 loadMoreLabel={language === "bn" ? "আরও দেখুন" : "Show more"}
                 emptyState={
@@ -252,40 +285,6 @@ export default async function CustomerDetailPage({ params }: CustomerPageProps) 
                       No records found for this customer.
                     </td>
                   </tr>
-                }
-                renderRows={(visibleRecords) =>
-                  visibleRecords.map((record, index) => {
-                    const recordBalance = runningBalanceByKey.get(getRecordKey(record, index)) ?? 0;
-                    const recordBalanceSummary = getBalanceSummary(recordBalance);
-
-                    return (
-                      <tr
-                        key={getRecordKey(record, index)}
-                        className={`border-b border-slate-100 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
-                      >
-                        <td className="px-4 py-4 text-sm text-slate-800">{formatDate(record.date)}</td>
-                        <td className="px-4 py-4">
-                          <span
-                            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
-                              record.type === "sale" ? "bg-indigo-100 text-indigo-700" : "bg-emerald-100 text-emerald-700"
-                            }`}
-                          >
-                            {record.type === "sale" ? translate(language, "sale") : translate(language, "payment")}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4 text-sm text-slate-700">{formatAmount(record.quantityKg)}</td>
-                        <td className="px-4 py-4 text-sm text-slate-700">Tk {formatAmount(record.paidAmount)}</td>
-                        <td className={`px-4 py-4 text-sm ${recordBalanceSummary.isAdvance ? "text-emerald-600" : "text-rose-600"}`}>
-                          {recordBalanceSummary.isAdvance
-                            ? `${translate(language, "advanceBalance")} Tk ${formatAmount(recordBalanceSummary.absoluteAmount)}`
-                            : `Tk ${formatAmount(recordBalanceSummary.absoluteAmount)}`}
-                        </td>
-                        <td className="px-4 py-4 text-sm text-slate-500">
-                          {record.type === "sale" ? "Salt sale entry" : "Customer payment entry"}
-                        </td>
-                      </tr>
-                    );
-                  })
                 }
               />
 

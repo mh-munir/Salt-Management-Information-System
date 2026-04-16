@@ -28,7 +28,7 @@ export default function InvoiceActions({ backHref }: InvoiceActionsProps) {
           <button
             type="button"
             onClick={() => window.print()}
-            className="inline-flex w-full items-center justify-center rounded-full bg-slate-900 px-5 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-slate-800 sm:w-auto"
+            className="inline-flex w-full items-center justify-center rounded-full bg-[#348CD4] px-5 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-[#2F7FC0] sm:w-auto"
           >
             Print invoice
           </button>

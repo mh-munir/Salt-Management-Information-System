@@ -98,6 +98,49 @@ export default async function SupplierDetailPage({ params }: SupplierPageProps) 
     runningBalanceById.set(String(record._id ?? ""), runningBalance);
   }
 
+  const recordRows = records.map((record, index) => {
+    const isPurchase = record.type === "supplier-buy";
+    const saltMaund = Number(record.saltAmount ?? 0);
+    const totalPurchaseAmount = Number(record.totalAmount ?? 0);
+    const recordBalance = runningBalanceById.get(String(record._id ?? "")) ?? 0;
+    const recordBalanceSummary = getBalanceSummary(recordBalance);
+    const perMaundPrice =
+      isPurchase && saltMaund > 0 && totalPurchaseAmount > 0 ? totalPurchaseAmount / saltMaund : 0;
+
+    return (
+      <tr
+        key={String(record._id ?? record.date?.toString())}
+        className={`border-b border-slate-100 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
+      >
+        <td className="px-4 py-4 text-base text-slate-800">{formatDate(record.date)}</td>
+        <td className="px-4 py-4">
+          <span
+            className={`inline-flex rounded-full px-2.5 py-1 text-sm font-semibold ${
+              isPurchase ? "bg-indigo-100 text-indigo-700" : "bg-emerald-100 text-emerald-700"
+            }`}
+          >
+            {isPurchase ? "Purchase" : "Payment"}
+          </span>
+        </td>
+        <td className="px-4 py-4 text-base text-slate-700">
+          <div>{formatAmount(saltMaund)}</div>
+          <div className="text-xs text-slate-500">
+            {isPurchase && perMaundPrice > 0 ? `Per maund Tk ${formatAmount(perMaundPrice)}` : "-"}
+          </div>
+        </td>
+        <td className="px-4 py-4 text-base text-slate-700">Tk {formatAmount(Number(record.amount ?? 0))}</td>
+        <td className={`px-4 py-4 text-base ${recordBalanceSummary.isAdvance ? "text-emerald-600" : "text-rose-600"}`}>
+          {recordBalanceSummary.isAdvance
+            ? `${translate(language, "advanceBalance")} Tk ${formatAmount(recordBalanceSummary.absoluteAmount)}`
+            : `Tk ${formatAmount(recordBalanceSummary.absoluteAmount)}`}
+        </td>
+        <td className="px-4 py-4 text-base text-slate-500">
+          {isPurchase ? "Salt purchase entry" : "Supplier payment entry"}
+        </td>
+      </tr>
+    );
+  });
+
   return (
     <div className="space-y-4">
       <section className="relative overflow-hidden">
@@ -141,13 +184,13 @@ export default async function SupplierDetailPage({ params }: SupplierPageProps) 
               <Link
                 href={`/invoices/suppliers/${id}`}
                 target="_blank"
-                className="inline-flex w-full items-center justify-center rounded-full bg-slate-900 px-5 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-slate-800 sm:w-auto"
+                className="inline-flex w-full items-center justify-center rounded-full bg-[#348CD4] px-5 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-[#2F7FC0] sm:w-auto"
               >
                 {translate(language, "printInvoice")}
               </Link>
               <Link
                 href={`/suppliers?paymentId=${id}&returnTo=${encodeURIComponent(`/suppliers/${id}`)}`}
-                className="inline-flex w-full items-center justify-center rounded-full bg-sky-600 px-5 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-sky-700 sm:w-auto"
+                className="inline-flex w-full items-center justify-center rounded-full bg-[#348CD4] px-5 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-[#2F7FC0] sm:w-auto"
               >
                 {translate(language, "paymentNow")}
               </Link>
@@ -204,7 +247,7 @@ export default async function SupplierDetailPage({ params }: SupplierPageProps) 
             </thead>
             <tbody>
               <LoadMoreTable
-                items={records}
+                rows={recordRows}
                 colSpan={6}
                 loadMoreLabel={language === "bn" ? "আরও দেখুন" : "Show more"}
                 emptyState={
@@ -213,52 +256,6 @@ export default async function SupplierDetailPage({ params }: SupplierPageProps) 
                       No records found for this supplier.
                     </td>
                   </tr>
-                }
-                renderRows={(visibleRecords) =>
-                  visibleRecords.map((record, index) => {
-                    const isPurchase = record.type === "supplier-buy";
-                    const saltMaund = Number(record.saltAmount ?? 0);
-                    const totalPurchaseAmount = Number(record.totalAmount ?? 0);
-                    const recordBalance = runningBalanceById.get(String(record._id ?? "")) ?? 0;
-                    const recordBalanceSummary = getBalanceSummary(recordBalance);
-                    const perMaundPrice =
-                      isPurchase && saltMaund > 0 && totalPurchaseAmount > 0
-                        ? totalPurchaseAmount / saltMaund
-                        : 0;
-
-                    return (
-                      <tr
-                        key={String(record._id ?? record.date?.toString())}
-                        className={`border-b border-slate-100 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
-                      >
-                        <td className="px-4 py-4 text-base text-slate-800">{formatDate(record.date)}</td>
-                        <td className="px-4 py-4">
-                          <span
-                            className={`inline-flex rounded-full px-2.5 py-1 text-sm font-semibold ${
-                              isPurchase ? "bg-indigo-100 text-indigo-700" : "bg-emerald-100 text-emerald-700"
-                            }`}
-                          >
-                            {isPurchase ? "Purchase" : "Payment"}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4 text-base text-slate-700">
-                          <div>{formatAmount(saltMaund)}</div>
-                          <div className="text-xs text-slate-500">
-                            {isPurchase && perMaundPrice > 0 ? `Per maund Tk ${formatAmount(perMaundPrice)}` : "-"}
-                          </div>
-                        </td>
-                        <td className="px-4 py-4 text-base text-slate-700">Tk {formatAmount(Number(record.amount ?? 0))}</td>
-                        <td className={`px-4 py-4 text-base ${recordBalanceSummary.isAdvance ? "text-emerald-600" : "text-rose-600"}`}>
-                          {recordBalanceSummary.isAdvance
-                            ? `${translate(language, "advanceBalance")} Tk ${formatAmount(recordBalanceSummary.absoluteAmount)}`
-                            : `Tk ${formatAmount(recordBalanceSummary.absoluteAmount)}`}
-                        </td>
-                        <td className="px-4 py-4 text-base text-slate-500">
-                          {isPurchase ? "Salt purchase entry" : "Supplier payment entry"}
-                        </td>
-                      </tr>
-                    );
-                  })
                 }
               />
 

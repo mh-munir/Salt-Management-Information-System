@@ -236,7 +236,7 @@ export default function Card({
 
   return (
     <div
-      className={`dashboard-card-shell group relative h-full overflow-hidden rounded-xl border border-gray-200 bg-white/95 px-4 py-5 transition duration-300 hover:-translate-y-0.5 dark:border-slate-700 dark:bg-[#1F2128] sm:px-5 ${className}`.trim()}
+      className={`dashboard-card-shell group relative h-full overflow-hidden rounded-lg border border-gray-200 bg-white/95 px-4 py-5 transition duration-300 hover:-translate-y-0.5 dark:border-slate-700 dark:bg-[#1F2128] sm:px-5 ${className}`.trim()}
     >
       <div
         className={`dashboard-card-gradient pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-br ${palette.accent} opacity-90`}

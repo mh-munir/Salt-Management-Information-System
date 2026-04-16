@@ -138,6 +138,19 @@ export default function CostPage() {
     }
   };
 
+  const costRows = costs.map((cost, index) => (
+    <tr key={cost._id} className={`border-b border-slate-100 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}>
+      <td className="px-4 py-4 text-slate-700">{formatLocalizedDate(cost.date, language)}</td>
+      <td className="px-4 py-4 font-medium text-slate-900">
+        {formatDisplayName(cost.personName, translate(language, "unknownPerson"))}
+      </td>
+      <td className="px-4 py-4 text-slate-600">{cost.purpose}</td>
+      <td className="px-4 py-4 text-slate-700">
+        Tk {formatLocalizedNumber(Number(cost.amount ?? 0), language, { maximumFractionDigits: 2 })}
+      </td>
+    </tr>
+  ));
+
   return (
     <div className="space-y-4">
       <div className="rounded-md bg-white p-6 shadow-sm">
@@ -213,7 +226,7 @@ export default function CostPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
+              className="inline-flex items-center justify-center rounded-2xl bg-[#348CD4] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#2F7FC0] disabled:opacity-60"
             >
               {isSubmitting ? translate(language, "savingCost") : translate(language, "saveCost")}
             </button>
@@ -261,7 +274,7 @@ export default function CostPage() {
           </thead>
           <tbody>
             <LoadMoreTable
-              items={costs}
+              rows={costRows}
               colSpan={4}
               loadMoreLabel={language === "bn" ? "আরও দেখুন" : "Show more"}
               emptyState={
@@ -270,20 +283,6 @@ export default function CostPage() {
                     {translate(language, "noCostsFound")}
                   </td>
                 </tr>
-              }
-              renderRows={(visibleCosts) =>
-                visibleCosts.map((cost, index) => (
-                  <tr key={cost._id} className={`border-b border-slate-100 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}>
-                    <td className="px-4 py-4 text-slate-700">{formatLocalizedDate(cost.date, language)}</td>
-                    <td className="px-4 py-4 font-medium text-slate-900">
-                      {formatDisplayName(cost.personName, translate(language, "unknownPerson"))}
-                    </td>
-                    <td className="px-4 py-4 text-slate-600">{cost.purpose}</td>
-                    <td className="px-4 py-4 text-slate-700">
-                      Tk {formatLocalizedNumber(Number(cost.amount ?? 0), language, { maximumFractionDigits: 2 })}
-                    </td>
-                  </tr>
-                ))
               }
             />
           </tbody>

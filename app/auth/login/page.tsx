@@ -88,7 +88,7 @@ export default function LoginPage() {
                 placeholder={translate(language, "emailPlaceholder")}
                 autoComplete="email"
                 required
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-blue-500"
+                className="w-full rounded-md border border-slate-200 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-blue-500"
               />
             </div>
 
@@ -103,7 +103,7 @@ export default function LoginPage() {
                 placeholder={translate(language, "passwordPlaceholder")}
                 autoComplete="current-password"
                 required
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-blue-500"
+                className="w-full rounded-md border border-slate-200 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-blue-500"
               />
             </div>
 
@@ -128,7 +128,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
+              className="w-full rounded-md bg-[#348CD4] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#2F7FC0] disabled:cursor-not-allowed disabled:opacity-70"
             >
               {loading ? translate(language, "signingIn") : translate(language, "signIn")}
             </button>

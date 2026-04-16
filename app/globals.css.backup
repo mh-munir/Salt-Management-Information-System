@@ -50,9 +50,40 @@ input[type="reset"]:disabled {
   cursor: not-allowed;
 }
 
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 input[type="number"] {
   -moz-appearance: textfield;
   appearance: textfield;
+}
+
+html.theme-light button,
+html.theme-light input[type="button"],
+html.theme-light input[type="submit"],
+html.theme-light input[type="reset"] {
+  background-color: #141E60 !important;
+  border-color: #141E60 !important;
+  color: #ffffff !important;
+}
+
+html.theme-light button:hover:not(:disabled),
+html.theme-light input[type="button"]:hover:not(:disabled),
+html.theme-light input[type="submit"]:hover:not(:disabled),
+html.theme-light input[type="reset"]:hover:not(:disabled) {
+  background-color: #1c2877 !important;
+  border-color: #1c2877 !important;
+  color: #ffffff !important;
+}
+
+html.theme-light button.light-navbar-button,
+html.theme-light button.light-navbar-button:hover:not(:disabled) {
+  background-color: #1c2877 !important;
+  border-color: #94a3b8 !important;
+  color: #334155 !important;
 }
 
 html.theme-light .profile-avatar {
@@ -84,6 +115,24 @@ html.theme-light .text-slate-700 {
 
 html.theme-dark .sidebar-shell {
   background-color: #1F2128 !important;
+}
+
+html.theme-dark button,
+html.theme-dark input[type="button"],
+html.theme-dark input[type="submit"],
+html.theme-dark input[type="reset"] {
+  background-color: #141E60 !important;
+  border-color: #141E60 !important;
+  color: var(--dashboard-off-white-strong) !important;
+}
+
+html.theme-dark button:hover:not(:disabled),
+html.theme-dark input[type="button"]:hover:not(:disabled),
+html.theme-dark input[type="submit"]:hover:not(:disabled),
+html.theme-dark input[type="reset"]:hover:not(:disabled) {
+  background-color: #1c2877 !important;
+  border-color: #1c2877 !important;
+  color: var(--dashboard-off-white-strong) !important;
 }
 
 @media print {
@@ -231,18 +280,6 @@ html.theme-dark .admin-users-list > .admin-user-row + .admin-user-row {
 html.theme-dark .admin-users-section .admin-user-badge,
 html.theme-dark .admin-users-section .admin-user-action {
   border-color: rgba(255, 255, 255, 0.055) !important;
-}
-
-html.theme-light .admin-users-section .admin-user-action {
-  color: #ffffff !important;
-  background-color: #348CD4 !important;
-  border-color: #348CD4 !important;
-  transition: background-color 0.3s ease, border-color 0.3s ease !important;
-}
-
-html.theme-light .admin-users-section .admin-user-action:hover:not(:disabled) {
-  background-color: #2F7FC0 !important;
-  border-color: #2F7FC0 !important;
 }
 
 html.theme-dark .bg-white,
@@ -449,15 +486,9 @@ html.theme-dark .to-sky-50 {
   }
 
   html.theme-light .mobile-menu-button {
-    background-color: #348CD4 !important;
-    border-color: #348CD4 !important;
-    color: #ffffff !important;
-    transition: background-color 0.3s ease, border-color 0.3s ease !important;
-  }
-
-  html.theme-light .mobile-menu-button:hover {
-    background-color: #2F7FC0 !important;
-    border-color: #2F7FC0 !important;
+    background-color: #ffffff !important;
+    border-color: rgba(255, 255, 255, 0.16) !important;
+    color: #0f172a !important;
   }
 
   html.theme-dark .navbar-shell.mobile-navbar-shell {

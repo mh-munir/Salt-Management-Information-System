@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import InvoiceActions from "@/components/InvoiceActions";
-import LoadMoreTable from "@/components/LoadMoreTable";
+import CustomerInvoiceTable from "@/components/CustomerInvoiceTable";
 import PlainImage from "@/components/PlainImage";
+import { getServerAuthOrRedirect } from "@/lib/auth.server";
 import { getBalanceSummary } from "@/lib/balance";
 import { formatDisplayName } from "@/lib/display-format";
 import { getCustomerInvoiceData, getInvoiceBranding } from "@/lib/invoices";
@@ -48,6 +49,7 @@ const getStatementPeriod = (dates: Array<Date | undefined>) => {
 };
 
 export default async function CustomerInvoicePage({ params }: CustomerInvoicePageProps) {
+  await getServerAuthOrRedirect();
   const { id } = await params;
   const [invoice, branding] = await Promise.all([getCustomerInvoiceData(id), getInvoiceBranding()]);
 
@@ -57,237 +59,166 @@ export default async function CustomerInvoicePage({ params }: CustomerInvoicePag
   const balance = getBalanceSummary(invoice.totalDueAmount);
 
   return (
-    <div className="invoice-page min-h-screen bg-white dark:bg-slate-950 px-4 py-6 md:px-6">
+    <div className="invoice-page min-h-screen bg-white dark:bg-slate-950 px-2 py-1 md:px-3">
       <InvoiceActions backHref={`/customers/${id}`} />
 
-      <section className="invoice-sheet mx-auto max-w-5xl overflow-hidden rounded-md bg-white shadow-[0_35px_90px_-45px_rgba(15,23,42,0.55)]">
-        <div className="relative overflow-hidden bg-[#20242b] px-6 pb-16 pt-6 text-white md:px-10 md:pb-20 md:pt-8">
-          <div className="relative z-10 flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+      <section className="invoice-sheet mx-auto max-w-4xl overflow-hidden bg-white shadow-sm" style={{ height: "fit-content" }}>
+        {/* Header */}
+        <div className="border-b-4 border-green-600 px-6 py-6">
+          <div className="flex items-start justify-between">
+            {/* Left side: Logo + Company name */}
             <div className="flex items-start gap-3">
               {branding.logoUrl ? (
-                <div className="h-12 w-12 overflow-hidden rounded-full border border-white/20 bg-white/95 shadow-sm">
+                <div className="h-12 w-12 overflow-hidden rounded border border-gray-300 bg-white">
                   <PlainImage
                     src={branding.logoUrl}
                     alt={`${branding.heading} logo`}
-                    className="h-full w-full object-contain p-2"
+                    className="h-full w-full object-contain"
                   />
                 </div>
               ) : (
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-sky-400 text-sm font-bold tracking-[0.2em] text-slate-950">
-                  BM
+                <div className="flex h-12 w-12 items-center justify-center rounded border border-green-600 bg-green-50 font-bold text-green-600">
+                  {branding.heading?.charAt(0)}
                 </div>
               )}
-
               <div>
-                <p className="text-lg font-semibold uppercase tracking-[0.14em] text-white">{branding.heading}</p>
-                <p className="text-xs uppercase tracking-[0.3em] text-slate-300">{branding.subheading}</p>
+                <p className="text-lg font-bold text-gray-900">{branding.heading}</p>
+                <p className="text-xs text-gray-600">{branding.subheading}</p>
               </div>
             </div>
 
-            <div className="text-left md:text-right">
-              <p className="text-xs uppercase tracking-[0.34em] text-slate-300">Customer Statement</p>
-              <h1 className="mt-2 text-3xl font-light uppercase tracking-[0.18em] text-white md:text-4xl">Invoice</h1>
+            {/* Right side: INVOICE title */}
+            <div className="text-right">
+              <h1 className="text-3xl font-bold text-gray-900">INVOICE</h1>
             </div>
-          </div>
-
-          <div className="pointer-events-none absolute inset-x-0 bottom-0">
-            <svg viewBox="0 0 1200 120" preserveAspectRatio="none" className="block h-14 w-full md:h-16">
-              <path
-                d="M0,48 C180,122 360,0 540,56 C720,112 900,20 1080,58 C1140,72 1175,76 1200,72 L1200,120 L0,120 Z"
-                className="fill-sky-500"
-              />
-            </svg>
-            <svg viewBox="0 0 1200 120" preserveAspectRatio="none" className="-mt-9 block h-12 w-full md:-mt-10 md:h-14">
-              <path
-                d="M0,56 C160,0 340,112 520,62 C700,14 900,104 1080,62 C1140,48 1175,46 1200,48 L1200,120 L0,120 Z"
-                className="fill-sky-300"
-              />
-            </svg>
           </div>
         </div>
 
-        <div className="px-6 py-8 md:px-10">
-          <div className="grid gap-8 border-b border-slate-200 pb-8 md:grid-cols-[1.2fr_0.8fr]">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-600">Invoice To</p>
-              <h2 className="mt-3 text-xl font-semibold text-slate-900">{formatDisplayName(invoice.name, "Customer")}</h2>
-              <div className="mt-4 space-y-2 text-sm text-slate-600">
-                <p>
-                  <span className="font-semibold text-slate-800">Phone</span>
-                  <span className="mx-2 text-slate-300">:</span>
-                  {invoice.phone}
-                </p>
-                <p>
-                  <span className="font-semibold text-slate-800">Address</span>
-                  <span className="mx-2 text-slate-300">:</span>
-                  {invoice.address}
-                </p>
-                <p>
-                  <span className="font-semibold text-slate-800">Period</span>
-                  <span className="mx-2 text-slate-300">:</span>
-                  {statementPeriod}
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-2 text-sm text-slate-600 md:justify-self-end md:text-right">
-              <p>
-                <span className="font-semibold text-slate-800">Invoice No</span>
-                <span className="mx-2 text-slate-300">:</span>
-                {invoice.invoiceNumber}
-              </p>
-              <p>
-                <span className="font-semibold text-slate-800">{balance.isAdvance ? "Advance Balance" : "Total Due"}</span>
-                <span className="mx-2 text-slate-300">:</span>
-                Tk {formatMoney(balance.absoluteAmount)}
-              </p>
-              <p>
-                <span className="font-semibold text-slate-800">Invoice Date</span>
-                <span className="mx-2 text-slate-300">:</span>
-                {formatDate(invoice.generatedAt)}
-              </p>
-              <p>
-                <span className="font-semibold text-slate-800">Customer ID</span>
-                <span className="mx-2 text-slate-300">:</span>
-                {invoice.id}
-              </p>
+        {/* Customer Info Section */}
+        <div className="px-6 py-6 grid grid-cols-2 gap-8 border-b border-gray-200">
+          <div>
+            <p className="text-xs font-bold text-gray-700 mb-3">INVOICE TO:</p>
+            <div className="space-y-1 text-sm text-gray-700">
+              <p className="font-semibold">{formatDisplayName(invoice.name, "Customer")}</p>
+              <p>📍 {invoice.address}</p>
+              <p>☎️ {invoice.phone}</p>
             </div>
           </div>
+          <div className="text-right space-y-2 text-sm">
+            <div className="flex items-center gap-2 justify-end">
+              <p className="text-gray-600">Invoice Number</p>
+              <p className="font-semibold text-gray-900">{invoice.invoiceNumber}</p>
+            </div>
+            <div className="flex items-center gap-2 justify-end">
+              <p className="text-gray-600">Invoice Date</p>
+              <p className="font-semibold text-gray-900">{formatDate(invoice.generatedAt)}</p>
+            </div>
+            <div className="flex items-center gap-2 justify-end">
+              <p className="text-gray-600">Period</p>
+              <p className="font-semibold text-gray-900">{statementPeriod}</p>
+            </div>
+          </div>
+        </div>
 
-          <div className="mt-8 overflow-x-auto rounded-sm border border-slate-200">
-            <table className="min-w-[48rem] text-left text-sm">
-              <thead className="text-xs font-semibold uppercase tracking-[0.18em] text-white">
+        {/* Table Section */}
+        <div className="px-6 py-6">
+          <div className="overflow-x-auto rounded border border-gray-200">
+            <table className="min-w-full text-left text-sm">
+              <thead className="bg-gray-900 text-white">
                 <tr>
-                  <th className="bg-sky-500 px-5 py-3">Entry Description</th>
-                  <th className="bg-slate-700 px-5 py-3 text-right">Amount</th>
-                  <th className="bg-slate-700 px-5 py-3 text-right">Received</th>
-                  <th className="bg-slate-700 px-5 py-3 text-right">Due / Advance</th>
+                  <th className="px-4 py-3 font-semibold">SKU</th>
+                  <th className="px-4 py-3 font-semibold">ITEM DESCRIPTION</th>
+                  <th className="px-4 py-3 text-right font-semibold">UNIT PRICE</th>
+                  <th className="px-4 py-3 text-right font-semibold">QUANTITY</th>
+                  <th className="px-4 py-3 text-right font-semibold">TOTAL</th>
                 </tr>
               </thead>
               <tbody>
-                <LoadMoreTable
-                  items={invoice.records}
-                  colSpan={4}
-                  loadMoreLabel="Show more"
-                  emptyState={
-                    <tr>
-                      <td colSpan={4} className="px-5 py-10 text-center text-slate-500">
-                        No invoice records available for this customer.
-                      </td>
-                    </tr>
-                  }
-                  renderRows={(visibleRecords) =>
-                    visibleRecords.map((record, index) => (
-                      <tr key={record.id} className={index % 2 === 0 ? "bg-slate-50" : "bg-white"}>
-                        <td className="px-5 py-4 align-top">
-                          <p className="font-semibold text-slate-800">{record.label}</p>
-                          <p className="mt-1 text-xs uppercase tracking-[0.18em] text-slate-400">
-                            {[
-                              formatDate(record.date),
-                              record.quantityKg > 0 ? `${formatKg(record.quantityKg)} kg` : "",
-                              record.pricePerKg > 0 ? `Per kg Tk ${formatMoney(record.pricePerKg)}` : "",
-                            ]
-                              .filter(Boolean)
-                              .join(" • ")}
-                          </p>
-                          <p className="mt-2 text-sm leading-6 text-slate-500">{record.note}</p>
-                        </td>
-                        <td className="px-5 py-4 text-right font-medium text-slate-700">
-                          {record.totalAmount > 0 ? `Tk ${formatMoney(record.totalAmount)}` : "--"}
-                        </td>
-                        <td className="px-5 py-4 text-right font-medium text-slate-700">
-                          {record.paidAmount > 0 ? `Tk ${formatMoney(record.paidAmount)}` : "--"}
-                        </td>
-                        <td className="px-5 py-4 text-right font-medium text-slate-700">
-                          {record.dueAmount !== 0 ? `Tk ${formatMoney(record.dueAmount)}` : "--"}
-                        </td>
-                      </tr>
-                    ))
-                  }
-                />
+                <CustomerInvoiceTable records={invoice.records} />
               </tbody>
             </table>
           </div>
-
-          <div className="mt-8 grid gap-8 md:grid-cols-[1.1fr_0.9fr]">
-            <div className="rounded-sm border border-slate-200 bg-slate-50 p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Statement Info</p>
-              <div className="mt-4 space-y-2 text-sm text-slate-600">
-                <p>
-                  <span className="font-semibold text-slate-800">Record Count</span>
-                  <span className="mx-2 text-slate-300">:</span>
-                  {invoice.records.length}
-                </p>
-                <p>
-                  <span className="font-semibold text-slate-800">Total</span>
-                  <span className="mx-2 text-slate-300">:</span>
-                  {formatKg(invoice.totalSaltKg)} kg
-                </p>
-                <p>
-                  <span className="font-semibold text-slate-800">Sales Collection</span>
-                  <span className="mx-2 text-slate-300">:</span>
-                  Tk {formatMoney(invoice.paidWithSalesAmount)}
-                </p>
-                <p>
-                  <span className="font-semibold text-slate-800">Later Payment</span>
-                  <span className="mx-2 text-slate-300">:</span>
-                  Tk {formatMoney(invoice.paidWithPaymentsAmount)}
-                </p>
-              </div>
-            </div>
-
-            <div className="overflow-hidden rounded-sm border border-slate-200">
-              <div className="grid grid-cols-[1fr_auto] bg-white text-sm">
-                <p className="border-b border-slate-200 px-5 py-3 text-slate-600">Sub Total</p>
-                <p className="border-b border-slate-200 px-5 py-3 text-right font-medium text-slate-800">
-                  Tk {formatMoney(invoice.totalSalesAmount)}
-                </p>
-                <p className="border-b border-slate-200 px-5 py-3 text-slate-600">Received Amount</p>
-                <p className="border-b border-slate-200 px-5 py-3 text-right font-medium text-slate-800">
-                  Tk {formatMoney(invoice.totalReceivedAmount)}
-                </p>
-                <p className="border-b border-slate-200 px-5 py-3 text-slate-600">VAT</p>
-                <p className="border-b border-slate-200 px-5 py-3 text-right font-medium text-slate-800">0.00</p>
-                <p className="bg-sky-500 px-5 py-3 font-semibold uppercase tracking-[0.16em] text-white">
-                  {balance.isAdvance ? "Advance Balance" : "Grand Total"}
-                </p>
-                <p className="bg-sky-500 px-5 py-3 text-right font-semibold text-white">
-                  Tk {formatMoney(balance.absoluteAmount)}
-                </p>
-              </div>
-            </div>
-          </div>
         </div>
 
-        <div className="relative overflow-hidden bg-[#20242b] px-6 pb-6 pt-14 text-white md:px-10">
-          <div className="pointer-events-none absolute inset-x-0 top-0">
-            <svg viewBox="0 0 1200 120" preserveAspectRatio="none" className="block h-14 w-full md:h-16">
-              <path
-                d="M0,0 L1200,0 L1200,48 C1030,108 855,12 680,60 C505,108 330,12 155,58 C95,72 45,78 0,74 Z"
-                className="fill-sky-500"
-              />
-            </svg>
-            <svg viewBox="0 0 1200 120" preserveAspectRatio="none" className="-mt-9 block h-12 w-full md:-mt-10 md:h-14">
-              <path
-                d="M0,0 L1200,0 L1200,42 C1080,14 930,106 750,58 C570,10 380,112 200,58 C120,34 55,28 0,34 Z"
-                className="fill-sky-300"
-              />
-            </svg>
-          </div>
-
-          <div className="relative z-10 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+        {/* Summary Section */}
+        <div className="px-6 py-6 border-b border-gray-200">
+          <div className="grid grid-cols-2 gap-8">
+            {/* Left: Sale Information */}
             <div>
-              <p className="text-sm font-semibold">Thanks For Your Purchase!</p>
-              <p className="mt-2 max-w-md text-xs uppercase tracking-[0.16em] text-slate-300">
-                Terms: Ledger totals are based on recorded sales and payment entries only, including carried advance balances.
-              </p>
+              <p className="text-xs font-bold text-gray-700 mb-3">SALE INFORMATION</p>
+              <div className="space-y-2 text-sm text-gray-700">
+                <div className="flex justify-between">
+                  <span>Record Count</span>
+                  <span className="font-semibold">{invoice.records.length}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Total Kg</span>
+                  <span className="font-semibold">{formatKg(invoice.totalSaltKg)} kg</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Sales Collection</span>
+                  <span className="font-semibold">Tk {formatMoney(invoice.paidWithSalesAmount)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Later Payment</span>
+                  <span className="font-semibold">Tk {formatMoney(invoice.paidWithPaymentsAmount)}</span>
+                </div>
+              </div>
             </div>
 
-            <div className="w-full max-w-full rounded-sm bg-white px-4 py-3 text-right text-slate-700 sm:max-w-45">
-              <div className="border-b border-slate-300 pb-3 text-sm font-medium">Signature</div>
+            {/* Right: Totals */}
+            <div>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-700">Sub Total</span>
+                  <span className="font-semibold text-gray-900">Tk {formatMoney(invoice.totalSalesAmount)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-700">Received</span>
+                  <span className="font-semibold text-gray-900">Tk {formatMoney(invoice.totalReceivedAmount)}</span>
+                </div>
+                <div className="flex justify-between border-t border-gray-300 pt-2">
+                  <span className="font-semibold text-gray-900">TAX RATE</span>
+                  <span className="font-semibold text-gray-900">0%</span>
+                </div>
+                {balance.isDue && (
+                  <div className="flex justify-between bg-red-600 text-white px-3 py-2 rounded font-semibold">
+                    <span>DUE AMOUNT</span>
+                    <span>Tk {formatMoney(balance.dueAmount)}</span>
+                  </div>
+                )}
+                {balance.isAdvance && (
+                  <div className="flex justify-between bg-[#348CD4] text-white px-3 py-2 rounded font-semibold">
+                    <span>ADVANCE AMOUNT</span>
+                    <span>Tk {formatMoney(balance.advanceAmount)}</span>
+                  </div>
+                )}
+                {balance.isSettled && (
+                  <div className="flex justify-between bg-green-600 text-white px-3 py-2 rounded font-semibold">
+                    <span>SETTLED</span>
+                    <span>Tk 0.00</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
+
+        {/* Signature Section */}
+        <div className="px-6 py-6 border-b border-gray-200">
+          <p className="text-center text-xs text-gray-600 mb-6">Thank you for business!</p>
+          <div className="grid grid-cols-2 gap-8 text-center">
+            <div>
+              <div className="border-t border-gray-300 pt-2 text-xs text-gray-700">Customer Signature</div>
+            </div>
+            <div>
+              <div className="border-t border-gray-300 pt-2 text-xs text-gray-700">Authorized Signature</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="h-1 bg-gradient-to-r from-green-600 via-green-700 to-green-600"></div>
       </section>
     </div>
   );

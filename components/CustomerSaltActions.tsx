@@ -102,14 +102,14 @@ const CustomerSaltActions = ({ customerId }: Props) => {
           <button
             type="button"
             onClick={() => setMode("sale")}
-            className={`rounded-full px-4 py-2 text-base font-medium ${mode === "sale" ? "bg-slate-900 text-white" : "text-slate-600"}`}
+            className={`rounded-full px-4 py-2 text-base font-medium ${mode === "sale" ? "bg-[#348CD4] text-white" : "text-slate-600"}`}
           >
             Sale salt
           </button>
           <button
             type="button"
             onClick={() => setMode("buy")}
-            className={`rounded-full px-4 py-2 text-base font-medium ${mode === "buy" ? "bg-slate-900 text-white" : "text-slate-600"}`}
+            className={`rounded-full px-4 py-2 text-base font-medium ${mode === "buy" ? "bg-[#348CD4] text-white" : "text-slate-600"}`}
           >
             Buy salt
           </button>
@@ -187,7 +187,7 @@ const CustomerSaltActions = ({ customerId }: Props) => {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-5 py-3 text-base font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center justify-center rounded-2xl bg-[#348CD4] px-5 py-3 text-base font-semibold text-white transition hover:bg-[#2F7FC0] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isSubmitting ? "Saving..." : `Save ${mode === "sale" ? "sale" : "buy"} record`}
           </button>

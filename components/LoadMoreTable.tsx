@@ -2,41 +2,39 @@
 
 import { ReactNode, useMemo, useState } from "react";
 
-type Props<T> = {
-  items: T[];
+type Props = {
+  rows: ReactNode[];
   initialCount?: number;
   colSpan: number;
   loadMoreLabel?: string;
   emptyState: ReactNode;
-  renderRows: (items: T[]) => ReactNode;
 };
 
-export default function LoadMoreTable<T>({
-  items,
+export default function LoadMoreTable({
+  rows,
   initialCount = 10,
   colSpan,
   loadMoreLabel = "Show more",
   emptyState,
-  renderRows,
-}: Props<T>) {
+}: Props) {
   const [visibleCount, setVisibleCount] = useState(initialCount);
-  const visibleItems = useMemo(() => items.slice(0, visibleCount), [items, visibleCount]);
-  const hasMore = items.length > visibleCount;
+  const visibleRows = useMemo(() => rows.slice(0, visibleCount), [rows, visibleCount]);
+  const hasMore = rows.length > visibleCount;
 
   return (
     <>
-      {items.length === 0 ? (
+      {rows.length === 0 ? (
         emptyState
       ) : (
-        <>{renderRows(visibleItems)}</>
+        <>{visibleRows}</>
       )}
       {hasMore ? (
         <tr>
           <td colSpan={colSpan} className="px-4 py-4 text-center">
             <button
               type="button"
-              onClick={() => setVisibleCount((current) => Math.min(items.length, current + initialCount))}
-              className="inline-flex items-center justify-center rounded-full border border-sky-500 bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-400"
+              onClick={() => setVisibleCount((current) => Math.min(rows.length, current + initialCount))}
+              className="inline-flex items-center justify-center rounded-lg border border-sky-500 bg-[#348CD4] px-6 py-3 text-sm lg:text-md font-semibold text-white shadow-sm transition hover:bg-[#2F7FC0] focus:outline-none"
             >
               {loadMoreLabel}
             </button>

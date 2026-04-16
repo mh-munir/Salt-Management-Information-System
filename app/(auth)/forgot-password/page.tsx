@@ -110,7 +110,7 @@ export default function ForgotPasswordPage() {
       <div className="pointer-events-none absolute right-20 top-1/3 h-10 w-10 rounded-full border border-fuchsia-200/70 bg-fuchsia-100/60" />
 
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-xl items-center justify-center">
-        <section className="w-full max-w-md rounded-md border border-slate-200 bg-white px-6 py-7 shadow-[0_20px_50px_rgba(15,23,42,0.08)]">
+        <section className="w-full max-w-md rounded-lg border border-slate-200 bg-white px-6 py-7 shadow-[0_20px_50px_rgba(15,23,42,0.08)]">
           <div className="mx-auto mb-4 flex w-full max-w-fit items-center justify-center">
             <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-3xl bg-slate-900 text-white shadow-sm">
               {sidebarLogoUrl ? (
@@ -133,8 +133,8 @@ export default function ForgotPasswordPage() {
             )}
           </div>
 
-          {error ? <p className="mb-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p> : null}
-          {info ? <p className="mb-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{info}</p> : null}
+          {error ? <p className="mb-4 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p> : null}
+          {info ? <p className="mb-4 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{info}</p> : null}
 
           {step === "success" ? (
             <div className="space-y-4">
@@ -142,7 +142,7 @@ export default function ForgotPasswordPage() {
               <button
                 type="button"
                 onClick={() => router.push("/login")}
-                className="w-full rounded-xl bg-blue-600 px-4 py-2.5 text-base font-semibold text-white transition hover:bg-blue-700"
+                className="w-full rounded-lg bg-[#348CD4] px-4 py-2.5 text-base font-semibold text-white transition hover:bg-[#2F7FC0]"
               >
                 Return to login
               </button>
@@ -162,7 +162,7 @@ export default function ForgotPasswordPage() {
                   placeholder={translate(language, "emailPlaceholder")}
                   autoComplete="email"
                   required
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-lg text-slate-800 outline-none transition focus:border-blue-500"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-lg text-slate-800 outline-none transition focus:border-blue-500"
                 />
               </div>
 
@@ -179,7 +179,7 @@ export default function ForgotPasswordPage() {
                       placeholder="123456"
                       maxLength={6}
                       required
-                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-lg text-slate-800 outline-none transition focus:border-blue-500"
+                      className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-lg text-slate-800 outline-none transition focus:border-blue-500"
                     />
                   </div>
                   <div>
@@ -192,7 +192,7 @@ export default function ForgotPasswordPage() {
                       onChange={(event) => setNewPassword(event.target.value)}
                       placeholder={translate(language, "passwordPlaceholder")}
                       required
-                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-lg text-slate-800 outline-none transition focus:border-blue-500"
+                      className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-lg text-slate-800 outline-none transition focus:border-blue-500"
                     />
                   </div>
                   <div>
@@ -205,7 +205,7 @@ export default function ForgotPasswordPage() {
                       onChange={(event) => setConfirmPassword(event.target.value)}
                       placeholder={translate(language, "passwordPlaceholder")}
                       required
-                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-lg text-slate-800 outline-none transition focus:border-blue-500"
+                      className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-lg text-slate-800 outline-none transition focus:border-blue-500"
                     />
                   </div>
                 </>
@@ -214,7 +214,7 @@ export default function ForgotPasswordPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full rounded-xl bg-blue-600 px-4 py-2.5 text-base font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
+                className="w-full rounded-lg bg-[#348CD4] px-4 py-2.5 text-base font-semibold text-white transition hover:bg-[#2F7FC0] disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {loading
                   ? "Working..."

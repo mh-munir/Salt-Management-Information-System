@@ -637,7 +637,7 @@ export default function SettingsPage() {
       ) : null}
 
       <div className="grid gap-4 2xl:grid-cols-[1.2fr_1fr]">
-        <section className="rounded-md border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900">Top Navbar Image</h2>
           <p className="mt-1 text-sm text-slate-600">
             You can paste an image URL or upload a local image.
@@ -664,7 +664,7 @@ export default function SettingsPage() {
                 value={avatarUrl}
                 onChange={(event) => setAvatarUrl(event.target.value)}
                 placeholder="https://example.com/avatar.jpg"
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-lg outline-none focus:border-sky-500"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-lg outline-none focus:border-sky-500"
               />
             </div>
 
@@ -676,14 +676,14 @@ export default function SettingsPage() {
                 type="file"
                 accept="image/*"
                 onChange={onPickImage}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-lg text-slate-700"
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-lg text-slate-700"
               />
             </div>
 
             <button
               type="submit"
               disabled={isSavingAvatar}
-              className="rounded-xl bg-sky-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-70"
+              className="rounded-lg bg-[#348CD4] px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-70 hover:bg-[#2F7FC0]"
             >
               {isSavingAvatar ? "Saving..." : "Save image"}
             </button>
@@ -696,7 +696,7 @@ export default function SettingsPage() {
             Update the sidebar logo and heading text shown above the menu.
           </p>
 
-          <div className="mt-5 rounded-md border border-slate-200 bg-slate-50 p-4">
+          <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
             <div className="space-y-2">
               <div className="flex items-center gap-3">
                 {sidebarLogoUrl ? (
@@ -729,7 +729,7 @@ export default function SettingsPage() {
                 value={sidebarLogoUrl}
                 onChange={(event) => setSidebarLogoUrl(event.target.value)}
                 placeholder="https://example.com/sidebar-logo.png"
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-sky-500"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-sky-500"
               />
             </div>
 
@@ -741,7 +741,7 @@ export default function SettingsPage() {
                 type="file"
                 accept="image/*"
                 onChange={onPickSidebarLogo}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
               />
             </div>
 
@@ -754,7 +754,7 @@ export default function SettingsPage() {
                 onChange={(event) => setSidebarHeading(event.target.value)}
                 placeholder={DEFAULT_BRAND_HEADING}
                 maxLength={40}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-sky-500"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-sky-500"
               />
             </div>
 
@@ -767,27 +767,27 @@ export default function SettingsPage() {
                 onChange={(event) => setSidebarSubheading(event.target.value)}
                 placeholder={DEFAULT_BRAND_SUBHEADING}
                 maxLength={80}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-sky-500"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-sky-500"
               />
             </div>
 
             <button
               type="submit"
               disabled={isSavingSidebarBranding}
-              className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-70"
+              className="rounded-lg bg-[#348CD4] px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-70 hover:bg-[#2F7FC0]"
             >
               {isSavingSidebarBranding ? "Saving..." : "Save branding"}
             </button>
           </form>
         </section>
 
-        <section className="rounded-md border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900">Create Admin User</h2>
           <p className="mt-1 text-sm text-slate-600">
             Super admin can create admin accounts with email OTP verification.
           </p>
           {!isSuperAdmin ? (
-            <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+            <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
               Only super admin can create new admin accounts.
             </p>
           ) : null}
@@ -802,7 +802,7 @@ export default function SettingsPage() {
                 onChange={(event) => setName(event.target.value)}
                 placeholder="Admin name"
                 disabled={!isSuperAdmin || Boolean(pendingAdminPayload)}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-sky-500"
+                className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-sky-500"
               />
             </div>
 
@@ -817,7 +817,7 @@ export default function SettingsPage() {
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="newadmin@gmail.com"
                 disabled={!isSuperAdmin || Boolean(pendingAdminPayload)}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-sky-500"
+                className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-sky-500"
               />
             </div>
 
@@ -833,14 +833,14 @@ export default function SettingsPage() {
                 onChange={(event) => setPassword(event.target.value)}
                 placeholder="At least 8 characters"
                 disabled={!isSuperAdmin || Boolean(pendingAdminPayload)}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-sky-500"
+                className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-sky-500"
               />
             </div>
 
             <button
               type="submit"
               disabled={isCreatingAdmin || !isSuperAdmin || Boolean(pendingAdminPayload)}
-              className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-70"
+              className="rounded-md bg-[#348CD4] px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-70 hover:bg-[#2F7FC0]"
             >
               {isCreatingAdmin ? "Sending OTP..." : "Send OTP"}
             </button>
@@ -872,7 +872,7 @@ export default function SettingsPage() {
                   placeholder="6-digit OTP"
                   maxLength={6}
                   required
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-sky-500"
+                  className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-sky-500"
                 />
               </div>
 
@@ -880,7 +880,7 @@ export default function SettingsPage() {
                 <button
                   type="submit"
                   disabled={isVerifyingOtp}
-                  className="rounded-xl bg-sky-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-70"
+                  className="rounded-md bg-[#348CD4] px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-70 hover:bg-[#2F7FC0]"
                 >
                   {isVerifyingOtp ? "Verifying..." : "Verify OTP & Create"}
                 </button>
@@ -888,14 +888,14 @@ export default function SettingsPage() {
                   type="button"
                   onClick={resendAdminOtp}
                   disabled={isCreatingAdmin}
-                  className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-white disabled:cursor-not-allowed disabled:opacity-70"
+                  className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-white disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {isCreatingAdmin ? "Sending..." : "Resend OTP"}
                 </button>
                 <button
                   type="button"
                   onClick={cancelAdminOtpFlow}
-                  className="rounded-xl border border-rose-200 px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50"
+                  className="rounded-md border border-rose-200 px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50"
                 >
                   Cancel
                 </button>
@@ -932,7 +932,7 @@ export default function SettingsPage() {
                       type="button"
                       onClick={() => openEditDialog(admin)}
                       disabled={!canEditThisAdmin}
-                      className="admin-user-action rounded-lg border border-sky-200 px-3 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+                      className="admin-user-action rounded-md border border-sky-200 px-3 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
                       title={canEditThisAdmin ? translate(language, "editAdmin") : translate(language, "onlySuperAdminEdit")}
                     >
                       Edit
@@ -941,7 +941,7 @@ export default function SettingsPage() {
                       type="button"
                       onClick={() => openPasswordDialog(admin)}
                       disabled={!canChangeThisPassword}
-                      className="admin-user-action rounded-lg border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+                      className="admin-user-action rounded-md border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
                       title={canChangeThisPassword ? translate(language, "changePassword") : translate(language, "onlySuperAdminPassword")}
                     >
                       Change password
@@ -951,7 +951,7 @@ export default function SettingsPage() {
                         type="button"
                         onClick={() => deleteAdmin(admin)}
                         disabled={deletingAdminId === admin._id}
-                        className="admin-user-action rounded-lg border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="admin-user-action rounded-md border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {deletingAdminId === admin._id ? "Deleting..." : "Delete"}
                       </button>
@@ -975,7 +975,7 @@ export default function SettingsPage() {
           onClose={closeEditDialog}
         >
           <form className="space-y-5" onSubmit={updateAdminProfile}>
-            <div className="rounded-md border border-slate-200 bg-slate-50/80 p-4">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                 <PlainImage
                   src={editAvatarUrl || DEFAULT_AVATAR}
@@ -990,7 +990,7 @@ export default function SettingsPage() {
                     value={editAvatarUrl}
                     onChange={(event) => setEditAvatarUrl(event.target.value)}
                     placeholder="https://example.com/avatar.png"
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-sky-500"
+                    className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-sky-400 focus:bg-white"
                   />
                 </div>
               </div>
@@ -1003,7 +1003,7 @@ export default function SettingsPage() {
                   type="file"
                   accept="image/*"
                   onChange={onPickEditAvatar}
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700"
                 />
               </div>
             </div>
@@ -1018,7 +1018,7 @@ export default function SettingsPage() {
                   onChange={(event) => setEditName(event.target.value)}
                   placeholder="Admin name"
                   required
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-sky-500 focus:bg-white"
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-sky-400 focus:bg-white"
                 />
               </div>
 
@@ -1032,7 +1032,7 @@ export default function SettingsPage() {
                   onChange={(event) => setEditEmail(event.target.value)}
                   placeholder="admin@example.com"
                   required
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-sky-500 focus:bg-white"
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-sky-400 focus:bg-white"
                 />
               </div>
             </div>
@@ -1041,14 +1041,14 @@ export default function SettingsPage() {
               <button
                 type="button"
                 onClick={closeEditDialog}
-                className="rounded-2xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                className="rounded-lg border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isUpdatingAdmin}
-                className="rounded-2xl bg-sky-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-70"
+                className="rounded-lg bg-[#348CD4] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#2F7FC0] disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {isUpdatingAdmin ? "Updating..." : "Update admin"}
               </button>
@@ -1061,12 +1061,12 @@ export default function SettingsPage() {
         <ModalShell
           title={translate(language, "changeAdminPassword")}
           description={`${passwordTarget.name || "Admin"} (${passwordTarget.email})`}
-          tone="slate"
+          tone="sky"
           widthClassName="max-w-lg"
           onClose={closePasswordDialog}
         >
           <form className="space-y-4" onSubmit={changeAdminPassword}>
-            <div className="rounded-md border border-slate-200 bg-slate-50/80 p-4 text-sm text-slate-600">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
               Set a new password for this account. Use at least 8 characters for a stronger login credential.
             </div>
 
@@ -1081,7 +1081,7 @@ export default function SettingsPage() {
                 onChange={(event) => setNewPassword(event.target.value)}
                 placeholder="At least 8 characters"
                 required
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-slate-500 focus:bg-white"
+                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-sky-400 focus:bg-white"
               />
             </div>
 
@@ -1096,7 +1096,7 @@ export default function SettingsPage() {
                 onChange={(event) => setConfirmPassword(event.target.value)}
                 placeholder="Retype new password"
                 required
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-slate-500 focus:bg-white"
+                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-sky-400 focus:bg-white"
               />
             </div>
 
@@ -1104,14 +1104,14 @@ export default function SettingsPage() {
               <button
                 type="button"
                 onClick={closePasswordDialog}
-                className="rounded-2xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                className="rounded-lg border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isChangingPassword}
-                className="rounded-2xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
+                className="rounded-lg bg-[#348CD4] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#2F7FC0] disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {isChangingPassword ? "Updating..." : "Update password"}
               </button>

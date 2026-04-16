@@ -68,7 +68,7 @@ export default function LoginPage() {
       <div className="pointer-events-none absolute right-20 top-1/3 h-10 w-10 rounded-full border border-fuchsia-200/70 bg-fuchsia-100/60" />
 
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-xl items-center justify-center">
-        <section className="w-full max-w-md rounded-md border border-slate-200 bg-white px-6 py-7 shadow-[0_20px_50px_rgba(15,23,42,0.08)]">
+        <section className="w-full max-w-md rounded-lg border border-slate-200 bg-white px-6 py-7 shadow-[0_20px_50px_rgba(15,23,42,0.08)]">
           <div className="mx-auto mb-1 flex w-full max-w-fit items-center justify-center">
             <div className="flex h-auto w-32 items-center justify-center overflow-hidden ">
               {sidebarLogoUrl ? (
@@ -101,7 +101,7 @@ export default function LoginPage() {
                 placeholder={translate(language, "emailPlaceholder")}
                 autoComplete="email"
                 required
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-lg text-slate-800 outline-none transition focus:border-blue-500"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-lg text-slate-800 outline-none transition focus:border-blue-500"
               />
             </div>
 
@@ -116,7 +116,7 @@ export default function LoginPage() {
                 placeholder={translate(language, "passwordPlaceholder")}
                 autoComplete="current-password"
                 required
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-lg text-slate-800 outline-none transition focus:border-blue-500"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-lg text-slate-800 outline-none transition focus:border-blue-500"
               />
             </div>
 
@@ -141,7 +141,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-xl bg-blue-600 px-4 py-2.5 text-base font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
+              className="w-full rounded-lg bg-[#348CD4] px-4 py-2.5 text-base font-semibold text-white transition hover:bg-[#2F7FC0] disabled:cursor-not-allowed disabled:opacity-70"
             >
               {loading ? translate(language, "signingIn") : translate(language, "signIn")}
             </button>

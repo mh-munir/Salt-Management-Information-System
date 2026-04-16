@@ -43,7 +43,7 @@ export default function ThemeToggle({ className = "" }: ThemeToggleProps) {
     <button
       type="button"
       onClick={toggleTheme}
-      className={`theme-toggle-button light-navbar-button inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-base font-medium text-slate-700 transition hover:bg-slate-50 ${className}`.trim()}
+      className={`theme-toggle-button light-navbar-button inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-base font-medium text-slate-700 transition hover:bg-slate-50 ${className}`.trim()}
       aria-label="Toggle theme"
     >
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">

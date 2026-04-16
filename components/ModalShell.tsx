@@ -56,7 +56,7 @@ export default function ModalShell({
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center overflow-x-hidden overflow-y-auto bg-slate-950/55 px-4 py-4 backdrop-blur-sm sm:items-center sm:py-6">
       <div
-        className={`relative max-h-[calc(100vh-2rem)] w-full overflow-x-hidden overflow-y-auto rounded-md border border-white/70 bg-white shadow-[0_32px_80px_rgba(15,23,42,0.28)] sm:max-h-[calc(100vh-3rem)] ${widthClassName}`}
+        className={`relative max-h-[calc(100vh-2rem)] w-full overflow-x-hidden overflow-y-auto rounded-lg border border-white/70 bg-white shadow-[0_32px_80px_rgba(15,23,42,0.28)] sm:max-h-[calc(100vh-3rem)] ${widthClassName}`}
       >
         <div className={`absolute inset-x-0 top-0 h-1.5 bg-linear-to-r ${styles.line}`} />
         <div className={`pointer-events-none absolute -right-12 top-8 h-28 w-28 rounded-full blur-3xl ${styles.glow}`} />
@@ -65,7 +65,7 @@ export default function ModalShell({
         <div className="relative min-w-0 overflow-x-hidden px-6 pb-6 pt-5 sm:px-7 sm:pb-7">
           <div className="flex items-start justify-between gap-3 sm:gap-4">
             <div className="flex items-start gap-4">
-              <div className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl ${styles.badge}`}>
+              <div className={`grid h-11 w-11 shrink-0 place-items-center rounded-lg ${styles.badge}`}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
                   <path d="M12 3l7 4v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V7l7-4Z" />
                   <path d="M9.5 12.5l1.7 1.7 3.6-4.2" />
@@ -82,7 +82,7 @@ export default function ModalShell({
               <button
                 type="button"
                 onClick={onClose}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
                 aria-label="Close dialog"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">

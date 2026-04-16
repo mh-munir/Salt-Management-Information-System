@@ -3,9 +3,10 @@
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import CompactDateInput from "@/components/CompactDateInput";
+import ActionDropdown from "@/components/ActionDropdown";
 import LoadMoreTable from "@/components/LoadMoreTable";
 import ModalShell from "@/components/ModalShell";
+import CompactDateInput from "@/components/CompactDateInput";
 import { getBalanceSummary } from "@/lib/balance";
 import { translate } from "@/lib/language";
 import { compareByLatestInput } from "@/lib/record-order";
@@ -37,6 +38,12 @@ const sortSuppliersByLatestInput = (items: Supplier[]) =>
       { id: right._id, date: right.lastActivityAt }
     )
   );
+
+const getLocalDateInputValue = () => {
+  const now = new Date();
+  const offsetMs = now.getTimezoneOffset() * 60_000;
+  return new Date(now.getTime() - offsetMs).toISOString().split("T")[0];
+};
 
 export default function SuppliersPage() {
   const { language } = useLanguage();
@@ -92,7 +99,7 @@ export default function SuppliersPage() {
           setShowPaymentPopup(false);
           setPaymentSupplierId(null);
           setPaymentAmount("");
-          setPaymentDate(new Date().toISOString().split("T")[0]);
+          setPaymentDate(getLocalDateInputValue());
           setPaymentError("");
           if (requestedPaymentSupplierId) {
             router.replace(profileReturnPath ?? pathname, { scroll: false });
@@ -148,7 +155,7 @@ export default function SuppliersPage() {
       const [showPaymentPopup, setShowPaymentPopup] = useState(false);
       const [paymentSupplierId, setPaymentSupplierId] = useState<string | null>(null);
       const [paymentAmount, setPaymentAmount] = useState("");
-      const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split("T")[0]);
+      const [paymentDate, setPaymentDate] = useState(getLocalDateInputValue());
       const [paymentError, setPaymentError] = useState("");
       const requestedPaymentSupplierId = searchParams.get("paymentId");
       const returnTo = searchParams.get("returnTo");
@@ -412,6 +419,39 @@ export default function SuppliersPage() {
     }
   };
 
+  const supplierRows = suppliers.map((supplier, index) => (
+    <tr key={supplier._id} className={`border-b border-slate-100 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}>
+      <td className="print-table-hidden px-4 py-4 text-slate-800">{formatDisplayName(supplier.name, "Unnamed supplier")}</td>
+      <td className="print-table-hidden px-4 py-4 text-slate-600">{supplier.phone || "-"}</td>
+      <td className="print-table-hidden px-4 py-4 text-slate-600">{formatAmount(supplier.saltAmount ?? 0)}</td>
+      <td className="px-4 py-4 text-slate-600">Tk {formatAmount(supplier.totalPurchaseAmount ?? (supplier.totalPaid ?? 0) + (supplier.totalDue ?? 0))}</td>
+      <td className="px-4 py-4 text-slate-600">Tk {formatAmount(supplier.totalPaid ?? 0)}</td>
+      <td className={`px-4 py-4 ${getBalanceClassName(supplier.totalDue ?? 0)}`}>{formatBalanceText(supplier.totalDue ?? 0)}</td>
+      <td className="print-table-hidden px-4 py-4 text-slate-600">
+        {supplier.latestPurchaseId ? `Tk ${formatAmount(supplier.latestPricePerMaund ?? 0, 2)}` : "-"}
+      </td>
+      <td className="print-table-hidden px-4 py-4">
+        <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+          {getEditedByText(supplier)}
+        </span>
+      </td>
+      <td className="print-table-hidden px-4 py-4">
+        <ActionDropdown
+          viewHref={`/suppliers/${supplier._id}`}
+          onEdit={() => openEditPopup(supplier)}
+          onPrint={() => {
+            const invoiceWindow = window.open(`/invoices/suppliers/${supplier._id}`, "_blank");
+            invoiceWindow?.addEventListener("load", () => {
+              invoiceWindow.print();
+            });
+          }}
+          canEdit={!!supplier.latestPurchaseId}
+          language={language}
+        />
+      </td>
+    </tr>
+  ));
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -423,14 +463,14 @@ export default function SuppliersPage() {
           <button
             type="button"
             onClick={() => setShowForm((prev) => !prev)}
-            className="inline-flex w-full items-center justify-center rounded-full bg-[#0077cc] px-5 py-3 text-base font-semibold text-white shadow hover:bg-[#005ea3] sm:w-auto"
+            className="inline-flex w-full items-center justify-center rounded-lg bg-[#0077cc] px-5 py-3 text-base font-semibold text-white shadow hover:bg-[#005ea3] sm:w-auto"
           >
             {showForm ? translate(language, "cancel") : translate(language, "addSupplier")}
           </button>
           {firstSupplierId ? (
             <Link
               href={`/suppliers/${firstSupplierId}`}
-              className="inline-flex w-full items-center justify-center rounded-full bg-[#003366] px-5 py-3 text-sm font-semibold text-white shadow hover:bg-[#022749] sm:w-auto"
+              className="inline-flex w-full items-center justify-center rounded-lg bg-[#0077cc] px-5 py-3 text-base font-semibold text-white shadow hover:bg-[#005ea3] sm:w-auto"
             >
               {translate(language, "viewLatestSupplier")}
             </Link>
@@ -439,7 +479,7 @@ export default function SuppliersPage() {
       </div>
 
       {showForm && (
-        <div className="print-hidden rounded-md bg-white p-5 shadow-sm sm:p-6">
+        <div className="print-hidden rounded-lg bg-white p-5 shadow-sm sm:p-6">
           <h2 className="text-lg font-semibold text-slate-900">{translate(language, "newSupplier")}</h2>
           <form className="mt-5 space-y-4" onSubmit={handleAddSupplier}>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -481,7 +521,7 @@ export default function SuppliersPage() {
             {error && <p className="text-sm text-red-600">{error}</p>}
             <button
               type="submit"
-              className="inline-flex w-full items-center justify-center rounded-full bg-[#003366] px-6 py-3 text-sm font-semibold text-white shadow hover:bg-[#022749] disabled:opacity-50 sm:w-auto"
+              className="inline-flex w-full items-center justify-center rounded-lg bg-[#003366] px-6 py-3 text-sm font-semibold text-white shadow hover:bg-[#022749] disabled:opacity-50 sm:w-auto"
               disabled={isSubmitting}
             >
               {isSubmitting ? translate(language, "addingEllipsis") : translate(language, "addSupplier")}
@@ -490,7 +530,7 @@ export default function SuppliersPage() {
         </div>
       )}
 
-      <div className="print-hidden rounded-md bg-white p-5 shadow-sm sm:p-6">
+      <div className="print-hidden rounded-lg bg-white p-5 shadow-sm sm:p-6">
         <h2 className="text-lg font-semibold text-slate-900">{translate(language, "newPurchaseEntry")}</h2>
         <p className="mt-2 text-xs text-slate-500">{translate(language, "recordSupplierPurchase")}</p>
         <p className="mt-2 text-xs text-slate-500">Date: {new Date(currentPurchaseDate).toLocaleDateString("en-GB")}</p>
@@ -599,7 +639,7 @@ export default function SuppliersPage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <button
               type="submit"
-              className="inline-flex w-full items-center justify-center rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 sm:w-auto"
+              className="inline-flex w-full items-center justify-center rounded-lg bg-[#348CD4] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#2F7FC0] sm:w-auto"
             >
               Save purchase entry
             </button>
@@ -622,13 +662,13 @@ export default function SuppliersPage() {
               <button
                 type="button"
                 onClick={() => setBuyPopupMessage("")}
-                className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
+                className="inline-flex items-center justify-center rounded-lg bg-[#348CD4] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#2F7FC0]"
               >
                 {translate(language, "close")}
               </button>
             }
           >
-            <div className="rounded-3xl border border-amber-100 bg-amber-50/70 px-4 py-4 text-sm leading-6 text-slate-700">
+            <div className="rounded-lg border border-amber-100 bg-amber-50 px-4 py-3 text-sm leading-6 text-slate-700">
               {buyPopupMessage}
             </div>
           </ModalShell>
@@ -640,12 +680,12 @@ export default function SuppliersPage() {
         <button
             type="button"
             onClick={() => window.print()}
-            className="inline-flex w-full items-center justify-center rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow hover:bg-slate-800 sm:w-auto"
+            className="inline-flex w-full items-center justify-center rounded-lg bg-[#348CD4] px-5 py-3 text-sm font-semibold text-white shadow hover:bg-[#2F7FC0] sm:w-auto"
           >
             {translate(language, "printSupplierList")}
           </button>
         <button
-          className="w-full rounded-lg bg-blue-600 px-6 py-2 text-base font-semibold text-white shadow hover:bg-blue-700 sm:w-auto"
+          className="w-full rounded-lg bg-[#348CD4] px-6 py-2 text-base font-semibold text-white shadow hover:bg-[#2F7FC0] sm:w-auto"
           onClick={() => setShowPaymentPopup(true)}
         >
           {translate(language, "paymentNow")}
@@ -667,7 +707,7 @@ export default function SuppliersPage() {
                 <span className="text-sm font-medium text-slate-700">{translate(language, "selectSupplier")}</span>
                 <input
                   name="paymentSupplier"
-                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:bg-white"
+                  className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:bg-white"
                   list="paymentSupplierList"
                   value={
                     paymentSupplierId
@@ -699,9 +739,9 @@ export default function SuppliersPage() {
                 label={translate(language, "paymentDate")}
                 value={paymentDate}
                 onChange={setPaymentDate}
-                max={new Date().toISOString().split("T")[0]}
+                max={getLocalDateInputValue()}
                 required
-                inputClassName="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:bg-white"
+                inputClassName="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:bg-white"
               />
             </div>
 
@@ -710,7 +750,7 @@ export default function SuppliersPage() {
               <input
                 name="supplierPaymentAmount"
                 type="number"
-                className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:bg-white"
+                className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:bg-white"
                 value={paymentAmount}
                 onChange={(e) => setPaymentAmount(e.target.value)}
                 min="1"
@@ -719,7 +759,7 @@ export default function SuppliersPage() {
             </label>
 
             {paymentSupplierId ? (
-              <div className="rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-slate-700">
+              <div className="rounded-lg border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-slate-700">
                 {translate(language, "balanceLabel")}:{" "}
                 <span className={getBalanceClassName(suppliers.find((s) => s._id === paymentSupplierId)?.totalDue ?? 0)}>
                   {formatBalanceText(suppliers.find((s) => s._id === paymentSupplierId)?.totalDue ?? 0)}
@@ -728,7 +768,7 @@ export default function SuppliersPage() {
             ) : null}
 
             {paymentError ? (
-              <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
                 {paymentError}
               </div>
             ) : null}
@@ -736,14 +776,14 @@ export default function SuppliersPage() {
             <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
               <button
                 type="button"
-                className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-2.5 text-base font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-5 py-2.5 text-base font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
                 onClick={closePaymentPopup}
               >
                 {translate(language, "cancel")}
               </button>
               <button
                 type="submit"
-                className="inline-flex items-center justify-center rounded-2xl bg-sky-600 px-5 py-2.5 text-base font-semibold text-white transition hover:bg-sky-700"
+                className="inline-flex items-center justify-center rounded-lg bg-[#348CD4] px-5 py-2.5 text-base font-semibold text-white transition hover:bg-[#2F7FC0]"
               >
                 {translate(language, "savePayment")}
               </button>
@@ -761,7 +801,7 @@ export default function SuppliersPage() {
           onClose={closeEditPopup}
         >
           <form onSubmit={handleEditSubmit} className="space-y-4">
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
               <p className="font-semibold text-slate-900">{formatDisplayName(editTarget.name, "Unnamed supplier")}</p>
               <p className="mt-1">Current price: Tk {formatAmount(editTarget.latestPricePerMaund ?? 0, 2)} per Maund</p>
               <p className="mt-1 text-xs text-slate-500">{getEditedByText(editTarget)}</p>
@@ -776,13 +816,13 @@ export default function SuppliersPage() {
                 min="0"
                 value={editPrice}
                 onChange={(e) => setEditPrice(e.target.value)}
-                className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:bg-white"
+                className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:bg-white"
                 required
               />
             </label>
 
             {editError ? (
-              <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
                 {editError}
               </div>
             ) : null}
@@ -790,7 +830,7 @@ export default function SuppliersPage() {
             <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
               <button
                 type="button"
-                className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-2.5 text-base font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-5 py-2.5 text-base font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
                 onClick={closeEditPopup}
               >
                 {translate(language, "cancel")}
@@ -798,7 +838,7 @@ export default function SuppliersPage() {
               <button
                 type="submit"
                 disabled={isSavingEdit}
-                className="inline-flex items-center justify-center rounded-2xl bg-sky-600 px-5 py-2.5 text-base font-semibold text-white transition hover:bg-sky-700 disabled:opacity-60"
+                className="inline-flex items-center justify-center rounded-lg bg-[#348CD4] px-5 py-2.5 text-base font-semibold text-white transition hover:bg-[#2F7FC0] disabled:opacity-60"
               >
                 {isSavingEdit ? "Updating..." : "Update price"}
               </button>
@@ -807,7 +847,7 @@ export default function SuppliersPage() {
         </ModalShell>
       ) : null}
 
-      <div className="print-list-shell overflow-x-auto rounded-md bg-white p-4 shadow-sm">
+      <div className="print-list-shell overflow-x-auto rounded-lg bg-white p-4 shadow-sm">
         <table className="min-w-[60rem] w-full text-left">
           <thead className="border-b border-slate-200 text-slate-500">
             <tr>
@@ -820,76 +860,19 @@ export default function SuppliersPage() {
               <th className="print-table-hidden px-4 py-3">Latest price</th>
               <th className="print-table-hidden px-4 py-3">Edited by</th>
               <th className="print-table-hidden px-4 py-3">{translate(language, "action")}</th>
-              <th className="print-table-hidden px-4 py-3">{translate(language, "printInvoice")}</th>
             </tr>
           </thead>
           <tbody>
             <LoadMoreTable
-              items={suppliers}
-              colSpan={10}
+              rows={supplierRows}
+              colSpan={9}
               loadMoreLabel={language === "bn" ? "আরও দেখুন" : "Show more"}
               emptyState={
                 <tr>
-                  <td colSpan={10} className="px-4 py-8 text-center text-slate-500">
+                  <td colSpan={9} className="px-4 py-8 text-center text-slate-500">
                     {translate(language, "noSupplierTransactions")}
                   </td>
                 </tr>
-              }
-              renderRows={(visibleSuppliers) =>
-                visibleSuppliers.map((supplier, index) => (
-                  <tr key={supplier._id} className={`border-b border-slate-100 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
-                    <td className="print-table-hidden px-4 py-4 text-slate-800">{formatDisplayName(supplier.name, "Unnamed supplier")}</td>
-                    <td className="print-table-hidden px-4 py-4 text-slate-600">{supplier.phone || "-"}</td>
-                    <td className="print-table-hidden px-4 py-4 text-slate-600">{formatAmount(supplier.saltAmount ?? 0)}</td>
-                    <td className="px-4 py-4 text-slate-600">Tk {formatAmount(supplier.totalPurchaseAmount ?? (supplier.totalPaid ?? 0) + (supplier.totalDue ?? 0))}</td>
-                    <td className="px-4 py-4 text-slate-600">Tk {formatAmount(supplier.totalPaid ?? 0)}</td>
-                    <td className={`px-4 py-4 ${getBalanceClassName(supplier.totalDue ?? 0)}`}>{formatBalanceText(supplier.totalDue ?? 0)}</td>
-                    <td className="print-table-hidden px-4 py-4 text-slate-600">
-                      {supplier.latestPurchaseId ? `Tk ${formatAmount(supplier.latestPricePerMaund ?? 0, 2)}` : "-"}
-                    </td>
-                    <td className="print-table-hidden px-4 py-4">
-                      <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
-                        {getEditedByText(supplier)}
-                      </span>
-                    </td>
-                    <td className="print-table-hidden px-4 py-4">
-                      <div className="flex flex-col items-start gap-2">
-                        <Link href={`/suppliers/${supplier._id}`} className="text-[#003366] font-medium hover:underline">
-                          {translate(language, "view")}
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={() => openEditPopup(supplier)}
-                          disabled={!supplier.latestPurchaseId}
-                          className="rounded-lg border border-sky-200 px-3 py-1 text-xs font-semibold text-sky-700 transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
-                        >
-                          Edit
-                        </button>
-                      </div>
-                    </td>
-                    <td className="print-table-hidden px-4 py-4">
-                      <span
-                        onClick={() => {
-                          const invoiceWindow = window.open(`/invoices/suppliers/${supplier._id}`, '_blank');
-                          invoiceWindow?.addEventListener('load', () => {
-                            invoiceWindow.print();
-                          });
-                        }}
-                        style={{
-                          cursor: 'pointer',
-                          color: '#059669',
-                          textDecoration: 'none',
-                          fontSize: '14px',
-                          fontWeight: 500,
-                        }}
-                        onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
-                        onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
-                      >
-                        {translate(language, "print")}
-                      </span>
-                    </td>
-                  </tr>
-                ))
               }
             />
             <tr className="border-t border-slate-200 bg-slate-50 font-semibold text-slate-800">
@@ -903,7 +886,7 @@ export default function SuppliersPage() {
                   <td className="print-table-hidden px-4 py-4"></td>
                   <td className="print-table-hidden px-4 py-4"></td>
                   <td className="print-table-hidden px-4 py-4"></td>
-                </tr>
+              </tr>
           </tbody>
         </table>
       </div>

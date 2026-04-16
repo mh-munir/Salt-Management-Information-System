@@ -28,13 +28,14 @@ const iconClassName = "h-[18px] w-[18px] text-slate-500";
 
 type NavbarProps = {
   initialLanguage: Language;
+  initialProfile: ProfileInfo;
 };
 
-export default function Navbar({ initialLanguage }: NavbarProps) {
+export default function Navbar({ initialLanguage, initialProfile }: NavbarProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const [avatarUrl, setAvatarUrl] = useState("");
-  const [profile, setProfile] = useState<ProfileInfo | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState(initialProfile.avatarUrl);
+  const [profile, setProfile] = useState<ProfileInfo>(initialProfile);
   const [menuOpen, setMenuOpen] = useState(false);
   const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
   const { language, setLanguage: setStoredLanguage } = useLanguage(initialLanguage);
@@ -74,13 +75,15 @@ export default function Navbar({ initialLanguage }: NavbarProps) {
       if (!res.ok) return;
 
       const data = await res.json();
-      setAvatarUrl(String(data?.avatarUrl ?? ""));
-      setProfile({
+      const nextProfile: ProfileInfo = {
         name: String(data?.name ?? ""),
         email: String(data?.email ?? ""),
         role: data?.role === "superadmin" ? "superadmin" : "admin",
         avatarUrl: String(data?.avatarUrl ?? ""),
-      });
+      };
+
+      setAvatarUrl(nextProfile.avatarUrl);
+      setProfile(nextProfile);
     } catch {
       // Swallow network errors and keep current avatar state.
     }
@@ -91,11 +94,9 @@ export default function Navbar({ initialLanguage }: NavbarProps) {
       void loadProfile();
     };
 
-    const timeoutId = window.setTimeout(refreshProfile, 0);
     window.addEventListener("profile-updated", refreshProfile);
 
     return () => {
-      window.clearTimeout(timeoutId);
       window.removeEventListener("profile-updated", refreshProfile);
     };
   }, [loadProfile]);
@@ -183,7 +184,7 @@ export default function Navbar({ initialLanguage }: NavbarProps) {
         <button
           type="button"
           onClick={toggleSidebar}
-          className="mobile-menu-button inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 lg:hidden"
+          className="mobile-menu-button inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 lg:hidden"
           aria-label="Open navigation menu"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-5 w-5">
@@ -200,13 +201,13 @@ export default function Navbar({ initialLanguage }: NavbarProps) {
           <button
             type="button"
             onClick={() => setLanguageMenuOpen((open) => !open)}
-            className="theme-toggle-button light-navbar-button inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 sm:px-3 sm:text-base dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100 dark:hover:bg-slate-800"
+            className="theme-toggle-button light-navbar-button inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 sm:px-3 sm:text-base dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100 dark:hover:bg-slate-800"
             aria-label={translate(language, "changeLanguage")}
             aria-expanded={languageMenuOpen}
           >
             <span>{language === "en" ? "EN" : "BD"}</span>
             <svg
-              className={`ml-2 h-4 w-4 text-slate-500 transition-transform dark:text-slate-400 ${languageMenuOpen ? "rotate-180" : "rotate-0"}`}
+              className={`ml-2 h-4 w-4 text-white transition-transform dark:text-slate-400 ${languageMenuOpen ? "rotate-180" : "rotate-0"}`}
               viewBox="0 0 20 20"
               fill="currentColor"
             >
@@ -215,7 +216,7 @@ export default function Navbar({ initialLanguage }: NavbarProps) {
           </button>
 
           {languageMenuOpen ? (
-            <div className="absolute right-0 z-20 mt-2 overflow-hidden w-full rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-600 dark:bg-slate-950">
+            <div className="absolute right-0 z-20 mt-2 overflow-hidden w-full rounded-lg border border-slate-200 bg-white shadow-xl dark:border-slate-600 dark:bg-slate-950">
               <button
                 type="button"
                 onClick={() => handleLanguageChange("en")}
@@ -239,7 +240,7 @@ export default function Navbar({ initialLanguage }: NavbarProps) {
           <button
             type="button"
             onClick={() => setMenuOpen((open) => !open)}
-            className="profile-trigger-button light-navbar-button flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2 py-1.5 transition hover:bg-slate-50"
+            className="profile-trigger-button light-navbar-button flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 transition hover:bg-slate-50"
           >
             <PlainImage
               src={avatarUrl || DEFAULT_AVATAR}
@@ -262,7 +263,7 @@ export default function Navbar({ initialLanguage }: NavbarProps) {
           </button>
 
           {menuOpen ? (
-            <div className="absolute right-0 mt-2 w-52 rounded-xl border border-slate-200 bg-white py-3 shadow-xl sm:w-60">
+            <div className="absolute right-0 mt-2 w-52 rounded-lg border border-slate-200 bg-white py-3 shadow-xl sm:w-60">
               <p className="px-4 text-base font-medium text-slate-700">{translate(language, "welcomeBack")}</p>
 
               <div className="mt-2 space-y-0.5 px-2">
