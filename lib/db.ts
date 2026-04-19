@@ -1,11 +1,12 @@
 import mongoose from "mongoose";
 
 const isProduction = process.env.NODE_ENV === "production";
-const envMongoUri = process.env.MONGODB_URI?.trim();
-const hasConfiguredMongoUri = Boolean(envMongoUri && envMongoUri !== "your_mongo_url");
 const LOCAL_MONGO_URI = "mongodb://127.0.0.1:27017/salt-mill-system";
+const MONGO_URI_ENV_KEYS = ["MONGODB_URI", "MONGO_URI", "MONGO_URL", "DATABASE_URL"] as const;
+const PLACEHOLDER_URI_VALUES = new Set(["your_mongo_url", "mongodb_uri_here"]);
+
 export const MONGO_ERROR_MESSAGE =
-  "Unable to connect to MongoDB. Set a valid MONGODB_URI and allow your deployment to reach MongoDB Atlas.";
+  "Unable to connect to MongoDB. Set a valid MongoDB connection string in environment variables and allow deployment access.";
 
 const MONGO_CONNECTION_ERROR_PATTERN =
   /(unable to connect to mongodb|mongodb|mongo|server selection|ssl|tls|certificate|socket|econnreset|enotfound|etimedout|alert number 80)/i;
@@ -59,14 +60,64 @@ export function isValidMongoObjectId(value: string | undefined | null) {
   return Boolean(value) && mongoose.isValidObjectId(value);
 }
 
+function readEnv(name: string) {
+  return process.env[name]?.trim();
+}
+
+function getMongoUriFromEnv() {
+  for (const key of MONGO_URI_ENV_KEYS) {
+    const value = readEnv(key);
+    if (!value) {
+      continue;
+    }
+
+    if (PLACEHOLDER_URI_VALUES.has(value.toLowerCase())) {
+      continue;
+    }
+
+    return value;
+  }
+
+  return null;
+}
+
+function getMongoUriFromParts() {
+  const username = readEnv("MONGODB_USERNAME");
+  const password = readEnv("MONGODB_PASSWORD");
+  const cluster = readEnv("MONGODB_CLUSTER");
+
+  if (!username || !password || !cluster) {
+    return null;
+  }
+
+  const protocol = readEnv("MONGODB_PROTOCOL") || "mongodb+srv";
+  const databaseName = readEnv("MONGODB_DB_NAME") || "salt-mill-system";
+  const options = readEnv("MONGODB_OPTIONS") || "retryWrites=true&w=majority";
+
+  const encodedUsername = encodeURIComponent(username);
+  const encodedPassword = encodeURIComponent(password);
+
+  return `${protocol}://${encodedUsername}:${encodedPassword}@${cluster}/${databaseName}?${options}`;
+}
+
 function getMongoUri(): string {
-  if (isProduction && !hasConfiguredMongoUri) {
+  const mongoUriFromEnv = getMongoUriFromEnv();
+  if (mongoUriFromEnv) {
+    return mongoUriFromEnv;
+  }
+
+  const mongoUriFromParts = getMongoUriFromParts();
+  if (mongoUriFromParts) {
+    return mongoUriFromParts;
+  }
+
+  if (isProduction) {
     throw new Error(
-      "MONGODB_URI is missing in production. Add it in your Vercel project's Settings -> Environment Variables.",
+      "MongoDB URI is missing in production. Set MONGODB_URI (or MONGO_URI, MONGO_URL, DATABASE_URL) in Netlify Environment Variables.",
     );
   }
 
-  return envMongoUri ?? LOCAL_MONGO_URI;
+  return LOCAL_MONGO_URI;
 }
 
 function logMongoConnectionFailure(error: unknown) {

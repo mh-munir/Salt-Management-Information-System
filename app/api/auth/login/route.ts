@@ -16,6 +16,7 @@ export const revalidate = 0;
 
 const isProduction = process.env.NODE_ENV === "production";
 const SUPERUSER_EMAIL = process.env.SUPERUSER_EMAIL?.trim().toLowerCase() ?? "";
+const SUPERUSER_USERNAME = process.env.SUPERUSER_USERNAME?.trim().toLowerCase() ?? "";
 const SUPERUSER_PASSWORD = process.env.SUPERUSER_PASSWORD?.trim() ?? "";
 const isSuperuserBootstrapConfigured = Boolean(SUPERUSER_EMAIL && SUPERUSER_PASSWORD);
 const LOGIN_WINDOW_MS = 10 * 60 * 1000;
@@ -65,12 +66,12 @@ export async function POST(req: Request) {
   const rateLimitResponse = checkRateLimit(req);
   if (rateLimitResponse) return rateLimitResponse;
 
-  const { email, password } = await req.json();
-  const normalizedEmail = String(email ?? "").trim().toLowerCase();
+  const { email, username, identifier, password } = await req.json();
+  const normalizedIdentifier = String(identifier ?? username ?? email ?? "").trim().toLowerCase();
   const rawPassword = String(password ?? "").trim();
 
-  if (!normalizedEmail || !rawPassword) {
-    return Response.json({ message: "Email and password are required." }, { status: 400 });
+  if (!normalizedIdentifier || !rawPassword) {
+    return Response.json({ message: "Username/email and password are required." }, { status: 400 });
   }
 
   const normalizeSuccessResponse = (token: string, user: { email: string; role: string; avatarUrl: string }) => {
@@ -103,14 +104,15 @@ export async function POST(req: Request) {
 
   if (
     isSuperuserBootstrapConfigured &&
-    normalizedEmail === SUPERUSER_EMAIL &&
+    (normalizedIdentifier === SUPERUSER_EMAIL ||
+      (SUPERUSER_USERNAME && normalizedIdentifier === SUPERUSER_USERNAME)) &&
     rawPassword === SUPERUSER_PASSWORD
   ) {
     try {
       await connectDB();
 
       const superAdminUser = await ensureEnvSuperadminUser({
-        email: normalizedEmail,
+        email: SUPERUSER_EMAIL,
         role: "superadmin",
       });
 
@@ -120,7 +122,7 @@ export async function POST(req: Request) {
 
       const token = signAuthToken({
         userId: String(superAdminUser._id),
-        email: normalizedEmail,
+        email: SUPERUSER_EMAIL,
         role: "superadmin",
       });
 
@@ -137,12 +139,12 @@ export async function POST(req: Request) {
       console.warn("MongoDB unavailable during superuser bootstrap login. Using token-only superadmin session.");
 
       const token = signAuthToken({
-        email: normalizedEmail,
+        email: SUPERUSER_EMAIL,
         role: "superadmin",
       });
 
       return normalizeSuccessResponse(token, {
-        email: normalizedEmail,
+        email: SUPERUSER_EMAIL,
         role: "superadmin",
         avatarUrl: "",
       });
@@ -151,7 +153,7 @@ export async function POST(req: Request) {
 
   await connectDB();
 
-  const user = await User.findOne({ email: normalizedEmail });
+  const user = await User.findOne({ email: normalizedIdentifier });
   if (!user) {
     return Response.json({ message: "Invalid email or password." }, { status: 401 });
   }

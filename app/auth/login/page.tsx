@@ -82,11 +82,11 @@ export default function LoginPage() {
               <input
                 id="login-email"
                 name="email"
-                type="email"
+                type="text"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder={translate(language, "emailPlaceholder")}
-                autoComplete="email"
+                autoComplete="username"
                 required
                 className="w-full rounded-md border border-slate-200 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-blue-500"
               />
