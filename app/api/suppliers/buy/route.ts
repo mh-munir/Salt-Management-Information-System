@@ -53,10 +53,12 @@ export async function POST(req: Request) {
 
   let supplier = null;
   if (supplierId) {
-    supplier = await Supplier.findById(supplierId);
+    supplier = await Supplier.findById(supplierId).select("_id name phone address").lean();
   } else {
     const safeName = supplierName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    supplier = await Supplier.findOne({ name: { $regex: `^${safeName}$`, $options: "i" } });
+    supplier = await Supplier.findOne({ name: { $regex: `^${safeName}$`, $options: "i" } })
+      .select("_id name phone address")
+      .lean();
   }
 
   if (!supplier) {
@@ -66,30 +68,48 @@ export async function POST(req: Request) {
     });
   }
 
-  supplier.saltAmount = (supplier.saltAmount ?? 0) + saltAmount;
-  supplier.totalDue = (supplier.totalDue ?? 0) + (totalPrice - paid);
-  supplier.totalPaid = (supplier.totalPaid ?? 0) + paid;
-  await supplier.save();
+  const dueIncrement = totalPrice - paid;
+  const updatedSupplier = await Supplier.findByIdAndUpdate(
+    supplier._id,
+    {
+      $inc: {
+        saltAmount,
+        totalDue: dueIncrement,
+        totalPaid: paid,
+      },
+    },
+    {
+      returnDocument: "after",
+      projection: "_id name phone address totalDue saltAmount totalPaid",
+    }
+  ).lean();
+
+  if (!updatedSupplier) {
+    return new Response(JSON.stringify({ message: "Supplier not found." }), {
+      status: 404,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 
   await Transaction.create({
-    supplierId: supplier._id,
+    supplierId: updatedSupplier._id,
     amount: paid,
     totalAmount: totalPrice,
     saltAmount: saltAmount,
     date: data.date ? new Date(data.date) : new Date(),
-    type: "supplier-buy",
+    type: "buy",
   });
 
   return new Response(JSON.stringify({
     message: "Purchase recorded.",
     supplier: {
-      _id: supplier._id,
-      name: supplier.name,
-      phone: supplier.phone,
-      address: supplier.address,
-      totalDue: supplier.totalDue ?? 0,
-      saltAmount: supplier.saltAmount ?? 0,
-      totalPaid: supplier.totalPaid ?? 0,
+      _id: updatedSupplier._id,
+      name: updatedSupplier.name,
+      phone: updatedSupplier.phone,
+      address: updatedSupplier.address,
+      totalDue: updatedSupplier.totalDue ?? 0,
+      saltAmount: updatedSupplier.saltAmount ?? 0,
+      totalPaid: updatedSupplier.totalPaid ?? 0,
     },
   }), {
     headers: { "Content-Type": "application/json" },

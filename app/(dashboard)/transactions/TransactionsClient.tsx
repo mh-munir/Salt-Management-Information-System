@@ -14,15 +14,22 @@ type TransactionsClientProps = {
 export default function TransactionsClient({ initialData }: TransactionsClientProps) {
   const { language } = useLanguage();
   const data = initialData;
+  const getSupplierTypeLabel = (type?: string) => (type ?? "").replace(/^supplier-/, "");
+  const toSafeAmount = (value?: number) => {
+    const parsed = Number(value ?? 0);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
 
   const supplierTransactions = data.filter((t) => t.supplierId);
   const customerTransactions = data.filter((t) => t.customerId);
+  const supplierTotalAmount = supplierTransactions.reduce((sum, transaction) => sum + toSafeAmount(transaction.amount), 0);
+  const customerTotalAmount = customerTransactions.reduce((sum, transaction) => sum + toSafeAmount(transaction.amount), 0);
 
   const supplierTransactionRows = supplierTransactions.map((t, index) => (
     <tr key={t._id} className={`border-b border-slate-100 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}>
       <td className="px-4 py-4 text-base text-slate-800">{formatLocalizedDate(t.date, language)}</td>
       <td className="px-4 py-4 text-base text-slate-800">{t.supplierName || "-"}</td>
-      <td className="px-4 py-4 text-base text-slate-600">{t.type}</td>
+      <td className="px-4 py-4 text-base text-slate-600">{getSupplierTypeLabel(t.type)}</td>
       <td className="px-4 py-4 text-base text-slate-600">
         Tk {formatLocalizedNumber(Number(t.amount ?? 0), language, { maximumFractionDigits: 0 })}
       </td>
@@ -60,7 +67,7 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg bg-white p-6 shadow-sm">
+      <div className="p-4">
         <h1 className="text-2xl font-semibold text-slate-900 sm:text-3xl">{translate(language, "transactions")}</h1>
         <p className="mt-2 text-slate-500">{translate(language, "transactionsPageDescription")}</p>
       </div>
@@ -92,6 +99,17 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
                 }
               />
             </tbody>
+            <tfoot>
+              <tr className="border-t-2 border-slate-200 bg-slate-50 font-semibold text-slate-800">
+                <td colSpan={3} className="px-4 py-3">
+                  {translate(language, "totals")}
+                </td>
+                <td className="px-4 py-3">
+                  Tk {formatLocalizedNumber(supplierTotalAmount, language, { maximumFractionDigits: 0 })}
+                </td>
+                <td className="px-4 py-3">-</td>
+              </tr>
+            </tfoot>
           </table>
         </div>
 
@@ -121,6 +139,17 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
                 }
               />
             </tbody>
+            <tfoot>
+              <tr className="border-t-2 border-slate-200 bg-slate-50 font-semibold text-slate-800">
+                <td colSpan={3} className="px-4 py-3">
+                  {translate(language, "totals")}
+                </td>
+                <td className="px-4 py-3">
+                  Tk {formatLocalizedNumber(customerTotalAmount, language, { maximumFractionDigits: 0 })}
+                </td>
+                <td className="px-4 py-3">-</td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       </div>

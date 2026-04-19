@@ -434,17 +434,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <Card
-            title={translate(language, "dailySales")}
-            value={`Tk ${formatFullCurrency(todaySales)}`}
-            trendPercent={`${formatWeight(todaySalesSaltKg)} ${translate(language, "kgUnit")}`}
-            trendDetail={translate(language, "dailySalesDetail")}
-            trendDirection="neutral"
-            visual="ring"
-            ringPercent={dailySalesRingPercent}
-            icon="sales"
-            tone="sky"
-          />
+          
           <Card
             title={translate(language, "dailyPurchase")}
             value={`Tk ${formatFullCurrency(todayBuy)}`}
@@ -455,6 +445,17 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
             ringPercent={dailyPurchaseRingPercent}
             icon="suppliers"
             tone="violet"
+          />
+          <Card
+            title={translate(language, "dailySales")}
+            value={`Tk ${formatFullCurrency(todaySales)}`}
+            trendPercent={`${formatWeight(todaySalesSaltKg)} ${translate(language, "kgUnit")}`}
+            trendDetail={translate(language, "dailySalesDetail")}
+            trendDirection="neutral"
+            visual="ring"
+            ringPercent={dailySalesRingPercent}
+            icon="sales"
+            tone="sky"
           />
           <Card
             title={translate(language, "dailyTransaction")}
@@ -496,7 +497,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
             visual="ring"
             ringPercent={stockOfPurchasePercent}
             icon="activity"
-            tone="amber"
+            tone="emerald"
             accentValue
           />
           <Card

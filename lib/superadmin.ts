@@ -6,6 +6,23 @@ import User from "@/models/User";
 const SUPERUSER_EMAIL = process.env.SUPERUSER_EMAIL?.trim().toLowerCase() ?? "";
 const SUPERUSER_PASSWORD = process.env.SUPERUSER_PASSWORD?.trim() ?? "";
 const SUPERADMIN_DISPLAY_NAME = "Super Admin";
+const SUPERADMIN_ENFORCEMENT_INTERVAL_MS = 60_000;
+
+type SuperadminCheckCache = {
+  lastRunAt: number;
+  hadRecentDemotion: boolean;
+};
+
+const globalForSuperadmin = globalThis as typeof globalThis & {
+  superadminCheckCache?: SuperadminCheckCache;
+};
+
+const superadminCheckCache = globalForSuperadmin.superadminCheckCache ?? {
+  lastRunAt: 0,
+  hadRecentDemotion: false,
+};
+
+globalForSuperadmin.superadminCheckCache = superadminCheckCache;
 
 export function isEnvSuperadminAuth(auth: Pick<AuthTokenPayload, "email" | "role">) {
   return (
@@ -47,10 +64,20 @@ export async function ensureEnvSuperadminUser(auth: Pick<AuthTokenPayload, "emai
     }
   }
 
-  await User.updateMany(
-    { role: "superadmin", _id: { $ne: superadmin._id } },
-    { $set: { role: "admin" } }
-  );
+  const now = Date.now();
+  const shouldEnforceRoles =
+    now - superadminCheckCache.lastRunAt >= SUPERADMIN_ENFORCEMENT_INTERVAL_MS ||
+    superadminCheckCache.hadRecentDemotion;
+
+  if (shouldEnforceRoles) {
+    const demotionResult = await User.updateMany(
+      { role: "superadmin", _id: { $ne: superadmin._id } },
+      { $set: { role: "admin" } }
+    );
+
+    superadminCheckCache.lastRunAt = now;
+    superadminCheckCache.hadRecentDemotion = (demotionResult.modifiedCount ?? 0) > 0;
+  }
 
   return superadmin;
 }

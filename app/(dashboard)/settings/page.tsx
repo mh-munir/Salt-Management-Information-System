@@ -76,7 +76,10 @@ export default function SettingsPage() {
   const isSuperAdmin = profile?.role === "superadmin";
 
   useEffect(() => {
+    let isMounted = true;
+
     const applyStoredBranding = () => {
+      if (!isMounted) return;
       const storedBranding = loadStoredSidebarBranding();
       setSidebarLogoUrl(storedBranding.sidebarLogoUrl);
       setSidebarHeading(storedBranding.sidebarHeading);
@@ -84,43 +87,82 @@ export default function SettingsPage() {
     };
 
     const loadData = async () => {
+      if (!isMounted) return;
       setError("");
       setMessage("");
 
-      const [profileRes, adminsRes] = await Promise.all([
-        fetch("/api/settings/profile", { cache: "no-store" }),
-        fetch("/api/admin-users", { cache: "no-store" }),
-      ]);
+      try {
+        const profileRes = await fetch("/api/settings/profile", { cache: "no-store" });
 
-      if (profileRes.status === 401) {
-        router.push("/login");
-        return;
-      }
+        if (profileRes.status === 401) {
+          router.push("/login");
+          return;
+        }
 
-      if (!profileRes.ok) {
-        setError("Could not load profile settings.");
-        return;
-      }
+        if (!profileRes.ok) {
+          if (isMounted) {
+            setError("Could not load profile settings.");
+          }
+          return;
+        }
 
-      const profileData: ProfileResponse = await profileRes.json();
-      const branding = normalizeSidebarBranding(profileData);
-      setProfile(profileData);
-      setAvatarUrl(profileData.avatarUrl ?? "");
-      setSidebarLogoUrl(branding.sidebarLogoUrl);
-      setSidebarHeading(branding.sidebarHeading);
-      setSidebarSubheading(branding.sidebarSubheading);
-      saveStoredSidebarBranding(branding);
+        const profileData: ProfileResponse = await profileRes.json();
+        if (!isMounted) return;
 
-      if (adminsRes.ok) {
-        const adminData: AdminUser[] = await adminsRes.json();
-        setAdmins(adminData);
+        const branding = normalizeSidebarBranding(profileData);
+        setProfile(profileData);
+        setAvatarUrl(profileData.avatarUrl ?? "");
+        setSidebarLogoUrl(branding.sidebarLogoUrl);
+        setSidebarHeading(branding.sidebarHeading);
+        setSidebarSubheading(branding.sidebarSubheading);
+        saveStoredSidebarBranding(branding);
+
+        // Load admins separately so profile UI does not wait on admin list query latency.
+        void (async () => {
+          try {
+            const adminsRes = await fetch("/api/admin-users", { cache: "no-store" });
+            if (!isMounted) return;
+
+            if (adminsRes.status === 401) {
+              router.push("/login");
+              return;
+            }
+
+            if (adminsRes.ok) {
+              const adminData = await adminsRes.json().catch(() => null);
+              if (Array.isArray(adminData) && isMounted) {
+                setAdmins(adminData as AdminUser[]);
+              }
+              return;
+            }
+
+            const adminErrorPayload = await adminsRes.json().catch(() => null);
+            const adminErrorMessage =
+              typeof adminErrorPayload?.message === "string" && adminErrorPayload.message.trim()
+                ? adminErrorPayload.message.trim()
+                : "Admin list is temporarily unavailable.";
+
+            if (isMounted) {
+              setError((prev) => prev || adminErrorMessage);
+            }
+          } catch {
+            if (isMounted) {
+              setError((prev) => prev || "Admin list is temporarily unavailable.");
+            }
+          }
+        })();
+      } catch {
+        if (isMounted) {
+          setError("Could not load settings data. Please refresh and try again.");
+        }
       }
     };
 
     const timeoutId = window.setTimeout(applyStoredBranding, 0);
-    loadData();
+    void loadData();
 
     return () => {
+      isMounted = false;
       window.clearTimeout(timeoutId);
     };
   }, [router]);

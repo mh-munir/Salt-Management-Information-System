@@ -9,4 +9,7 @@ const CustomerSchema = new mongoose.Schema({
   totalPaid: { type: Number, default: 0 },
 });
 
+CustomerSchema.index({ name: 1 });
+CustomerSchema.index({ phone: 1 });
+
 export default mongoose.models.Customer || mongoose.model("Customer", CustomerSchema);

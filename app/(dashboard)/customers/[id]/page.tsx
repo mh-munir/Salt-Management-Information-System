@@ -26,6 +26,8 @@ type UnifiedRecord = {
   totalAmount: number;
   paidAmount: number;
   quantityKg: number;
+  hockExtendedSack: number;
+  trackExpenses: number;
 };
 
 const createProfileAvatar = (name: string, variant: "supplier" | "customer") => {
@@ -91,6 +93,8 @@ export default async function CustomerDetailPage({ params }: CustomerPageProps) 
     totalAmount: Number(sale.total ?? 0),
     paidAmount: Number(sale.paid ?? 0),
     quantityKg: resolveSaleQuantity(sale),
+    hockExtendedSack: Number(sale.hockExtendedSack ?? 0),
+    trackExpenses: Number(sale.trackExpenses ?? 0),
   }));
 
   const paymentRecords: UnifiedRecord[] = payments.map((transaction) => ({
@@ -100,6 +104,8 @@ export default async function CustomerDetailPage({ params }: CustomerPageProps) 
     totalAmount: 0,
     paidAmount: Number(transaction.amount ?? 0),
     quantityKg: 0,
+    hockExtendedSack: 0,
+    trackExpenses: 0,
   }));
 
   const records = [...saleRecords, ...paymentRecords].sort((left, right) =>
@@ -119,6 +125,8 @@ export default async function CustomerDetailPage({ params }: CustomerPageProps) 
   const totalSaltDelivered = summary.totalSaltKg;
   const totalDue = summary.totalDueAmount;
   const balance = getBalanceSummary(totalDue);
+  const totalHockExtendedSack = sales.reduce((sum, sale) => sum + Number(sale.hockExtendedSack ?? 0), 0);
+  const totalTrackExpenses = sales.reduce((sum, sale) => sum + Number(sale.trackExpenses ?? 0), 0);
   const profileImage = createProfileAvatar(String(customer.name ?? "Customer"), "customer");
 
   let runningBalance = 0;
@@ -159,6 +167,8 @@ export default async function CustomerDetailPage({ params }: CustomerPageProps) 
           </span>
         </td>
         <td className="px-4 py-4 text-sm text-slate-700">{formatAmount(record.quantityKg)}</td>
+        <td className="px-4 py-4 text-sm text-slate-700">Tk {formatAmount(record.hockExtendedSack)}</td>
+        <td className="px-4 py-4 text-sm text-slate-700">Tk {formatAmount(record.trackExpenses)}</td>
         <td className="px-4 py-4 text-sm text-slate-700">Tk {formatAmount(record.paidAmount)}</td>
         <td className={`px-4 py-4 text-sm ${recordBalanceSummary.isAdvance ? "text-emerald-600" : "text-rose-600"}`}>
           {recordBalanceSummary.isAdvance
@@ -213,13 +223,13 @@ export default async function CustomerDetailPage({ params }: CustomerPageProps) 
               <Link
                 href={`/invoices/customers/${id}`}
                 target="_blank"
-                className="inline-flex w-full items-center justify-center rounded-full bg-[#348CD4] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#2F7FC0] sm:w-auto"
+                className="inline-flex w-full items-center justify-center rounded-lg bg-[#348CD4] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#2F7FC0] sm:w-auto"
               >
                 {translate(language, "printInvoice")}
               </Link>
               <Link
                 href={`/customers?paymentId=${id}&returnTo=${encodeURIComponent(`/customers/${id}`)}`}
-                className="inline-flex w-full items-center justify-center rounded-full bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 sm:w-auto"
+                className="inline-flex w-full items-center justify-center rounded-lg bg-[#348CD4] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#2F7FC0] sm:w-auto"
               >
                 {translate(language, "paymentNow")}
               </Link>
@@ -269,6 +279,8 @@ export default async function CustomerDetailPage({ params }: CustomerPageProps) 
                 <th className="px-4 py-3">{translate(language, "dateLabel")}</th>
                 <th className="px-4 py-3">{translate(language, "typeLabel")}</th>
                 <th className="px-4 py-3">Salt (KG)</th>
+                <th className="px-4 py-3">{translate(language, "hockExtendedSack")}</th>
+                <th className="px-4 py-3">{translate(language, "trackExpenses")}</th>
                 <th className="px-4 py-3">{translate(language, "paidAmount")}</th>
                 <th className="px-4 py-3">{translate(language, "dueOrAdvance")}</th>
                 <th className="px-4 py-3">{translate(language, "note")}</th>
@@ -277,11 +289,11 @@ export default async function CustomerDetailPage({ params }: CustomerPageProps) 
             <tbody>
               <LoadMoreTable
                 rows={recordRows}
-                colSpan={6}
+                colSpan={8}
                 loadMoreLabel={language === "bn" ? "আরও দেখুন" : "Show more"}
                 emptyState={
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">
+                    <td colSpan={8} className="px-4 py-8 text-center text-sm text-slate-500">
                       No records found for this customer.
                     </td>
                   </tr>
@@ -292,6 +304,8 @@ export default async function CustomerDetailPage({ params }: CustomerPageProps) 
                 <td className="px-4 py-4">Totals</td>
                 <td className="px-4 py-4">-</td>
                 <td className="px-4 py-4">{formatAmount(totalSaltDelivered)}</td>
+                <td className="px-4 py-4">Tk {formatAmount(totalHockExtendedSack)}</td>
+                <td className="px-4 py-4">Tk {formatAmount(totalTrackExpenses)}</td>
                 <td className="px-4 py-4">Tk {formatAmount(totalReceived)}</td>
                 <td className={`px-4 py-4 ${balance.isAdvance ? "text-emerald-600" : "text-rose-600"}`}>
                   {balance.isAdvance

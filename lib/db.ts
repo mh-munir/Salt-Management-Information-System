@@ -4,6 +4,14 @@ const isProduction = process.env.NODE_ENV === "production";
 const envMongoUri = process.env.MONGODB_URI?.trim();
 const hasConfiguredMongoUri = Boolean(envMongoUri && envMongoUri !== "your_mongo_url");
 const LOCAL_MONGO_URI = "mongodb://127.0.0.1:27017/salt-mill-system";
+const parsedMaxPoolSize = Number(process.env.MONGODB_MAX_POOL_SIZE ?? 25);
+const parsedMinPoolSize = Number(process.env.MONGODB_MIN_POOL_SIZE ?? 0);
+const MONGODB_MAX_POOL_SIZE = Number.isFinite(parsedMaxPoolSize)
+  ? Math.min(100, Math.max(5, Math.floor(parsedMaxPoolSize)))
+  : 25;
+const MONGODB_MIN_POOL_SIZE = Number.isFinite(parsedMinPoolSize)
+  ? Math.min(MONGODB_MAX_POOL_SIZE, Math.max(0, Math.floor(parsedMinPoolSize)))
+  : 0;
 export const MONGO_ERROR_MESSAGE =
   "Unable to connect to MongoDB. Set a valid MONGODB_URI and allow your deployment to reach MongoDB Atlas.";
 
@@ -108,7 +116,9 @@ export async function connectDB() {
   if (!mongooseCache.promise) {
     mongooseCache.promise = mongoose
       .connect(mongoUri, {
-        maxPoolSize: 10,
+        maxPoolSize: MONGODB_MAX_POOL_SIZE,
+        minPoolSize: MONGODB_MIN_POOL_SIZE,
+        maxIdleTimeMS: 45_000,
         serverSelectionTimeoutMS: 10000,
       })
       .then((instance) => {

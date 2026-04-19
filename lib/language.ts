@@ -115,6 +115,8 @@ export type TranslationKey =
   | "customerNameLabel"
   | "pricePerMaund"
   | "pricePerKg"
+  | "hockExtendedSack"
+  | "trackExpenses"
   | "totalMaund"
   | "totalSaltKg"
   | "totalPriceTk"
@@ -153,6 +155,8 @@ export type TranslationKey =
   | "saltQuantityNonNegative"
   | "pricePerMaundNonNegative"
   | "pricePerKgNonNegative"
+  | "hockExtendedSackNonNegative"
+  | "trackExpensesNonNegative"
   | "totalPriceNonNegative"
   | "dueAmountNonNegative"
   | "unableToSaveSale"
@@ -358,6 +362,8 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     down: "Down",
     pricePerMaund: "Price per Maund (Tk)",
     pricePerKg: "Price per KG (Tk)",
+    hockExtendedSack: "Hock/Extended sack (Tk)",
+    trackExpenses: "Track expenses (Tk)",
     totalMaund: "Total Maund",
     totalSaltKg: "Total Salt KG",
     totalPriceTk: "Total price (Tk)",
@@ -394,6 +400,8 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     saltQuantityNonNegative: "Salt quantity must be a non-negative number.",
     pricePerMaundNonNegative: "Price per Maund must be a non-negative number.",
     pricePerKgNonNegative: "Price per KG must be a non-negative number.",
+    hockExtendedSackNonNegative: "Hock/Extended sack must be a non-negative number.",
+    trackExpensesNonNegative: "Track expenses must be a non-negative number.",
     totalPriceNonNegative: "Total price must be a non-negative number.",
     dueAmountNonNegative: "Due amount must be a non-negative number.",
     unableToSaveSale: "Unable to save sale.",
@@ -558,6 +566,8 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     customerPaymentEntry: "গ্রাহক পেমেন্ট এন্ট্রি",
     pricePerMaund: "মণ প্রতি মূল্য (টাকা)",
     pricePerKg: "কেজি প্রতি মূল্য (টাকা)",
+    hockExtendedSack: "হক/এক্সটেন্ডেড বস্তা (টাকা)",
+    trackExpenses: "ট্র্যাক খরচ (টাকা)",
     totalMaund: "মোট মণ",
     totalSaltKg: "মোট লবণ কেজি",
     totalPriceTk: "মোট মূল্য (টাকা)",
@@ -623,6 +633,8 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     saltQuantityNonNegative: "লবণ পরিমাণ অবশ্যই অ-ঋণাত্মক সংখ্যা হতে হবে।",
     pricePerMaundNonNegative: "মণ প্রতি মূল্য অবশ্যই অ-ঋণাত্মক সংখ্যা হতে হবে।",
     pricePerKgNonNegative: "কেজি প্রতি মূল্য অবশ্যই অ-ঋণাত্মক সংখ্যা হতে হবে।",
+    hockExtendedSackNonNegative: "হক/এক্সটেন্ডেড বস্তার পরিমাণ অবশ্যই অ-ঋণাত্মক সংখ্যা হতে হবে।",
+    trackExpensesNonNegative: "ট্র্যাক খরচ অবশ্যই অ-ঋণাত্মক সংখ্যা হতে হবে।",
     totalPriceNonNegative: "মোট মূল্য অবশ্যই অ-ঋণাত্মক সংখ্যা হতে হবে।",
     dueAmountNonNegative: "বাকি পরিমাণ অবশ্যই অ-ঋণাত্মক সংখ্যা হতে হবে।",
     unableToSaveSale: "বিক্রয় সংরক্ষণ করতে অসমর্থ।",

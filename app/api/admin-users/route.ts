@@ -16,7 +16,8 @@ export async function GET(request: Request) {
     await ensureEnvSuperadminUser(authResult);
     const admins = await User.find({ role: { $in: ["admin", "superadmin"] } })
       .select("name email role avatarUrl createdAt")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
     return Response.json(admins, {
       headers: {
@@ -25,11 +26,15 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     if (isMongoConnectionError(error)) {
-      return Response.json([], {
-        headers: {
-          "Cache-Control": "no-store, no-cache, must-revalidate",
-        },
-      });
+      return Response.json(
+        { message: "Admin list is temporarily unavailable. Please try again shortly." },
+        {
+          status: 503,
+          headers: {
+            "Cache-Control": "no-store, no-cache, must-revalidate",
+          },
+        }
+      );
     }
 
     throw error;

@@ -1,108 +1,19 @@
-import { connectDB, isMongoConnectionError } from "@/lib/db";
+import { connectDB } from "@/lib/db";
 import { requireAuth, validateSameOrigin } from "@/lib/auth";
-import { compareByLatestInput, getInputTimestamp } from "@/lib/record-order";
+import { getSuppliersPageData } from "@/lib/suppliers-data";
 import Supplier from "@/models/Supplier";
-import Transaction from "@/models/Transaction";
-import { summarizeSupplierLedger } from "@/lib/live-ledgers";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 export const revalidate = 0;
 
+const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 export async function GET(request: Request) {
   const authResult = requireAuth(request, ["admin", "superadmin"]);
   if (authResult instanceof Response) return authResult;
 
-  try {
-    await connectDB();
-    const [suppliers, records] = await Promise.all([
-      Supplier.find().lean(),
-      Transaction.find({ supplierId: { $ne: null } }).lean(),
-    ]);
-
-    const recordsBySupplier = new Map<string, Array<Record<string, unknown>>>();
-    const latestActivityBySupplier = new Map<string, number>();
-    for (const record of records) {
-      const supplierId = String(record.supplierId ?? "");
-      if (!supplierId) continue;
-
-      const bucket = recordsBySupplier.get(supplierId) ?? [];
-      bucket.push(record as unknown as Record<string, unknown>);
-      recordsBySupplier.set(supplierId, bucket);
-
-      const recordTimestamp = getInputTimestamp(String(record._id ?? ""), record.date);
-      const currentLatest = latestActivityBySupplier.get(supplierId) ?? 0;
-      if (recordTimestamp > currentLatest) {
-        latestActivityBySupplier.set(supplierId, recordTimestamp);
-      }
-    }
-
-    const normalized = suppliers
-      .map((supplier) => {
-        const id = String(supplier._id);
-        const summary = summarizeSupplierLedger(recordsBySupplier.get(id) ?? [], {
-          saltAmount: supplier.saltAmount,
-          totalPaid: supplier.totalPaid,
-          totalDue: supplier.totalDue,
-        });
-        const lastActivityAt = Math.max(latestActivityBySupplier.get(id) ?? 0, getInputTimestamp(id));
-        const latestPurchase = (recordsBySupplier.get(id) ?? []).reduce<Record<string, unknown> | null>((latest, current) => {
-          if (current.type !== "supplier-buy") return latest;
-          if (!latest) return current;
-
-          return compareByLatestInput(
-            {
-              id: String(current._id ?? ""),
-              date: current.date as string | Date | undefined,
-            },
-            {
-              id: String(latest._id ?? ""),
-              date: latest.date as string | Date | undefined,
-            }
-          ) < 0
-            ? current
-            : latest;
-        }, null);
-        const latestPricePerMaund =
-          latestPurchase && Number(latestPurchase.saltAmount ?? 0) > 0
-            ? Number(latestPurchase.totalAmount ?? 0) / Number(latestPurchase.saltAmount ?? 0)
-            : 0;
-
-        return {
-          _id: supplier._id,
-          name: supplier.name,
-          phone: supplier.phone,
-          address: supplier.address,
-          totalDue: summary.totalDueAmount,
-          saltAmount: summary.totalSaltKg,
-          totalPaid: summary.totalPaidAmount,
-          totalPurchaseAmount: summary.totalPurchaseAmount,
-          lastActivityAt,
-          latestPurchaseId: latestPurchase?._id ?? null,
-          latestPricePerMaund,
-          editedByName: String(latestPurchase?.editedByName ?? ""),
-          editedByRole: String(latestPurchase?.editedByRole ?? ""),
-          editedAt: latestPurchase?.editedAt ?? null,
-        };
-      })
-      .sort((left, right) =>
-        compareByLatestInput(
-          { id: String(left._id ?? ""), date: left.lastActivityAt },
-          { id: String(right._id ?? ""), date: right.lastActivityAt }
-        )
-      );
-
-    return new Response(JSON.stringify(normalized), {
-      headers: { "Content-Type": "application/json" }
-    });
-  } catch (error) {
-    if (isMongoConnectionError(error)) {
-      console.warn("Suppliers unavailable, returning empty list.");
-      return Response.json([]);
-    }
-
-    throw error;
-  }
+  return Response.json(await getSuppliersPageData());
 }
 
 export async function POST(req: Request) {
@@ -114,7 +25,17 @@ export async function POST(req: Request) {
 
   await connectDB();
   const data = await req.json();
+  const name = (data.name || "").toString().trim();
   const phone = (data.phone || "").toString().trim();
+  const allowDuplicate = data.allowDuplicate === true;
+
+  if (!name) {
+    return new Response(JSON.stringify({ message: "Supplier name is required." }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   if (!/^\d{11}$/.test(phone)) {
     return new Response(JSON.stringify({ message: "Phone number must be exactly 11 digits and contain only numbers." }), {
       status: 400,
@@ -130,8 +51,48 @@ export async function POST(req: Request) {
     });
   }
 
+  if (!allowDuplicate) {
+    const safeNamePattern = new RegExp(`^${escapeRegex(name)}$`, "i");
+
+    // Check for duplicate name or phone number
+    const existingSupplier = await Supplier.findOne({
+      $or: [{ name: { $regex: safeNamePattern } }, { phone }],
+    });
+
+    if (existingSupplier) {
+      const existingName = String(existingSupplier.name ?? "").toLowerCase();
+      const message =
+        existingName === name.toLowerCase()
+          ? "A supplier with this name already exists."
+          : "A supplier with this phone number already exists.";
+      return new Response(JSON.stringify({ message }), {
+        status: 409,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Also check customers for duplicates
+    const Customer = (await import("@/models/Customer")).default;
+    const existingCustomer = await Customer.findOne({
+      $or: [{ name: { $regex: safeNamePattern } }, { phone }],
+    });
+
+    if (existingCustomer) {
+      const existingName = String(existingCustomer.name ?? "").toLowerCase();
+      const message =
+        existingName === name.toLowerCase()
+          ? "A customer with this name already exists."
+          : "A customer with this phone number already exists.";
+      return new Response(JSON.stringify({ message }), {
+        status: 409,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+  }
+
   const supplier = await Supplier.create({
     ...data,
+    name,
     phone,
     address,
     totalPaid: 0,

@@ -64,7 +64,7 @@ export default function ActionDropdown({ viewHref, onEdit, onPrint, canEdit = tr
           />
 
           {/* Dropdown menu */}
-          <div className="absolute left-0 right-0 z-20 top-100% text-center w-full rounded-lg bg-white shadow-lg focus:outline-none overflow-hidden">
+          <div className="absolute left-0 right-0 z-20 top-100% text-center w-28 rounded-lg bg-white shadow-lg focus:outline-none overflow-hidden">
             <Link
               href={viewHref}
               className="block px-4 py-2 border-b border-[#2F7FC0] text-sm bg-[#348CD4] text-white hover:bg-[#2F7FC0]"

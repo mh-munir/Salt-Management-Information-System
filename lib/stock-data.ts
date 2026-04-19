@@ -5,10 +5,8 @@ import Sale from "@/models/Sale";
 import Transaction from "@/models/Transaction";
 
 const KG_PER_MOUND = 40;
-
-type StockCustomerDoc = {
-  saltAmount?: number;
-};
+const STOCK_HISTORY_DAYS = 60;
+const STOCK_HISTORY_RECORD_LIMIT = 2_000;
 
 type StockSaleItem = {
   quantity?: number;
@@ -64,20 +62,84 @@ export async function getStockPageData(): Promise<StockPageData> {
   try {
     await connectDB();
 
-    const [customers, sales, supplierTransactions] = (await Promise.all([
-      Customer.find().select("saltAmount").lean(),
-      Sale.find().select("createdAt customerId saltAmount items").lean(),
-      Transaction.find({ supplierId: { $ne: null } })
-        .select("date supplierId saltAmount")
-        .lean(),
-    ])) as [StockCustomerDoc[], StockSaleDoc[], StockTransactionDoc[]];
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
 
-    const totalBought = supplierTransactions.reduce(
-      (sum, transaction) => sum + toNumber(transaction.saltAmount),
-      0
-    );
-    const calculatedSoldKg = sales.reduce((sum, sale) => sum + sumSaleQuantity(sale), 0);
-    const fallbackSoldKg = customers.reduce((sum, customer) => sum + toNumber(customer.saltAmount), 0);
+    const historyStart = new Date(todayStart);
+    historyStart.setDate(historyStart.getDate() - STOCK_HISTORY_DAYS);
+
+    const numericOrZero = (fieldPath: string) => ({ $toDouble: { $ifNull: [fieldPath, 0] } });
+    const saleQuantityExpr = {
+      $cond: [
+        { $gt: [{ $size: { $ifNull: ["$items", []] } }, 0] },
+        {
+          $sum: {
+            $map: {
+              input: { $ifNull: ["$items", []] },
+              as: "item",
+              in: { $toDouble: { $ifNull: ["$$item.quantity", 0] } },
+            },
+          },
+        },
+        numericOrZero("$saltAmount"),
+      ],
+    };
+
+    const [customerSummaryRows, salesSummaryRows, supplierSummaryRows, sales, supplierTransactions] = (await Promise.all([
+      Customer.aggregate([
+        {
+          $group: {
+            _id: null,
+            totalSaltKg: { $sum: numericOrZero("$saltAmount") },
+          },
+        },
+        { $project: { _id: 0, totalSaltKg: 1 } },
+      ]),
+      Sale.aggregate([
+        {
+          $project: {
+            quantityKg: saleQuantityExpr,
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalSoldKg: { $sum: "$quantityKg" },
+          },
+        },
+        { $project: { _id: 0, totalSoldKg: 1 } },
+      ]),
+      Transaction.aggregate([
+        { $match: { supplierId: { $ne: null } } },
+        {
+          $group: {
+            _id: null,
+            totalBought: { $sum: numericOrZero("$saltAmount") },
+          },
+        },
+        { $project: { _id: 0, totalBought: 1 } },
+      ]),
+      Sale.find({ createdAt: { $gte: historyStart } })
+        .select("createdAt customerId saltAmount items")
+        .sort({ createdAt: -1 })
+        .limit(STOCK_HISTORY_RECORD_LIMIT)
+        .lean(),
+      Transaction.find({ supplierId: { $ne: null }, date: { $gte: historyStart } })
+        .select("date supplierId saltAmount")
+        .sort({ date: -1 })
+        .limit(STOCK_HISTORY_RECORD_LIMIT)
+        .lean(),
+    ])) as [
+      Array<{ totalSaltKg?: number }>,
+      Array<{ totalSoldKg?: number }>,
+      Array<{ totalBought?: number }>,
+      StockSaleDoc[],
+      StockTransactionDoc[],
+    ];
+
+    const totalBought = toNumber(supplierSummaryRows[0]?.totalBought);
+    const calculatedSoldKg = toNumber(salesSummaryRows[0]?.totalSoldKg);
+    const fallbackSoldKg = toNumber(customerSummaryRows[0]?.totalSaltKg);
     const totalSoldKg = Math.max(calculatedSoldKg, fallbackSoldKg);
     const totalSoldMaund = totalSoldKg / KG_PER_MOUND;
     const stockMounds = Math.max(0, totalBought - totalSoldMaund);

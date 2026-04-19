@@ -88,7 +88,7 @@ export function summarizeSupplierLedger(
   for (const record of records) {
     calculatedPaidAmount += toNumber(record.amount);
 
-    if (record.type === "supplier-buy") {
+    if (record.type === "buy" || record.type === "supplier-buy") {
       calculatedSaltKg += toNumber(record.saltAmount);
 
       const purchaseAmount = toNumber(record.totalAmount);

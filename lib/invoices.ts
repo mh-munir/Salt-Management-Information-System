@@ -207,15 +207,15 @@ export async function getSupplierInvoiceData(id: string): Promise<SupplierInvoic
       return {
         id: String(transaction._id ?? `supplier-record-${index}`),
         date: toDate(transaction.date),
-        type: transaction.type === "supplier-buy" ? "purchase" : "payment",
-        label: transaction.type === "supplier-buy" ? "Salt purchase" : "Supplier payment",
+        type: transaction.type === "buy" || transaction.type === "supplier-buy" ? "purchase" : "payment",
+        label: transaction.type === "buy" || transaction.type === "supplier-buy" ? "Salt purchase" : "Supplier payment",
         quantityMaund,
         pricePerMaund,
         totalAmount,
         paidAmount,
         dueAmount: totalAmount > 0 ? totalAmount - paidAmount : 0,
         note:
-          transaction.type === "supplier-buy"
+          transaction.type === "buy" || transaction.type === "supplier-buy"
             ? totalAmount > 0
               ? "Purchase entry"
               : "Legacy purchase entry"

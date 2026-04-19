@@ -10,4 +10,7 @@ const CostSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+CostSchema.index({ date: -1 });
+CostSchema.index({ createdAt: -1 });
+
 export default mongoose.models.Cost || mongoose.model("Cost", CostSchema);

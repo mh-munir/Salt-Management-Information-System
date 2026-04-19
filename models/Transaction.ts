@@ -15,4 +15,9 @@ const TransactionSchema = new mongoose.Schema({
   editedAt: { type: Date, default: null },
 });
 
+TransactionSchema.index({ customerId: 1, date: -1 });
+TransactionSchema.index({ supplierId: 1, date: -1 });
+TransactionSchema.index({ type: 1, date: -1 });
+TransactionSchema.index({ date: -1 });
+
 export default mongoose.models.Transaction || mongoose.model("Transaction", TransactionSchema);

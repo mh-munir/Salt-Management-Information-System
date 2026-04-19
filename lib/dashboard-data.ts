@@ -8,6 +8,8 @@ import Supplier from "@/models/Supplier";
 import Transaction from "@/models/Transaction";
 
 const KG_PER_MAUND = 40;
+const DASHBOARD_HISTORY_DAYS = 180;
+const DASHBOARD_HISTORY_RECORD_LIMIT = 3_000;
 
 type DashboardCustomerDoc = {
   _id: unknown;
@@ -50,10 +52,32 @@ type DashboardTransactionDoc = {
   supplierId?: unknown;
 };
 
-type DashboardCostDoc = {
-  amount?: number;
-  date?: string | Date;
-  createdAt?: string | Date;
+type DashboardSalesSummaryDoc = {
+  totalSales?: number;
+  todaySales?: number;
+  todaySalesSaltKg?: number;
+  totalSoldKg?: number;
+};
+
+type DashboardBuySummaryDoc = {
+  totalBuy?: number;
+  totalSaltBuy?: number;
+  todayBuy?: number;
+  todayBuySaltMaund?: number;
+};
+
+type DashboardCostsSummaryDoc = {
+  totalCost?: number;
+  todayCost?: number;
+};
+
+type DashboardCustomerSummaryDoc = {
+  totalDue?: number;
+  totalSaltKg?: number;
+};
+
+type DashboardSupplierSummaryDoc = {
+  totalDue?: number;
 };
 
 export type DashboardTransactionItem = {
@@ -118,114 +142,214 @@ const emptyDashboardData: DashboardPageData = {
   rawTransactions: [],
 };
 
-const toLocalIsoDate = (value?: string | Date | null) => {
-  if (!value) return "";
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
-};
-
 export async function getDashboardPageData(): Promise<DashboardPageData> {
   try {
     await connectDB();
 
-    const [customers, suppliers, sales, transactions, costs] = (await Promise.all([
-      Customer.find().select("_id name phone totalDue saltAmount").lean(),
-      Supplier.find().select("_id name phone totalDue").lean(),
-      Sale.find().select("_id total saltAmount items createdAt customerId paid due").lean(),
-      Transaction.find()
-        .select("_id amount totalAmount saltAmount date type customerId supplierId")
-        .lean(),
-      Cost.find().select("_id amount date createdAt").lean(),
-    ])) as [
-      DashboardCustomerDoc[],
-      DashboardSupplierDoc[],
-      DashboardSaleDoc[],
-      DashboardTransactionDoc[],
-      DashboardCostDoc[],
-    ];
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
 
-    const todayString = toLocalIsoDate(new Date());
-    let totalSales = 0;
-    let todaySales = 0;
-    let todaySalesSaltKg = 0;
+    const tomorrowStart = new Date(todayStart);
+    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
 
-    const normalizedSales: DashboardTransactionItem[] = sales.map((sale) => {
-      const totalAmount = toNumber(sale.total);
-      const quantity = sumSaleQuantity(sale);
-      const saleDate = sale.createdAt;
+    const historyStart = new Date(todayStart);
+    historyStart.setDate(historyStart.getDate() - DASHBOARD_HISTORY_DAYS);
 
-      totalSales += totalAmount;
-      if (toLocalIsoDate(saleDate) === todayString) {
-        todaySales += totalAmount;
-        todaySalesSaltKg += quantity;
-      }
+    const numericOrZero = (fieldPath: string) => ({ $toDouble: { $ifNull: [fieldPath, 0] } });
+    const saleQuantityExpr = {
+      $cond: [
+        { $gt: [{ $size: { $ifNull: ["$items", []] } }, 0] },
+        {
+          $sum: {
+            $map: {
+              input: { $ifNull: ["$items", []] },
+              as: "item",
+              in: { $toDouble: { $ifNull: ["$$item.quantity", 0] } },
+            },
+          },
+        },
+        numericOrZero("$saltAmount"),
+      ],
+    };
 
-      return {
-        _id: String(sale._id),
-        amount: totalAmount,
-        saltAmount: quantity,
-        date: saleDate,
-        type: "sale",
-        customerId: sale.customerId ? String(sale.customerId) : undefined,
-      };
-    });
+    const [customerSummaryRows, supplierSummaryRows, salesSummaryRows, buySummaryRows, costSummaryRows, customers, suppliers, transactions, sales] =
+      (await Promise.all([
+        Customer.aggregate([
+          {
+            $group: {
+              _id: null,
+              totalDue: { $sum: numericOrZero("$totalDue") },
+              totalSaltKg: { $sum: numericOrZero("$saltAmount") },
+            },
+          },
+          { $project: { _id: 0, totalDue: 1, totalSaltKg: 1 } },
+        ]),
+        Supplier.aggregate([
+          {
+            $group: {
+              _id: null,
+              totalDue: { $sum: numericOrZero("$totalDue") },
+            },
+          },
+          { $project: { _id: 0, totalDue: 1 } },
+        ]),
+        Sale.aggregate([
+          {
+            $project: {
+              createdAt: 1,
+              totalAmount: numericOrZero("$total"),
+              quantityKg: saleQuantityExpr,
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              totalSales: { $sum: "$totalAmount" },
+              todaySales: {
+                $sum: {
+                  $cond: [
+                    { $and: [{ $gte: ["$createdAt", todayStart] }, { $lt: ["$createdAt", tomorrowStart] }] },
+                    "$totalAmount",
+                    0,
+                  ],
+                },
+              },
+              todaySalesSaltKg: {
+                $sum: {
+                  $cond: [
+                    { $and: [{ $gte: ["$createdAt", todayStart] }, { $lt: ["$createdAt", tomorrowStart] }] },
+                    "$quantityKg",
+                    0,
+                  ],
+                },
+              },
+              totalSoldKg: { $sum: "$quantityKg" },
+            },
+          },
+          { $project: { _id: 0, totalSales: 1, todaySales: 1, todaySalesSaltKg: 1, totalSoldKg: 1 } },
+        ]),
+        Transaction.aggregate([
+          { $match: { type: { $in: ["buy", "supplier-buy"] } } },
+          {
+            $project: {
+              date: 1,
+              totalAmount: numericOrZero("$totalAmount"),
+              saltAmount: numericOrZero("$saltAmount"),
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              totalBuy: { $sum: "$totalAmount" },
+              totalSaltBuy: { $sum: "$saltAmount" },
+              todayBuy: {
+                $sum: {
+                  $cond: [{ $and: [{ $gte: ["$date", todayStart] }, { $lt: ["$date", tomorrowStart] }] }, "$totalAmount", 0],
+                },
+              },
+              todayBuySaltMaund: {
+                $sum: {
+                  $cond: [{ $and: [{ $gte: ["$date", todayStart] }, { $lt: ["$date", tomorrowStart] }] }, "$saltAmount", 0],
+                },
+              },
+            },
+          },
+          { $project: { _id: 0, totalBuy: 1, totalSaltBuy: 1, todayBuy: 1, todayBuySaltMaund: 1 } },
+        ]),
+        Cost.aggregate([
+          {
+            $project: {
+              amount: numericOrZero("$amount"),
+              effectiveDate: { $ifNull: ["$date", "$createdAt"] },
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              totalCost: { $sum: "$amount" },
+              todayCost: {
+                $sum: {
+                  $cond: [
+                    { $and: [{ $gte: ["$effectiveDate", todayStart] }, { $lt: ["$effectiveDate", tomorrowStart] }] },
+                    "$amount",
+                    0,
+                  ],
+                },
+              },
+            },
+          },
+          { $project: { _id: 0, totalCost: 1, todayCost: 1 } },
+        ]),
+        Customer.find().select("_id name phone").lean(),
+        Supplier.find().select("_id name phone").lean(),
+        Transaction.find({ date: { $gte: historyStart } })
+          .select("_id amount totalAmount saltAmount date type customerId supplierId")
+          .sort({ date: -1 })
+          .limit(DASHBOARD_HISTORY_RECORD_LIMIT)
+          .lean(),
+        Sale.find({ createdAt: { $gte: historyStart } })
+          .select("_id total saltAmount items createdAt customerId")
+          .sort({ createdAt: -1 })
+          .limit(DASHBOARD_HISTORY_RECORD_LIMIT)
+          .lean(),
+      ])) as [
+        DashboardCustomerSummaryDoc[],
+        DashboardSupplierSummaryDoc[],
+        DashboardSalesSummaryDoc[],
+        DashboardBuySummaryDoc[],
+        DashboardCostsSummaryDoc[],
+        DashboardCustomerDoc[],
+        DashboardSupplierDoc[],
+        DashboardTransactionDoc[],
+        DashboardSaleDoc[],
+      ];
 
-    let todayBuy = 0;
-    let todayBuySaltMaund = 0;
-    let totalBuy = 0;
-    let totalSaltBuy = 0;
-    const normalizedTransactions: DashboardTransactionItem[] = transactions.map((transaction) => {
-      const amount = toNumber(transaction.amount);
-      const totalAmount = toNumber(transaction.totalAmount);
-      const saltAmount = toNumber(transaction.saltAmount);
-      const transactionDate = transaction.date;
+    const salesSummary = salesSummaryRows[0] ?? {};
+    const buysSummary = buySummaryRows[0] ?? {};
+    const costsSummary = costSummaryRows[0] ?? {};
+    const customersSummary = customerSummaryRows[0] ?? {};
+    const suppliersSummary = supplierSummaryRows[0] ?? {};
 
-      if (transaction.type === "supplier-buy") {
-        totalBuy += totalAmount;
-        totalSaltBuy += saltAmount;
+    const totalSales = toNumber(salesSummary.totalSales);
+    const todaySales = toNumber(salesSummary.todaySales);
+    const todaySalesSaltKg = toNumber(salesSummary.todaySalesSaltKg);
+    const totalBuy = toNumber(buysSummary.totalBuy);
+    const totalSaltBuy = toNumber(buysSummary.totalSaltBuy);
+    const todayBuy = toNumber(buysSummary.todayBuy);
+    const todayBuySaltMaund = toNumber(buysSummary.todayBuySaltMaund);
+    const totalCost = toNumber(costsSummary.totalCost);
+    const todayCost = toNumber(costsSummary.todayCost);
+    const customerDue = toNumber(customersSummary.totalDue);
+    const supplierDue = toNumber(suppliersSummary.totalDue);
 
-        if (toLocalIsoDate(transactionDate) === todayString) {
-          todayBuy += totalAmount;
-          todayBuySaltMaund += saltAmount;
-        }
-      }
+    const normalizedSales: DashboardTransactionItem[] = sales.map((sale) => ({
+      _id: String(sale._id),
+      amount: toNumber(sale.total),
+      saltAmount: sumSaleQuantity(sale),
+      date: sale.createdAt,
+      type: "sale",
+      customerId: sale.customerId ? String(sale.customerId) : undefined,
+    }));
 
-      return {
-        _id: String(transaction._id),
-        amount,
-        saltAmount,
-        date: transactionDate,
-        type: transaction.type,
-        customerId: transaction.customerId ? String(transaction.customerId) : undefined,
-        supplierId: transaction.supplierId ? String(transaction.supplierId) : undefined,
-      };
-    });
+    const normalizedTransactions: DashboardTransactionItem[] = transactions.map((transaction) => ({
+      _id: String(transaction._id),
+      amount: toNumber(transaction.amount),
+      saltAmount: toNumber(transaction.saltAmount),
+      date: transaction.date,
+      type: transaction.type,
+      customerId: transaction.customerId ? String(transaction.customerId) : undefined,
+      supplierId: transaction.supplierId ? String(transaction.supplierId) : undefined,
+    }));
 
     const rawTransactions = [...normalizedTransactions, ...normalizedSales].sort((left, right) =>
       compareByLatestInput({ id: left._id, date: left.date }, { id: right._id, date: right.date })
     );
 
-    const customerDue = customers.reduce((sum, customer) => sum + toNumber(customer.totalDue), 0);
-    const supplierDue = suppliers.reduce((sum, supplier) => sum + toNumber(supplier.totalDue), 0);
-
-    const calculatedSoldKg = sales.reduce((sum, sale) => sum + sumSaleQuantity(sale), 0);
-    const fallbackSoldKg = customers.reduce((sum, customer) => sum + toNumber(customer.saltAmount), 0);
+    const calculatedSoldKg = toNumber(salesSummary.totalSoldKg);
+    const fallbackSoldKg = toNumber(customersSummary.totalSaltKg);
     const totalSoldKg = Math.max(calculatedSoldKg, fallbackSoldKg);
     const stockMounds = totalSaltBuy - totalSoldKg / KG_PER_MAUND;
     const safeStockMounds = Math.max(0, stockMounds);
-
-    const totalCost = costs.reduce((sum, cost) => sum + toNumber(cost.amount), 0);
-    const todayCost = costs.reduce((sum, cost) => {
-      const costDate = toLocalIsoDate(cost.date ?? cost.createdAt);
-      return costDate === todayString ? sum + toNumber(cost.amount) : sum;
-    }, 0);
 
     return {
       totalSales,

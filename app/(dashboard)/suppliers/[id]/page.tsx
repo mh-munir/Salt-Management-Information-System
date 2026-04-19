@@ -89,7 +89,7 @@ export default async function SupplierDetailPage({ params }: SupplierPageProps) 
     );
   });
   for (const record of chronologicalRecords) {
-    if (record.type === "supplier-buy") {
+    if (record.type === "buy" || record.type === "supplier-buy") {
       runningBalance += Number(record.totalAmount ?? 0) - Number(record.amount ?? 0);
     } else {
       runningBalance -= Number(record.amount ?? 0);
@@ -99,7 +99,7 @@ export default async function SupplierDetailPage({ params }: SupplierPageProps) 
   }
 
   const recordRows = records.map((record, index) => {
-    const isPurchase = record.type === "supplier-buy";
+    const isPurchase = record.type === "buy" || record.type === "supplier-buy";
     const saltMaund = Number(record.saltAmount ?? 0);
     const totalPurchaseAmount = Number(record.totalAmount ?? 0);
     const recordBalance = runningBalanceById.get(String(record._id ?? "")) ?? 0;
@@ -184,13 +184,13 @@ export default async function SupplierDetailPage({ params }: SupplierPageProps) 
               <Link
                 href={`/invoices/suppliers/${id}`}
                 target="_blank"
-                className="inline-flex w-full items-center justify-center rounded-full bg-[#348CD4] px-5 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-[#2F7FC0] sm:w-auto"
+                className="inline-flex w-full items-center justify-center rounded-lg bg-[#348CD4] px-5 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-[#2F7FC0] sm:w-auto"
               >
                 {translate(language, "printInvoice")}
               </Link>
               <Link
                 href={`/suppliers?paymentId=${id}&returnTo=${encodeURIComponent(`/suppliers/${id}`)}`}
-                className="inline-flex w-full items-center justify-center rounded-full bg-[#348CD4] px-5 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-[#2F7FC0] sm:w-auto"
+                className="inline-flex w-full items-center justify-center rounded-lg bg-[#348CD4] px-5 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-[#2F7FC0] sm:w-auto"
               >
                 {translate(language, "paymentNow")}
               </Link>

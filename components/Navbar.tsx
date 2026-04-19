@@ -207,7 +207,7 @@ export default function Navbar({ initialLanguage, initialProfile }: NavbarProps)
           >
             <span>{language === "en" ? "EN" : "BD"}</span>
             <svg
-              className={`ml-2 h-4 w-4 text-white transition-transform dark:text-slate-400 ${languageMenuOpen ? "rotate-180" : "rotate-0"}`}
+              className={`ml-2 h-4 w-4 text-gray transition-transform dark:text-slate-400 ${languageMenuOpen ? "rotate-180" : "rotate-0"}`}
               viewBox="0 0 20 20"
               fill="currentColor"
             >

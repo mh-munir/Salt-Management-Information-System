@@ -59,18 +59,10 @@ export async function PATCH(req: Request, context: RouteContext<"/api/suppliers/
       });
     }
 
-    const supplier = await Supplier.findById(id);
-    if (!supplier) {
-      return new Response(JSON.stringify({ message: "Supplier not found." }), {
-        status: 404,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
     const record = await Transaction.findOne({
       _id: transactionId,
-      supplierId: supplier._id,
-      type: "supplier-buy",
+      supplierId: id,
+      type: { $in: ["buy", "supplier-buy"] },
     }).lean();
 
     if (!record) {
@@ -112,8 +104,18 @@ export async function PATCH(req: Request, context: RouteContext<"/api/suppliers/
       });
     }
 
-    supplier.totalDue = Number((Number(supplier.totalDue ?? 0) + totalDelta).toFixed(2));
-    await supplier.save();
+    const supplier = await Supplier.findByIdAndUpdate(
+      id,
+      { $inc: { totalDue: totalDelta } },
+      { returnDocument: "after" }
+    ).lean();
+
+    if (!supplier) {
+      return new Response(JSON.stringify({ message: "Supplier not found." }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
     return new Response(
       JSON.stringify({
@@ -142,7 +144,17 @@ export async function PATCH(req: Request, context: RouteContext<"/api/suppliers/
     });
   }
 
-  const supplier = await Supplier.findById(id);
+  const supplier = await Supplier.findByIdAndUpdate(
+    id,
+    {
+      $inc: {
+        totalDue: -paymentAmount,
+        totalPaid: paymentAmount,
+      },
+    },
+    { returnDocument: "after" }
+  ).lean();
+
   if (!supplier) {
     return new Response(JSON.stringify({ message: "Supplier not found." }), {
       status: 404,
@@ -150,16 +162,11 @@ export async function PATCH(req: Request, context: RouteContext<"/api/suppliers/
     });
   }
 
-  const currentDue = supplier.totalDue ?? 0;
-  supplier.totalDue = currentDue - paymentAmount;
-  supplier.totalPaid = (supplier.totalPaid ?? 0) + paymentAmount;
-  await supplier.save();
-
   await Transaction.create({
-    supplierId: supplier._id,
+    supplierId: id,
     amount: paymentAmount,
     date: body.date ? new Date(body.date) : new Date(),
-    type: "supplier-payment",
+    type: "payment",
   });
 
   return new Response(JSON.stringify(supplier), {

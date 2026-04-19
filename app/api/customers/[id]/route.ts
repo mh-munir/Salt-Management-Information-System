@@ -18,6 +18,11 @@ const resolveSaleQuantity = (sale: { items?: Array<{ quantity?: unknown }>; salt
   return Number(sale.saltAmount ?? 0);
 };
 
+const resolveSaleAdjustments = (sale: { hockExtendedSack?: unknown; trackExpenses?: unknown }) => ({
+  hockExtendedSack: Number(sale.hockExtendedSack ?? 0),
+  trackExpenses: Number(sale.trackExpenses ?? 0),
+});
+
 export async function GET(req: NextRequest, context: RouteContext<"/api/customers/[id]">) {
   const authResult = requireAuth(req, ["admin", "superadmin"]);
   if (authResult instanceof Response) return authResult;
@@ -48,7 +53,19 @@ export async function PATCH(req: Request, context: RouteContext<"/api/customers/
   await connectDB();
 
   const body = await req.json();
-  const { action, saltAmount, total, paid, due, paymentAmount, date, saleId, pricePerKg } = body;
+  const {
+    action,
+    saltAmount,
+    total,
+    paid,
+    due,
+    paymentAmount,
+    date,
+    saleId,
+    pricePerKg,
+    hockExtendedSack,
+    trackExpenses,
+  } = body;
   const validActions = ["sale", "buy", "payment", "edit-price"];
 
   if (!validActions.includes(action)) {
@@ -62,6 +79,8 @@ export async function PATCH(req: Request, context: RouteContext<"/api/customers/
   let totalValue = 0;
   let paidValue = 0;
   let dueValue = 0;
+  let hockExtendedSackValue = 0;
+  let trackExpensesValue = 0;
 
   if (action === "payment") {
     const paymentValue = Number(paymentAmount);
@@ -97,6 +116,8 @@ export async function PATCH(req: Request, context: RouteContext<"/api/customers/
     totalValue = Number(total);
     paidValue = Number(paid);
     dueValue = Number(due);
+    hockExtendedSackValue = Number(hockExtendedSack ?? 0);
+    trackExpensesValue = Number(trackExpenses ?? 0);
 
     if (Number.isNaN(saltValue) || saltValue < 0) {
       return new Response(JSON.stringify({ message: "Salt amount must be a valid non-negative number." }), {
@@ -114,6 +135,20 @@ export async function PATCH(req: Request, context: RouteContext<"/api/customers/
 
     if (Number.isNaN(paidValue) || paidValue < 0) {
       return new Response(JSON.stringify({ message: "Paid amount must be a valid non-negative number." }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    if (Number.isNaN(hockExtendedSackValue) || hockExtendedSackValue < 0) {
+      return new Response(JSON.stringify({ message: "Hock/Extended sack must be a valid non-negative number." }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    if (Number.isNaN(trackExpensesValue) || trackExpensesValue < 0) {
+      return new Response(JSON.stringify({ message: "Track expenses must be a valid non-negative number." }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
@@ -146,8 +181,11 @@ export async function PATCH(req: Request, context: RouteContext<"/api/customers/
       });
     }
 
+    const adjustments = resolveSaleAdjustments(sale);
     const currentTotal = Number(sale.total ?? 0);
-    const nextTotal = Number((quantityKg * Number(pricePerKg)).toFixed(2));
+    const nextTotal = Number(
+      (quantityKg * Number(pricePerKg) + adjustments.hockExtendedSack - adjustments.trackExpenses).toFixed(2)
+    );
     const totalDelta = nextTotal - currentTotal;
     const currentDue = Number(sale.due ?? 0);
     const nextDue = Number((currentDue + totalDelta).toFixed(2));
@@ -248,10 +286,14 @@ export async function PATCH(req: Request, context: RouteContext<"/api/customers/
     const totalValue = Number(total);
     const paidValue = Number(paid);
     const dueValue = totalValue - paidValue;
+    const hockExtendedSackValue = Number(hockExtendedSack ?? 0);
+    const trackExpensesValue = Number(trackExpenses ?? 0);
 
     await Sale.create({
       customerId: id,
       saltAmount: saltValue,
+      hockExtendedSack: hockExtendedSackValue,
+      trackExpenses: trackExpensesValue,
       total: totalValue,
       paid: paidValue,
       due: dueValue,

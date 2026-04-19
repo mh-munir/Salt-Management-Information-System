@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 // import { Geist } from "next/font/google";
+import { Toaster } from "react-hot-toast";
 import SiteFooter from "@/components/SiteFooter";
 import { DEFAULT_THEME, THEME_COOKIE_NAME } from "@/lib/theme";
 import "./globals.css";
@@ -37,6 +38,16 @@ export default async function RootLayout({
     >
       <body suppressHydrationWarning>
         {children}
+        <Toaster
+          position="top-center"
+          toastOptions={{
+            duration: 20000, // 20 seconds
+            style: {
+              background: '#363636',
+              color: '#fff',
+            },
+          }}
+        />
         <SiteFooter />
       </body>
     </html>
