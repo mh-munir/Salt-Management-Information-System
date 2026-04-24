@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
@@ -13,7 +13,7 @@ import type { CustomerListItem } from "@/lib/customers-data";
 import { translate } from "@/lib/language";
 import { compareByLatestInput } from "@/lib/record-order";
 import { useLanguage } from "@/lib/useLanguage";
-import { formatDisplayName, formatLocalizedNumber } from "@/lib/display-format";
+import { formatDisplayName, formatLocalizedDate, formatLocalizedNumber } from "@/lib/display-format";
 
 type Customer = CustomerListItem;
 
@@ -31,6 +31,15 @@ const getLocalDateInputValue = () => {
   return new Date(now.getTime() - offsetMs).toISOString().split("T")[0];
 };
 
+const getDateKey = (value?: string | Date | number | null) => {
+  if (!value && value !== 0) return "";
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
+
+  return parsed.toISOString().split("T")[0];
+};
+
 type CustomersClientProps = {
   initialData: Customer[];
 };
@@ -40,13 +49,15 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const getPrintDateLabel = (value?: string) => formatLocalizedDate(value || new Date(), language);
   const formatAmount = (value: number, maximumFractionDigits = 0) =>
     formatLocalizedNumber(value, language, { maximumFractionDigits });
-  const getEditorRoleLabel = (role?: string) => (role === "superadmin" ? "Super Admin" : "Admin");
+  const getEditorRoleLabel = (role?: string) =>
+    role === "superadmin" ? translate(language, "superAdminLabel") : translate(language, "admin");
   const getEditedByText = (item: Pick<Customer, "editedByName" | "editedByRole">) => {
     const name = item.editedByName?.trim();
     const role = item.editedByRole?.trim();
-    if (!name && !role) return "Not edited yet";
+    if (!name && !role) return translate(language, "notEditedYet");
 
     const roleLabel = getEditorRoleLabel(role);
     if (!name) return roleLabel;
@@ -90,7 +101,9 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
     address: string;
   } | null>(null);
   const [saleCustomerName, setSaleCustomerName] = useState("");
-  const [saleSaltQuantity, setSaleSaltQuantity] = useState("");
+  const [saleBagType, setSaleBagType] = useState<"" | "50" | "75">("");
+  const [saleNumberOfBags, setSaleNumberOfBags] = useState("");
+  const [saleTotalKg, setSaleTotalKg] = useState("");
   const [salePricePerKg, setSalePricePerKg] = useState("");
   const [saleHockExtendedSack, setSaleHockExtendedSack] = useState("");
   const [saleTrackExpenses, setSaleTrackExpenses] = useState("");
@@ -101,9 +114,12 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
   const [salePopupMessage, setSalePopupMessage] = useState("");
   const [showEditPopup, setShowEditPopup] = useState(false);
   const [editTarget, setEditTarget] = useState<Customer | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editSaltAmount, setEditSaltAmount] = useState("");
   const [editPrice, setEditPrice] = useState("");
   const [editError, setEditError] = useState("");
   const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [tableFilterDate, setTableFilterDate] = useState("");
 
   // Payment popup states
   const [showPaymentPopup, setShowPaymentPopup] = useState(false);
@@ -174,12 +190,16 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
     toast.success("Payment Successful");
   }
 
-  const totalSalt = customers.reduce((sum, customer) => sum + (customer.saltAmount ?? 0), 0);
-  const totalHockExtendedSack = customers.reduce((sum, customer) => sum + (customer.totalHockExtendedSack ?? 0), 0);
-  const totalTrackExpenses = customers.reduce((sum, customer) => sum + (customer.totalTrackExpenses ?? 0), 0);
-  const totalDue = customers.reduce((sum, customer) => sum + (customer.totalDue ?? 0), 0);
-  const totalPaid = customers.reduce((sum, customer) => sum + (customer.totalPaid ?? 0), 0);
-  const totalAmount = customers.reduce((sum, customer) => sum + (customer.totalSalesAmount ?? 0), 0);
+  const filteredCustomers = useMemo(
+    () => (tableFilterDate ? customers.filter((customer) => getDateKey(customer.lastActivityAt) === tableFilterDate) : customers),
+    [customers, tableFilterDate]
+  );
+  const totalSalt = filteredCustomers.reduce((sum, customer) => sum + (customer.saltAmount ?? 0), 0);
+  const totalHockExtendedSack = filteredCustomers.reduce((sum, customer) => sum + (customer.totalHockExtendedSack ?? 0), 0);
+  const totalTrackExpenses = filteredCustomers.reduce((sum, customer) => sum + (customer.totalTrackExpenses ?? 0), 0);
+  const totalDue = filteredCustomers.reduce((sum, customer) => sum + (customer.totalDue ?? 0), 0);
+  const totalPaid = filteredCustomers.reduce((sum, customer) => sum + (customer.totalPaid ?? 0), 0);
+  const totalAmount = filteredCustomers.reduce((sum, customer) => sum + (customer.totalSalesAmount ?? 0), 0);
   const firstCustomerId = customers[0]?._id;
 
   const isValidPhone = (value: string) => /^\d{11}$/.test(value);
@@ -205,6 +225,15 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
           );
         }
       });
+
+  const calculateTotalKg = (bags: string, bagType: "" | "50" | "75") => {
+    const bagsValue = Number(bags);
+    if (bags.trim() === "" || Number.isNaN(bagsValue) || bagsValue < 0 || bagType === "") {
+      return "";
+    }
+    const weightPerBag = bagType === "50" ? 50 : 75;
+    return (bagsValue * weightPerBag).toFixed(2);
+  };
 
   const calculateTotalPrice = (quantity: string, price: string) => {
     const quantityValue = Number(quantity);
@@ -242,15 +271,28 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
   };
 
   const updateSaleAmounts = (
-    quantity: string,
+    totalKg: string,
     price: string,
     hockExtendedSack: string,
     trackExpenses: string,
     paid: string
   ) => {
-    const updatedTotal = calculateAdjustedSaleTotal(quantity, price, hockExtendedSack, trackExpenses);
+    const updatedTotal = calculateAdjustedSaleTotal(totalKg, price, hockExtendedSack, trackExpenses);
     setSaleTotalPrice(updatedTotal);
     setSaleDue(calculateDue(updatedTotal, paid));
+  };
+
+  const updateTotalKgAndAmounts = (
+    bags: string,
+    bagType: "" | "50" | "75",
+    price: string,
+    hockExtendedSack: string,
+    trackExpenses: string,
+    paid: string
+  ) => {
+    const totalKg = calculateTotalKg(bags, bagType);
+    setSaleTotalKg(totalKg);
+    updateSaleAmounts(totalKg, price, hockExtendedSack, trackExpenses, paid);
   };
 
   const calculateDue = (total: string, paid: string) => {
@@ -399,6 +441,8 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
     if (!customer.latestSaleId) return;
 
     setEditTarget(customer);
+    setEditName(customer.name ?? "");
+    setEditSaltAmount(customer.latestSaleSaltAmount ? customer.latestSaleSaltAmount.toFixed(2) : "0");
     setEditPrice(customer.latestPricePerKg ? customer.latestPricePerKg.toFixed(2) : "");
     setEditError("");
     setShowEditPopup(true);
@@ -407,6 +451,8 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
   const closeEditPopup = () => {
     setShowEditPopup(false);
     setEditTarget(null);
+    setEditName("");
+    setEditSaltAmount("");
     setEditPrice("");
     setEditError("");
     setIsSavingEdit(false);
@@ -421,6 +467,19 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
     }
 
     const nextPrice = Number(editPrice);
+    const nextSaltAmount = Number(editSaltAmount);
+    const nextName = editName.trim();
+
+    if (!nextName) {
+      setEditError("Enter a customer name.");
+      return;
+    }
+
+    if (editSaltAmount.trim() === "" || Number.isNaN(nextSaltAmount) || nextSaltAmount < 0) {
+      setEditError("Enter a valid salt amount.");
+      return;
+    }
+
     if (editPrice.trim() === "" || Number.isNaN(nextPrice) || nextPrice < 0) {
       setEditError("Enter a valid price per KG.");
       return;
@@ -436,6 +495,8 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
         body: JSON.stringify({
           action: "edit-price",
           saleId: editTarget.latestSaleId,
+          customerName: nextName,
+          saltAmount: nextSaltAmount,
           pricePerKg: nextPrice,
         }),
       });
@@ -472,7 +533,15 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
       return;
     }
 
-    const quantity = Number(saleSaltQuantity);
+    if (saleBagType === "") {
+      setSaleStatus({
+        type: "error",
+        message: language === "bn" ? "ব্যাগ টাইপ নির্বাচন করুন।" : "Please select a bag type.",
+      });
+      return;
+    }
+
+    const quantity = Number(saleTotalKg);
     const price = Number(salePricePerKg);
     const hockExtendedSackValue = saleHockExtendedSack.trim() === "" ? 0 : Number(saleHockExtendedSack);
     const trackExpensesValue = saleTrackExpenses.trim() === "" ? 0 : Number(saleTrackExpenses);
@@ -521,6 +590,8 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
       body: JSON.stringify({
         action: "sale",
         saltAmount: quantity,
+        numberOfBags: parseInt(saleNumberOfBags) || 0,
+        bagType: saleBagType as "50" | "75",
         hockExtendedSack: hockExtendedSackValue,
         trackExpenses: trackExpensesValue,
         total,
@@ -539,7 +610,9 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
 
     setSaleStatus({ type: "success", message: translate(language, "saleRecordedSuccessfully") });
     setSaleCustomerName("");
-    setSaleSaltQuantity("");
+    setSaleBagType("");
+    setSaleNumberOfBags("");
+    setSaleTotalKg("");
     setSalePricePerKg("");
     setSaleHockExtendedSack("");
     setSaleTrackExpenses("");
@@ -551,19 +624,31 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
     toast.success("Sale Recorded Successfully");
   };
 
-  const customerRows = customers.map((customer, index) => (
+  const customerRows = filteredCustomers.map((customer, index) => (
     <tr key={customer._id} className={`border-b border-slate-100 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}>
-      <td className="print-table-hidden px-4 py-4 text-slate-800">{formatDisplayName(customer.name, "Unnamed customer")}</td>
+      <td className="px-4 py-4 text-slate-800">{formatDisplayName(customer.name, "Unnamed customer")}</td>
       <td className="print-table-hidden px-4 py-4 text-center text-slate-600">{formatAmount(customer.saltAmount ?? 0)}</td>
       <td className="px-4 py-4 text-center text-slate-600">Tk {formatAmount(customer.totalSalesAmount ?? 0)}</td>
+      <td className="print-table-hidden px-4 py-4 text-center text-slate-600">
+        {customer.latestSaleId ? (
+          <div className="flex flex-col items-center gap-1">
+            <span>Tk {formatAmount(customer.latestPricePerKg ?? 0, 2)}</span>
+            <span className="text-xs text-slate-400">
+              {formatLocalizedDate(customer.editedAt ?? customer.latestSaleDate ?? undefined, language)}
+            </span>
+          </div>
+        ) : (
+          "-"
+        )}
+      </td>
+      <td className="print-table-hidden px-4 py-4 text-center text-slate-600">
+        {customer.latestSaleId ? `${customer.latestBagType ?? "50"} kg` : "-"}
+      </td>
       <td className="print-table-hidden px-4 py-4 text-center text-slate-600">Tk {formatAmount(customer.totalHockExtendedSack ?? 0)}</td>
       <td className="print-table-hidden px-4 py-4 text-center text-slate-600">Tk {formatAmount(customer.totalTrackExpenses ?? 0)}</td>
       <td className="px-4 py-4 text-center text-slate-600">Tk {formatAmount(customer.totalPaid ?? 0)}</td>
       <td className={`px-4 py-4 text-center ${getBalanceClassName(customer.totalDue ?? 0)}`}>
         {formatTableBalanceStatus(customer.totalDue ?? 0)}
-      </td>
-      <td className="print-table-hidden px-4 py-4 text-center text-slate-600">
-        {customer.latestSaleId ? `Tk ${formatAmount(customer.latestPricePerKg ?? 0, 2)}` : "-"}
       </td>
       <td className="print-table-hidden px-4 py-4 text-center">
         <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
@@ -618,45 +703,39 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
           <h2 className="text-lg font-semibold text-slate-900">{translate(language, "newCustomer")}</h2>
           <form className="mt-5 space-y-4" onSubmit={handleAddCustomer}>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              <label className="space-y-2">
-                <span className="text-base text-slate-600">{translate(language, "nameLabel")}</span>
                 <input
                   name="customerName"
                   value={name}
                   onChange={(event) => setName(event.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-base"
+                  className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white
+                placeholder:text-slate-500 placeholder:font-medium"
                   placeholder={translate(language, "customerNameLabel")}
                   required
                 />
-              </label>
-              <label className="space-y-2">
-                <span className="text-base text-slate-600">{translate(language, "phoneLabelShort")}</span>
                 <input
                   name="customerPhone"
                   value={phone}
                   onChange={(event) => setPhone(event.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-base"
+                 className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white
+                placeholder:text-slate-500 placeholder:font-medium"
                   placeholder={translate(language, "phoneLabelShort")}
                   maxLength={11}
                   required
                 />
-              </label>
-              <label className="space-y-2">
-                <span className="text-base text-slate-600">{translate(language, "addressLabel")}</span>
                 <input
                   name="customerAddress"
                   value={address}
                   onChange={(event) => setAddress(event.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-base"
+                  className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white
+                placeholder:text-slate-500 placeholder:font-medium"
                   placeholder={translate(language, "addressLabel")}
                   required
                 />
-              </label>
             </div>
             {error && <p className="text-sm text-red-600">{error}</p>}
             <button
               type="submit"
-              className="inline-flex w-full items-center justify-center rounded-full bg-[#003366] px-6 py-3 text-sm font-semibold text-white shadow hover:bg-[#022749] disabled:opacity-50 sm:w-auto"
+              className="inline-flex w-full items-center justify-center rounded-lg bg-[#0077cc] px-5 py-3 text-base font-semibold text-white shadow hover:bg-[#005ea3] sm:w-auto"
               disabled={isSubmitting}
             >
               {isSubmitting ? translate(language, "addingEllipsis") : translate(language, "addCustomer")}
@@ -670,106 +749,127 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
         <p className="mt-2 text-xs text-slate-500">{translate(language, "recordCustomerSale")}</p>
 
         <form onSubmit={handleSaleSubmit} className="mt-6 space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <label className="block">
-              <span className="text-base font-medium text-slate-700">{translate(language, "customerNameLabel")}</span>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 items-center">
+            
               <input
                 name="saleCustomerName"
                 list="customerNames"
                 value={saleCustomerName}
                 onChange={(event) => setSaleCustomerName(event.target.value)}
                 placeholder={translate(language, "customerNameLabel")}
-                className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 outline-none focus:border-slate-400 focus:bg-white"
+                className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white
+                placeholder:text-slate-500 placeholder:font-medium"
+                autoComplete="off" 
               />
               <datalist id="customerNames">
                 {customers.map((customer) => (
                   <option key={customer._id} value={customer.name || ""} />
                 ))}
               </datalist>
-            </label>
-            <label className="block">
-              <span className="text-base font-medium text-slate-700">{translate(language, "saltQuantityLabel")}</span>
-              <input
-                name="saleSaltQuantity"
-                value={saleSaltQuantity}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  setSaleSaltQuantity(value);
-                  updateSaleAmounts(value, salePricePerKg, saleHockExtendedSack, saleTrackExpenses, salePaid);
-                }}
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0"
-                className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 outline-none focus:border-slate-400 focus:bg-white"
-              />
-            </label>
-            <label className="block">
-              <span className="text-base font-medium text-slate-700">{translate(language, "pricePerKg")}</span>
-              <input
-                name="salePricePerKg"
-                value={salePricePerKg}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  setSalePricePerKg(value);
-                  updateSaleAmounts(saleSaltQuantity, value, saleHockExtendedSack, saleTrackExpenses, salePaid);
-                }}
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0"
-                className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 outline-none focus:border-slate-400 focus:bg-white"
-              />
-            </label>
-            <label className="block">
-              <span className="text-base font-medium text-slate-700">{translate(language, "hockExtendedSack")}</span>
+              <div className="relative">
+                <select
+                  name="saleBagType"
+                  value={saleBagType}
+                  onChange={(event) => {
+                    const value = event.target.value as "" | "50" | "75";
+                    setSaleBagType(value);
+                    updateTotalKgAndAmounts(saleNumberOfBags, value, salePricePerKg, saleHockExtendedSack, saleTrackExpenses, salePaid);
+                  }}
+                   className="mt-2 w-full appearance-none rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white"
+                >
+                  <option className="disabled:text-slate-500 disabled:font-medium" value="" disabled>
+                    Bosta/Sack Type
+                  </option>
+                  <option value="50">50 kg per bag</option>
+                  <option value="75">75 kg per bag</option>
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3">
+                  <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
+                <input
+                  name="saleNumberOfBags"
+                  value={saleNumberOfBags}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setSaleNumberOfBags(value);
+                    updateTotalKgAndAmounts(value, saleBagType, salePricePerKg, saleHockExtendedSack, saleTrackExpenses, salePaid);
+                  }}
+                  type="number"
+                  step="1"
+                  min="0"
+                  placeholder="Number of Bosta/Sack"
+                 className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white
+                placeholder:text-slate-500 placeholder:font-medium"
+                />
+                <input
+                  name="saleTotalKg"
+                  value={saleTotalKg}
+                  readOnly
+                  type="number"
+                   step="1"
+                  min="0"
+                  placeholder="Total Salt (kg)"
+                  className="w-full mt-2 rounded-lg border border-emerald-200 bg-gradient-to-r from-emerald-50 to-emerald-100 px-4 py-3 pr-10 text-base font-semibold text-emerald-800 outline-none"
+                />
+                <input
+                  name="salePricePerKg"
+                  value={salePricePerKg}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setSalePricePerKg(value);
+                    updateSaleAmounts(saleTotalKg, value, saleHockExtendedSack, saleTrackExpenses, salePaid);
+                  }}
+                  type="number"
+                   step="1"
+                  min="0"
+                  placeholder={translate(language, "pricePerKg")}
+                  className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white
+                placeholder:text-slate-500 placeholder:font-medium"
+                />
               <input
                 name="saleHockExtendedSack"
                 value={saleHockExtendedSack}
                 onChange={(event) => {
                   const value = event.target.value;
                   setSaleHockExtendedSack(value);
-                  updateSaleAmounts(saleSaltQuantity, salePricePerKg, value, saleTrackExpenses, salePaid);
+                  updateSaleAmounts(saleTotalKg, salePricePerKg, value, saleTrackExpenses, salePaid);
                 }}
                 type="number"
-                step="0.01"
+                 step="1"
                 min="0"
-                placeholder="0"
-                className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 outline-none focus:border-slate-400 focus:bg-white"
+                placeholder={translate(language, "hockExtendedSack")}
+               className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white
+                placeholder:text-slate-500 placeholder:font-medium"
               />
-            </label>
-            <label className="block">
-              <span className="text-base font-medium text-slate-700">{translate(language, "trackExpenses")}</span>
               <input
                 name="saleTrackExpenses"
                 value={saleTrackExpenses}
                 onChange={(event) => {
                   const value = event.target.value;
                   setSaleTrackExpenses(value);
-                  updateSaleAmounts(saleSaltQuantity, salePricePerKg, saleHockExtendedSack, value, salePaid);
+                  updateSaleAmounts(saleTotalKg, salePricePerKg, saleHockExtendedSack, value, salePaid);
                 }}
                 type="number"
-                step="0.01"
+                 step="1"
                 min="0"
-                placeholder="0"
-                className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 outline-none focus:border-slate-400 focus:bg-white"
+                placeholder={translate(language, "trackExpenses")}
+               className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white
+                placeholder:text-slate-500 placeholder:font-medium"
               />
-            </label>
-            <label className="block">
-              <span className="text-base font-medium text-slate-700">{translate(language, "totalPriceTk")}</span>
               <input
                 name="saleTotalPrice"
                 value={saleTotalPrice}
                 readOnly
                 type="number"
-                step="0.01"
+                step="1"
                 min="0"
-                placeholder="0"
-                className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3 text-base text-slate-900 outline-none"
+                placeholder={translate(language, "totalPriceTk")}
+                 className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white
+                placeholder:text-slate-500 placeholder:font-medium"
               />
-            </label>
-             <label className="block">
-              <span className="text-base font-medium text-slate-700">{translate(language, "paidAmount")}</span>
               <input
                 name="salePaidAmount"
                 value={salePaid}
@@ -779,31 +879,29 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
                   setSaleDue(calculateDue(saleTotalPrice, value));
                 }}
                 type="number"
-                step="0.01"
+                step="1"
                 min="0"
-                placeholder="0"
-                className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 outline-none focus:border-slate-400 focus:bg-white"
+                placeholder={translate(language, "paidAmount")}
+               className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white
+                placeholder:text-slate-500 placeholder:font-medium"
               />
-            </label>
-            <label className="block">
-              <span className="text-base font-medium text-slate-700">{translate(language, "dueAmount")}</span>
               <input
                 name="saleDueAmount"
                 value={saleDue}
                 readOnly
                 type="number"
-                step="0.01"
-                placeholder="0"
-                className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3 text-base text-slate-900 outline-none"
+                 step="1"
+                placeholder={translate(language, "dueAmount")}
+                 className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white
+                placeholder:text-slate-500 placeholder:font-medium"
               />
-            </label>
           </div>
 
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <button
               type="submit"
-              className="inline-flex w-full items-center justify-center rounded-2xl bg-[#348CD4] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#2F7FC0] sm:w-auto"
+              className="inline-flex w-full items-center justify-center rounded-lg bg-[#348CD4] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#2F7FC0] sm:w-auto"
             >
               {translate(language, "saveSaleEntry")}
             </button>
@@ -840,20 +938,41 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
       </div>
 
       {/* Payment Now Button */}
-      <div className="print-hidden mb-4 flex justify-between items-center">
-        <button
+      <div className="print-hidden mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-[15rem]">
+          <CompactDateInput
+            name="customerTableFilterDate"
+            label={translate(language, "dateLabel")}
+            value={tableFilterDate}
+            onChange={setTableFilterDate}
+            max={getLocalDateInputValue()}
+            inputClassName="mt-2 w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-base text-slate-900 outline-none transition focus:border-sky-400 focus:bg-white"
+          />
+        </div>
+        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
+          {tableFilterDate ? (
+            <button
+              type="button"
+              onClick={() => setTableFilterDate("")}
+              className="inline-flex w-full items-center justify-center rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow hover:bg-slate-50 sm:w-auto"
+            >
+              {translate(language, "cancel")}
+            </button>
+          ) : null}
+          <button
             type="button"
             onClick={() => window.print()}
             className="inline-flex w-full items-center justify-center rounded-lg bg-[#348CD4] px-5 py-3 text-sm font-semibold text-white shadow hover:bg-[#2F7FC0] sm:w-auto"
           >
             {translate(language, "printCustomerList")}
-        </button>
-        <button
-          className="w-full rounded-lg bg-[#348CD4] px-6 py-2 text-base font-semibold text-white shadow hover:bg-[#2F7FC0] sm:w-auto"
-          onClick={() => setShowPaymentPopup(true)}
-        >
-          {translate(language, "paymentNow")}
-        </button>
+          </button>
+          <button
+            className="w-full rounded-lg bg-[#348CD4] px-6 py-2 text-base font-semibold text-white shadow hover:bg-[#2F7FC0] sm:w-auto"
+            onClick={() => setShowPaymentPopup(true)}
+          >
+            {translate(language, "paymentNow")}
+          </button>
+        </div>
       </div>
 
       {/* Payment Popup */}
@@ -890,6 +1009,7 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
                   readOnly={isProfilePaymentFlow}
                   aria-readonly={isProfilePaymentFlow}
                   required
+                  autoComplete="off"
                 />
                 {isProfilePaymentFlow ? null : (
                   <datalist id="paymentCustomerList">
@@ -969,23 +1089,53 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
           <form onSubmit={handleEditSubmit} className="space-y-4">
             <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
               <p className="font-semibold text-slate-900">{formatDisplayName(editTarget.name, "Unnamed customer")}</p>
+              <p className="mt-1">Current salt amount: {formatAmount(editTarget.latestSaleSaltAmount ?? 0, 2)} KG</p>
               <p className="mt-1">Current price: Tk {formatAmount(editTarget.latestPricePerKg ?? 0, 2)} per KG</p>
               <p className="mt-1 text-xs text-slate-500">{getEditedByText(editTarget)}</p>
             </div>
 
-            <label className="block">
-              <span className="text-sm font-medium text-slate-700">New price per KG</span>
-              <input
-                name="editCustomerPrice"
-                type="number"
-                step="0.01"
-                min="0"
-                value={editPrice}
-                onChange={(e) => setEditPrice(e.target.value)}
-                className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:bg-white"
-                required
-              />
-            </label>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <label className="block sm:col-span-3">
+                <span className="text-sm font-medium text-slate-700">Customer name</span>
+                <input
+                  name="editCustomerName"
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:bg-white"
+                  required
+                  autoComplete="off"
+                />
+              </label>
+
+              <label className="block">
+                <span className="text-sm font-medium text-slate-700">Salt amount</span>
+                <input
+                  name="editCustomerSaltAmount"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={editSaltAmount}
+                  onChange={(e) => setEditSaltAmount(e.target.value)}
+                  className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:bg-white"
+                  required
+                />
+              </label>
+
+              <label className="block sm:col-span-2">
+                <span className="text-sm font-medium text-slate-700">New price per KG</span>
+                <input
+                  name="editCustomerPrice"
+                  type="number"
+                  step="1"
+                  min="0"
+                  value={editPrice}
+                  onChange={(e) => setEditPrice(e.target.value)}
+                  className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:bg-white"
+                  required
+                />
+              </label>
+            </div>
 
             {editError ? (
               <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
@@ -1006,7 +1156,7 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
                 disabled={isSavingEdit}
                 className="inline-flex items-center justify-center rounded-lg bg-[#348CD4] px-5 py-2.5 text-base font-semibold text-white transition hover:bg-[#2F7FC0] disabled:opacity-60"
               >
-                {isSavingEdit ? "Updating..." : "Update price"}
+                {isSavingEdit ? "Updating..." : "Update details"}
               </button>
             </div>
           </form>
@@ -1049,43 +1199,49 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
       )}
 
       <div className="print-list-shell overflow-x-auto rounded-lg bg-white p-4 shadow-sm">
-        <table className="min-w-[60rem] w-full text-left">
+        <div className="print-only border-b border-slate-200 px-4 py-4">
+          <h2 className="text-xl font-semibold text-slate-900">{translate(language, "printCustomerList")}</h2>
+          <p className="mt-1 text-sm text-slate-500">Date: {getPrintDateLabel(tableFilterDate)}</p>
+        </div>
+        <table className="min-w-[60rem] w-full text-left text-sm">
           <thead className="border-b border-slate-200 text-slate-500">
             <tr>
-              <th className="print-table-hidden px-4 py-3">{translate(language, "nameLabel")}</th>
-              <th className="print-table-hidden px-4 py-3 text-center">{translate(language, "totalSaltKg")}</th>
-              <th className="px-4 py-3 text-center">{translate(language, "totalSalesLabel")}</th>
-              <th className="print-table-hidden px-4 py-3 text-center">{translate(language, "hockExtendedSack")}</th>
-              <th className="print-table-hidden px-4 py-3 text-center">{translate(language, "trackExpenses")}</th>
-              <th className="px-4 py-3 text-center">{translate(language, "totalReceived")}</th>
-              <th className="px-4 py-3 text-center">{translate(language, "dueOrAdvance")}</th>
-              <th className="print-table-hidden px-4 py-3 text-center">Latest price</th>
-              <th className="print-table-hidden px-4 py-3 text-center">Edited by</th>
-              <th className="print-table-hidden px-4 py-3 text-center">{translate(language, "action")}</th>
+              <th className="px-4 py-3 text-sm">{translate(language, "nameLabel")}</th>
+              <th className="print-table-hidden px-4 py-3 text-sm text-center">{translate(language, "saltKg")}</th>
+              <th className="px-4 py-3 text-sm text-center">{translate(language, "amount")}</th>
+              <th className="print-table-hidden px-4 py-3 text-sm text-center">{translate(language, "saltPricePerKg")}</th>
+              <th className="print-table-hidden px-4 py-3 text-sm text-center">{translate(language, "bagType")}</th>
+              <th className="print-table-hidden px-4 py-3 text-sm text-center">{translate(language, "hockExtendedSack")}</th>
+              <th className="print-table-hidden px-4 py-3 text-sm text-center">{translate(language, "trackCost")}</th>
+              <th className="px-4 py-3 text-sm text-center">{translate(language, "totalReceived")}</th>
+              <th className="px-4 py-3 text-sm text-center">{translate(language, "dueOrAdvance")}</th>
+              <th className="print-table-hidden px-4 py-3 text-sm text-center">{translate(language, "editedBy")}</th>
+              <th className="print-table-hidden px-4 py-3 text-sm text-center">{translate(language, "action")}</th>
             </tr>
           </thead>
           <tbody>
             <LoadMoreTable
               rows={customerRows}
-              colSpan={10}
+              colSpan={11}
               loadMoreLabel={language === "bn" ? "আরও দেখুন" : "Show more"}
               emptyState={
                 <tr>
-                  <td colSpan={10} className="px-4 py-8 text-center text-slate-500">
+                  <td colSpan={11} className="px-4 py-8 text-center text-slate-500">
                     {translate(language, "noCustomersFound")}
                   </td>
                 </tr>
               }
             />
             <tr className="border-t border-slate-200 bg-slate-50 font-semibold text-slate-800">
-              <td className="print-table-hidden px-4 py-4">{translate(language, "totals")}</td>
+              <td className="px-4 py-4">{translate(language, "totals")}</td>
               <td className="print-table-hidden px-4 py-4 text-center">{formatAmount(totalSalt)}</td>
               <td className="px-4 py-4 text-center">Tk {formatAmount(totalAmount)}</td>
+              <td className="print-table-hidden px-4 py-4 text-center"></td>
+              <td className="print-table-hidden px-4 py-4 text-center"></td>
               <td className="print-table-hidden px-4 py-4 text-center">Tk {formatAmount(totalHockExtendedSack)}</td>
               <td className="print-table-hidden px-4 py-4 text-center">Tk {formatAmount(totalTrackExpenses)}</td>
               <td className="px-4 py-4 text-center">Tk {formatAmount(totalPaid)}</td>
               <td className={`px-4 py-4 text-center ${getBalanceClassName(totalDue)}`}>{formatTableBalanceStatus(totalDue)}</td>
-              <td className="print-table-hidden px-4 py-4 text-center"></td>
               <td className="print-table-hidden px-4 py-4 text-center"></td>
               <td className="print-table-hidden px-4 py-4 text-center"></td>
             </tr>

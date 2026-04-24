@@ -1,5 +1,6 @@
 import { connectDB, isMongoConnectionError, isValidMongoObjectId } from "@/lib/db";
 import { requireAuth, validateSameOrigin } from "@/lib/auth";
+import { getSharedSiteSettingsSnapshot } from "@/lib/site-settings.server";
 import { ensureEnvSuperadminUser } from "@/lib/superadmin";
 import { getSharedSidebarBrandingSnapshot } from "@/lib/sidebar-branding.server";
 import { getCurrentUserProfileSnapshot } from "@/lib/user-profile.server";
@@ -10,7 +11,7 @@ export const fetchCache = "force-no-store";
 export const revalidate = 0;
 
 const isValidImageUrl = (value: string) =>
-  /^https?:\/\/.+/i.test(value) || /^data:image\/[a-zA-Z]+;base64,.+/i.test(value);
+  /^https?:\/\/.+/i.test(value) || /^data:image\/[a-zA-Z0-9.+-]+;base64,.+/i.test(value);
 
 const buildUserLookup = (userId: string | undefined, email: string) => {
   const filters: Array<{ _id?: string; email?: string }> = [{ email: email.toLowerCase() }];
@@ -59,8 +60,17 @@ export async function PUT(request: Request) {
   const hasSidebarLogoUrl = Object.prototype.hasOwnProperty.call(payload ?? {}, "sidebarLogoUrl");
   const hasSidebarHeading = Object.prototype.hasOwnProperty.call(payload ?? {}, "sidebarHeading");
   const hasSidebarSubheading = Object.prototype.hasOwnProperty.call(payload ?? {}, "sidebarSubheading");
+  const hasFaviconUrl = Object.prototype.hasOwnProperty.call(payload ?? {}, "faviconUrl");
+  const hasSiteTitle = Object.prototype.hasOwnProperty.call(payload ?? {}, "siteTitle");
 
-  if (!hasAvatarUrl && !hasSidebarLogoUrl && !hasSidebarHeading && !hasSidebarSubheading) {
+  if (
+    !hasAvatarUrl &&
+    !hasSidebarLogoUrl &&
+    !hasSidebarHeading &&
+    !hasSidebarSubheading &&
+    !hasFaviconUrl &&
+    !hasSiteTitle
+  ) {
     return Response.json({ message: "No updatable fields provided." }, { status: 400 });
   }
 
@@ -68,6 +78,8 @@ export async function PUT(request: Request) {
   const sidebarLogoUrl = String(payload?.sidebarLogoUrl ?? "").trim();
   const sidebarHeading = String(payload?.sidebarHeading ?? "").trim();
   const sidebarSubheading = String(payload?.sidebarSubheading ?? "").trim();
+  const faviconUrl = String(payload?.faviconUrl ?? "").trim();
+  const siteTitle = String(payload?.siteTitle ?? "").trim();
 
   if (hasAvatarUrl && avatarUrl && !isValidImageUrl(avatarUrl)) {
     return Response.json(
@@ -83,6 +95,13 @@ export async function PUT(request: Request) {
     );
   }
 
+  if (hasFaviconUrl && faviconUrl && !isValidImageUrl(faviconUrl)) {
+    return Response.json(
+      { message: "Favicon must be a valid http(s) URL or data:image base64 value." },
+      { status: 400 }
+    );
+  }
+
   if (hasSidebarHeading && sidebarHeading.length > 40) {
     return Response.json({ message: "Sidebar heading must be 40 characters or fewer." }, { status: 400 });
   }
@@ -91,19 +110,27 @@ export async function PUT(request: Request) {
     return Response.json({ message: "Sidebar subheading must be 80 characters or fewer." }, { status: 400 });
   }
 
+  if (hasSiteTitle && siteTitle.length > 80) {
+    return Response.json({ message: "Site title must be 80 characters or fewer." }, { status: 400 });
+  }
+
   const updatePayload: Record<string, string> = {};
   if (hasAvatarUrl) updatePayload.avatarUrl = avatarUrl;
   if (hasSidebarLogoUrl) updatePayload.sidebarLogoUrl = sidebarLogoUrl;
   if (hasSidebarHeading) updatePayload.sidebarHeading = sidebarHeading;
   if (hasSidebarSubheading) updatePayload.sidebarSubheading = sidebarSubheading;
+  if (hasFaviconUrl) updatePayload.faviconUrl = faviconUrl;
+  if (hasSiteTitle) updatePayload.siteTitle = siteTitle;
 
   await connectDB();
   await ensureEnvSuperadminUser(authResult);
-  if (hasSidebarLogoUrl || hasSidebarHeading || hasSidebarSubheading) {
+  if (hasSidebarLogoUrl || hasSidebarHeading || hasSidebarSubheading || hasFaviconUrl || hasSiteTitle) {
     const sharedBrandingUpdate: Record<string, string> = {};
     if (hasSidebarLogoUrl) sharedBrandingUpdate.sidebarLogoUrl = sidebarLogoUrl;
     if (hasSidebarHeading) sharedBrandingUpdate.sidebarHeading = sidebarHeading;
     if (hasSidebarSubheading) sharedBrandingUpdate.sidebarSubheading = sidebarSubheading;
+    if (hasFaviconUrl) sharedBrandingUpdate.faviconUrl = faviconUrl;
+    if (hasSiteTitle) sharedBrandingUpdate.siteTitle = siteTitle;
 
     await User.updateMany(
       { role: { $in: ["admin", "superadmin"] } },
@@ -118,10 +145,10 @@ export async function PUT(request: Request) {
       buildUserLookup(authResult.userId, authResult.email),
       { $set: { avatarUrl } },
       { returnDocument: "after" }
-    ).select("name email role avatarUrl sidebarLogoUrl sidebarHeading sidebarSubheading");
+    ).select("name email role avatarUrl sidebarLogoUrl sidebarHeading sidebarSubheading faviconUrl siteTitle");
   } else {
     user = await User.findOne(buildUserLookup(authResult.userId, authResult.email)).select(
-      "name email role avatarUrl sidebarLogoUrl sidebarHeading sidebarSubheading"
+      "name email role avatarUrl sidebarLogoUrl sidebarHeading sidebarSubheading faviconUrl siteTitle"
     );
   }
 
@@ -130,6 +157,7 @@ export async function PUT(request: Request) {
   }
 
   const sharedBranding = await getSharedSidebarBrandingSnapshot();
+  const sharedSiteSettings = await getSharedSiteSettingsSnapshot();
 
   return Response.json({
     message: "Profile updated.",
@@ -138,6 +166,8 @@ export async function PUT(request: Request) {
       email: user.email,
       role: user.role,
       avatarUrl: user.avatarUrl ?? "",
+      faviconUrl: sharedSiteSettings.faviconUrl,
+      siteTitle: sharedSiteSettings.siteTitle,
       sidebarLogoUrl: sharedBranding.sidebarLogoUrl,
       sidebarHeading: sharedBranding.sidebarHeading,
       sidebarSubheading: sharedBranding.sidebarSubheading,

@@ -52,7 +52,7 @@ const navGroups: NavGroup[] = [
   },
 ];
 
-const iconClassName = "h-6 w-6 shrink-0";
+const iconClassName = "h-5 w-5 shrink-0";
 
 type SidebarBrandingResponse = {
   sidebarLogoUrl?: string;
@@ -146,15 +146,15 @@ function NavIcon({ type }: { type: NavIconType }) {
 
 function BrandMark() {
   return (
-    <svg viewBox="0 0 40 40" className="h-8 w-8" aria-hidden="true">
+    <svg viewBox="0 0 40 40" className="h-9 w-9" aria-hidden="true">
       <defs>
         <linearGradient id="sidebarBrandGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#a78bfa" />
-          <stop offset="100%" stopColor="#6366f1" />
+          <stop offset="0%" stopColor="#38bdf8" />
+          <stop offset="100%" stopColor="#2563eb" />
         </linearGradient>
       </defs>
       <path d="M20 3 24 12 33 16 24 20 20 29 16 20 7 16 16 12Z" fill="url(#sidebarBrandGradient)" />
-      <path d="M20 11 22 15 26 17 22 19 20 23 18 19 14 17 18 15Z" fill="#c4b5fd" />
+      <path d="M20 11 22 15 26 17 22 19 20 23 18 19 14 17 18 15Z" fill="#bae6fd" />
     </svg>
   );
 }
@@ -292,21 +292,35 @@ export default function Sidebar({
         <span className={`text-xs font-bold uppercase tracking-[0.3em] lg:hidden ${isDarkTheme ? "text-white/45" : "text-slate-500"}`}>{translate(language, "menu")}</span>
       </div>
 
-      <div className={`border-b px-5 py-3 lg:block lg:px-6 ${isDarkTheme ? "border-indigo-900/50" : "border-slate-200"}`}>
-          <div className="space-y-1 flex flex-col items-center ">
-            <div className="flex flex-col items-center gap-2 mb-2">
+      <div
+        className={`border-b px-5 py-4 lg:block lg:px-6 ${
+          isDarkTheme ? "border-slate-700/70" : "border-slate-200/90"
+        }`}
+      >
+          <div className="flex flex-col items-center space-y-1">
+            <div className="mb-2 flex flex-col items-center gap-3">
               {sidebarLogoUrl ? (
                 <PlainImage
                   src={sidebarLogoUrl}
                   alt="Sidebar logo"
-                  className="h-auto w-28 object-contain sm:w-32"
+                  className="h-auto w-28 rounded-2xl object-contain sm:w-32"
                 />
               ) : (
-                <BrandMark />
+                <div
+                  className={`rounded-2xl border p-2.5 shadow-sm ${
+                    isDarkTheme
+                      ? "border-sky-400/15 bg-slate-900/80 shadow-sky-950/20"
+                      : "border-sky-100 bg-sky-50/80 shadow-sky-100/80"
+                  }`}
+                >
+                  <BrandMark />
+                </div>
               )}
               <div className="min-w-0">
                 <p
-                  className={`text-sm md:text-center font-semibold leading-tight tracking-[-0.02em] sm:text-base ${isDarkTheme ? "text-white" : "text-slate-900"}`}
+                  className={`text-center text-sm font-semibold leading-tight tracking-[-0.03em] sm:text-[1.02rem] ${
+                    isDarkTheme ? "text-white" : "text-slate-900"
+                  }`}
                   style={{ overflowWrap: "anywhere" }}
                 >
                   {sidebarHeading}
@@ -315,7 +329,11 @@ export default function Sidebar({
             </div>
 
             <p
-              className={`text-xs uppercase tracking-[0.22em] ${isDarkTheme ? "text-indigo-300" : "text-slate-500"}`}
+              className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${
+                isDarkTheme
+                  ? "bg-slate-800/90 text-sky-200 ring-1 ring-slate-700/70"
+                  : "bg-slate-100 text-slate-600 ring-1 ring-slate-200"
+              }`}
               style={{ overflowWrap: "anywhere" }}
             >
               {sidebarSubheading}
@@ -323,18 +341,18 @@ export default function Sidebar({
           </div>
       </div>
 
-      <nav className="space-y-6 px-4 py-5 sm:px-5 sm:py-6 lg:space-y-8 lg:px-4 lg:py-5">
+      <nav className="space-y-6 px-4 py-5 sm:px-5 sm:py-6 lg:space-y-7 lg:px-4 lg:py-5">
         {navGroups.map((group) => (
           <div key={group.title}>
             <p
-              className={`px-1 text-xs font-bold uppercase tracking-[0.22em] lg:px-2 lg:tracking-[0.18em] ${
-                isDarkTheme ? "text-white/40 lg:text-indigo-300/70" : "text-slate-500"
+              className={`px-2 text-[11px] font-semibold uppercase tracking-[0.18em] ${
+                isDarkTheme ? "text-slate-400" : "text-slate-500"
               }`}
             >
               {translate(language, group.title)}
             </p>
 
-            <div className="mt-3 space-y-1 lg:space-y-1.5">
+            <div className="mt-3 space-y-1.5">
               {group.items.map((item) => {
                 const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
 
@@ -343,40 +361,51 @@ export default function Sidebar({
                     key={item.href}
                     href={item.href}
                     onClick={() => setMobileOpen(false)}
-                    className={`group flex items-center gap-2 rounded-md px-3 py-3 text-[0.98rem] font-medium transition sm:px-3.5 sm:py-3.5 sm:text-base lg:rounded-md lg:px-3.5 lg:py-3 lg:text-[1.05rem] ${
+                    className={`group relative flex items-center gap-3 overflow-hidden rounded-2xl px-3 py-3 text-[0.96rem] font-medium transition-all duration-200 sm:px-3.5 sm:py-3.5 lg:px-3.5 lg:py-3 ${
                       isDarkTheme
                         ? isActive
-                          ? "bg-white/12 text-white lg:bg-indigo-700/30 lg:text-indigo-100 lg:shadow-[inset_0_0_0_1px_rgba(165,180,252,0.22)]"
-                          : "text-white/78 hover:bg-white/8 hover:text-white lg:text-indigo-100/85 lg:hover:bg-indigo-800/25"
+                          ? "bg-linear-to-r from-sky-500/18 via-blue-500/14 to-transparent text-white shadow-[inset_0_0_0_1px_rgba(125,211,252,0.18)]"
+                          : "text-white/78 hover:bg-white/6 hover:text-white"
                         : isActive
-                          ? "bg-white text-slate-900 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.22)]"
-                          : "text-slate-700 hover:bg-white/80 hover:text-slate-900"
+                          ? "bg-linear-to-r from-sky-50 via-white to-white text-slate-900 shadow-[0_10px_30px_rgba(148,163,184,0.14)] ring-1 ring-sky-100"
+                          : "text-slate-700 hover:bg-white/85 hover:text-slate-900 hover:shadow-[0_8px_24px_rgba(148,163,184,0.10)]"
                     }`}
                   >
                     <span
-                      className={
+                      className={`absolute inset-y-2 left-0 w-1 rounded-full transition-all duration-200 ${
+                        isActive
+                          ? isDarkTheme
+                            ? "bg-sky-300 opacity-100"
+                            : "bg-sky-500 opacity-100"
+                          : "opacity-0 group-hover:opacity-60"
+                      }`}
+                    />
+                    <span
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-all duration-200 ${
                         isDarkTheme
                           ? isActive
-                            ? "text-white lg:text-indigo-200"
-                            : "text-white/78 lg:text-indigo-300/85"
+                            ? "border-sky-300/18 bg-slate-900/80 text-sky-200"
+                            : "border-transparent bg-white/6 text-white/78 group-hover:bg-white/10 group-hover:text-white"
                           : isActive
-                            ? "text-slate-900"
-                            : "text-slate-500"
-                      }
+                            ? "border-sky-100 bg-sky-50 text-sky-700"
+                            : "border-transparent bg-slate-100/80 text-slate-500 group-hover:bg-slate-200/70 group-hover:text-slate-700"
+                      }`}
                     >
                       <NavIcon type={item.icon} />
                     </span>
-                    <span className="flex-1">{translate(language, item.label)}</span>
+                    <span className="flex-1">
+                      <span className="block leading-tight">{translate(language, item.label)}</span>
+                    </span>
                     <svg
                       viewBox="0 0 20 20"
                       fill="currentColor"
-                      className={`h-4 w-4 transition ${
+                      className={`h-4 w-4 transition-all duration-200 group-hover:translate-x-0.5 ${
                         isDarkTheme
                           ? isActive
-                            ? "text-white lg:text-indigo-100"
-                            : "text-white/55 group-hover:text-white lg:text-indigo-300/70 lg:group-hover:text-indigo-100"
+                            ? "text-sky-200"
+                            : "text-white/40 group-hover:text-white/75"
                           : isActive
-                            ? "text-slate-700"
+                            ? "text-sky-600"
                             : "text-slate-400 group-hover:text-slate-700"
                       }`}
                     >

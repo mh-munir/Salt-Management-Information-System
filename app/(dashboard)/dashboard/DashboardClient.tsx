@@ -1,7 +1,6 @@
-"use client";
-import dynamic from "next/dynamic";
+﻿"use client";
 import Link from "next/link";
-import { startTransition, useEffect, useMemo, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useState } from "react";
 import Card from "@/components/Card";
 import { getBalanceSummary } from "@/lib/balance";
 import type { DashboardPageData } from "@/lib/dashboard-data";
@@ -9,42 +8,12 @@ import { formatDisplayName } from "@/lib/display-format";
 import { useLanguage } from "@/lib/useLanguage";
 import { translate } from "@/lib/language";
 
-const SalesChart = dynamic(() => import("@/components/Chart"), {
-  ssr: false,
-  loading: () => <div className="h-60 min-h-60 w-full rounded-xl bg-slate-100 sm:h-75 sm:min-h-75" />,
-});
-
 const KG_PER_MAUND = 40;
-
-type TransactionItem = {
-  amount?: number;
-  saltAmount?: number;
-  date?: string | Date;
-  type?: string;
-  customerId?: string;
-  supplierId?: string;
-};
 
 type PartyContact = {
   _id?: string;
   name?: string;
   phone?: string;
-};
-
-type RevenueChartPoint = {
-  label: string;
-  orders: number;
-  refunds: number;
-};
-
-const getPercentChange = (current: number, previous: number) => {
-  if (!previous) return current > 0 ? 100 : 0;
-  return ((current - previous) / previous) * 100;
-};
-
-const getSafeAmount = (amount?: number) => {
-  const value = Number(amount ?? 0);
-  return Number.isFinite(value) ? value : 0;
 };
 
 const getRatioPercent = (value: number, total: number) => {
@@ -63,10 +32,13 @@ type DashboardClientProps = {
 export default function DashboardClient({ initialData }: DashboardClientProps) {
   const { language } = useLanguage();
   const numberLocale = language === "bn" ? "bn-BD" : "en-BD";
-  const formatFullCurrency = (amount: number) =>
-    new Intl.NumberFormat(numberLocale, {
-      maximumFractionDigits: 0,
-    }).format(amount);
+  const formatFullCurrency = useCallback(
+    (amount: number) =>
+      new Intl.NumberFormat(numberLocale, {
+        maximumFractionDigits: 0,
+      }).format(amount),
+    [numberLocale]
+  );
 
   const formatWeight = (amount: number) =>
     new Intl.NumberFormat(numberLocale, {
@@ -97,120 +69,6 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
   }>(initialData.stockData);
   const [customers, setCustomers] = useState<PartyContact[]>(initialData.customers);
   const [suppliers, setSuppliers] = useState<PartyContact[]>(initialData.suppliers);
-  const [rawTransactions, setRawTransactions] = useState<TransactionItem[]>(initialData.rawTransactions);
-  const [rangeDays, setRangeDays] = useState<number>(90);
-
-  const revenueSection = useMemo(() => {
-    const dayMs = 24 * 60 * 60 * 1000;
-    const bucketCount = 15;
-    const bucketSize = Math.max(1, Math.ceil(rangeDays / bucketCount));
-    const points: RevenueChartPoint[] = Array.from({ length: bucketCount }, (_, index) => ({
-      label: `${(index + 1) * bucketSize}D`,
-      orders: 0,
-      refunds: 0,
-    }));
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    let orders = 0;
-    let refunds = 0;
-    let previousOrders = 0;
-    let previousRefunds = 0;
-
-    for (const item of rawTransactions) {
-      const parsed = new Date(item.date ?? "");
-      if (Number.isNaN(parsed.getTime())) continue;
-
-      parsed.setHours(0, 0, 0, 0);
-      const diffDays = Math.floor((today.getTime() - parsed.getTime()) / dayMs);
-      if (diffDays < 0) continue;
-
-      const amount = getSafeAmount(item.amount);
-      const isRefund = item.type?.startsWith("supplier") || Boolean(item.supplierId);
-
-      if (diffDays < rangeDays) {
-        const bucket = Math.floor(diffDays / bucketSize);
-        if (bucket < bucketCount) {
-          const pointIndex = bucketCount - 1 - bucket;
-          if (isRefund) {
-            points[pointIndex].refunds += amount;
-            refunds += amount;
-          } else {
-            points[pointIndex].orders += amount;
-            orders += amount;
-          }
-        }
-      } else if (diffDays < rangeDays * 2) {
-        if (isRefund) previousRefunds += amount;
-        else previousOrders += amount;
-      }
-    }
-
-    const net = orders - refunds;
-    const previousNet = previousOrders - previousRefunds;
-    const change = getPercentChange(net, previousNet);
-
-    return {
-      points,
-      net,
-      changePercent: Math.abs(change),
-      isUp: change >= 0,
-    };
-  }, [rawTransactions, rangeDays]);
-
-  const dailyRevenueSection = useMemo(() => {
-    const dayMs = 24 * 60 * 60 * 1000;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    let todaySalesAmount = 0;
-    let todayBuyAmount = 0;
-    let yesterdaySales = 0;
-    let yesterdayBuy = 0;
-    let todaySaltSoldKg = 0;
-
-    for (const item of rawTransactions) {
-      const parsed = new Date(item.date ?? "");
-      if (Number.isNaN(parsed.getTime())) continue;
-
-      parsed.setHours(0, 0, 0, 0);
-      const diffDays = Math.floor((today.getTime() - parsed.getTime()) / dayMs);
-      if (diffDays < 0 || diffDays > 1) continue;
-
-      const amount = getSafeAmount(item.amount);
-      const saltAmount = getSafeAmount(item.saltAmount);
-      const isSupplierTransaction = item.type?.startsWith("supplier") || Boolean(item.supplierId);
-
-      if (diffDays === 0) {
-        if (isSupplierTransaction) {
-          todayBuyAmount += amount;
-        } else {
-          todaySalesAmount += amount;
-          todaySaltSoldKg += saltAmount;
-        }
-      }
-
-      if (diffDays === 1) {
-        if (isSupplierTransaction) {
-          yesterdayBuy += amount;
-        } else {
-          yesterdaySales += amount;
-        }
-      }
-    }
-
-    const net = todaySalesAmount + todayBuyAmount;
-    const previousNet = yesterdaySales + yesterdayBuy;
-    const change = getPercentChange(net, previousNet);
-
-    return {
-      net,
-      changePercent: Math.abs(change),
-      isUp: change >= 0,
-      todaySaltSoldKg,
-    };
-  }, [rawTransactions]);
 
   const dailyTransactionSection = useMemo(
     () => ({
@@ -258,6 +116,53 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
     [stockData.stockMounds, stockData.totalBought]
   );
 
+  const soldSaltPurchaseCost = useMemo(() => {
+    if (averagePurchasePricePerMaund <= 0 || totalSoldMaund <= 0) return 0;
+
+    return totalSoldMaund * averagePurchasePricePerMaund;
+  }, [averagePurchasePricePerMaund, totalSoldMaund]);
+
+  const totalSalesCostBasis = useMemo(
+    () => Math.max(0, soldSaltPurchaseCost + totalCost),
+    [soldSaltPurchaseCost, totalCost]
+  );
+
+  const totalProfitAmount = useMemo(
+    () => totalSales - totalSalesCostBasis,
+    [totalSales, totalSalesCostBasis]
+  );
+
+  const totalProfitPercent = useMemo(() => {
+    if (totalSalesCostBasis <= 0) return totalSales > 0 ? 100 : 0;
+
+    return (totalProfitAmount / totalSalesCostBasis) * 100;
+  }, [totalProfitAmount, totalSales, totalSalesCostBasis]);
+
+  const profitChartSegments = useMemo(
+    () =>
+      [
+        {
+          label: language === "bn" ? "ক্রয় মূল্য" : "Purchase Cost",
+          value: soldSaltPurchaseCost,
+          color: "#7c3aed",
+          valueLabel: `Tk ${formatFullCurrency(soldSaltPurchaseCost)}`,
+        },
+        {
+          label: language === "bn" ? "খরচ" : "Cost",
+          value: totalCost,
+          color: "#f59e0b",
+          valueLabel: `Tk ${formatFullCurrency(totalCost)}`,
+        },
+        {
+          label: totalProfitAmount >= 0 ? (language === "bn" ? "লাভ" : "Profit") : language === "bn" ? "ক্ষতি" : "Loss",
+          value: Math.abs(totalProfitAmount),
+          color: totalProfitAmount >= 0 ? "#10b981" : "#ef4444",
+          valueLabel: `Tk ${formatFullCurrency(Math.abs(totalProfitAmount))}`,
+        },
+      ].filter((segment) => segment.value > 0),
+    [formatFullCurrency, language, soldSaltPurchaseCost, totalCost, totalProfitAmount]
+  );
+
   const todaySalesMaund = useMemo(
     () => Math.max(0, todaySalesSaltKg / KG_PER_MAUND),
     [todaySalesSaltKg]
@@ -274,7 +179,10 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
   const dailySalesRingPercent = getRatioPercent(todaySales, todayTradeVolume);
   const dailyPurchaseRingPercent = getRatioPercent(todayBuy, todayTradeVolume);
   const dailyTransactionRingPercent = getRatioPercent(todayTradeVolume, totalTradeVolume);
+  const dailyCostRingPercent = getRatioPercent(todayCost, todayBuy);
   const customerDuePercentLabel = `${formatPercent(customerDueRingPercent)}%`;
+  const dailyCostPercentLabel = `${formatPercent(dailyCostRingPercent)}%`;
+  const dailyPurchaseAndCostTotal = todayBuy + todayCost;
   const customerDueTrendDetail =
     language === "bn"
       ? `মোট বিক্রয়ের ${customerDuePercentLabel} এখনো গ্রাহকদের কাছে পাওনা আছে`
@@ -370,7 +278,6 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
           );
           setCustomers(Array.isArray(data.customers) ? data.customers : []);
           setSuppliers(Array.isArray(data.suppliers) ? data.suppliers : []);
-          setRawTransactions(Array.isArray(data.rawTransactions) ? data.rawTransactions : []);
         });
       } catch {
         // Keep the server-rendered snapshot when refresh fails.
@@ -471,11 +378,15 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
           <Card
             title={translate(language, "dailyCost")}
             value={`Tk ${formatFullCurrency(todayCost)}`}
-            trendPercent="0.00%"
-            trendDetail={translate(language, "todaysExpenses")}
+            trendPercent={`Tk ${formatFullCurrency(dailyPurchaseAndCostTotal)}`}
+            trendDetail={
+              language === "bn"
+                ? `ক্রয় + খরচ মোট, এর মধ্যে ${dailyCostPercentLabel} খরচ হয়েছে`
+                : `Purchase + cost total, where ${dailyCostPercentLabel} went to cost`
+            }
             trendDirection="neutral"
             visual="ring"
-            ringPercent={0}
+            ringPercent={dailyCostRingPercent}
             icon="warning"
             tone="amber"
           />
@@ -517,7 +428,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
             trendPercent={`Tk ${formatFullCurrency(totalCost)}`}
             trendDetail={
               language === "bn"
-                ? `ক্রয়: Tk ${formatFullCurrency(totalBuy)}\nখরচ: Tk ${formatFullCurrency(totalCost)}`
+                ? `ক্রয়: Tk ${formatFullCurrency(totalBuy)}\nখরচ: Tk ${formatFullCurrency(totalCost)}`
                 : `Purchase: Tk ${formatFullCurrency(totalBuy)}\nCost: Tk ${formatFullCurrency(totalCost)}`
             }
             trendDirection="neutral"
@@ -573,53 +484,23 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
       <div>
         <section className="space-y-4">
           <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
-            <div className="bg-white p-6 rounded-md border border-gray-200">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <p className="text-lg font-semibold text-slate-700">{translate(language, "dailyRevenue")}</p>
-
-                  <div className="mt-3 flex flex-wrap items-center gap-3">
-                    <span className="grid h-10 w-10 place-items-center rounded-full bg-teal-500 text-white">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5">
-                        <path d="M4 7h16l-1.2 9a2 2 0 0 1-2 1.7H7.2a2 2 0 0 1-2-1.7L4 7Z" />
-                        <path d="M9 7V5a3 3 0 1 1 6 0v2" />
-                      </svg>
-                    </span>
-                    <p className="text-3xl font-semibold tracking-tight text-slate-700">
-                      Tk {formatFullCurrency(dailyRevenueSection.net)}
-                    </p>
-                    <span
-                      className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-semibold ${
-                        dailyRevenueSection.isUp ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
-                      }`}
-                    >
-                      {dailyRevenueSection.isUp ? translate(language, "upLabel") : translate(language, "downLabel")} {formatPercent(dailyRevenueSection.changePercent)}%
-                    </span>
-                  </div>
-                </div>
-
-                <div className="inline-flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-slate-600 sm:w-auto">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-4 w-4">
-                    <rect x="3" y="5" width="18" height="16" rx="2" />
-                    <path d="M16 3v4M8 3v4M3 10h18" />
-                  </svg>
-                  <select
-                    name="rangeDays"
-                    value={rangeDays}
-                    onChange={(event) => setRangeDays(Number(event.target.value))}
-                    className="bg-transparent font-medium outline-none"
-                  >
-                    <option value={15}>Last 15 Days</option>
-                    <option value={30}>Last 30 Days</option>
-                    <option value={90}>Last 90 Days</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="mt-5 min-w-0">
-                <SalesChart data={revenueSection.points} />
-              </div>
-            </div>
+            <Card
+              title={language === "bn" ? "লাভের পাই চার্ট" : "Profit Pie Chart"}
+              value={`${totalProfitAmount < 0 ? "-" : ""}Tk ${formatFullCurrency(Math.abs(totalProfitAmount))}`}
+              trendPercent={`${formatPercent(Math.abs(totalProfitPercent))}% ${
+                totalProfitAmount >= 0 ? (language === "bn" ? "লাভ" : "profit") : language === "bn" ? "ক্ষতি" : "loss"
+              }`}
+              trendDetail={
+                language === "bn"
+                  ? `বিক্রিত লবণের ক্রয় মূল্য ও মোট খরচ বাদ দিয়ে এই ${totalProfitAmount >= 0 ? "লাভ" : "ক্ষতি"} হিসাব করা হয়েছে`
+                  : `This ${totalProfitAmount >= 0 ? "profit" : "loss"} is calculated after sold-salt purchase cost and total cost`
+              }
+              trendDirection={totalProfitAmount >= 0 ? "up" : "down"}
+              pieSegments={profitChartSegments}
+              icon="sales"
+              tone={totalProfitAmount >= 0 ? "emerald" : "rose"}
+              accentValue
+            />
 
             <div className="rounded-md border border-slate-200 bg-slate-50/70 p-4">
               <div className="flex items-center justify-between gap-3">
@@ -675,3 +556,4 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
     </div>
   );
 }
+

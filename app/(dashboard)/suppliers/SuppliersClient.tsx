@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
@@ -13,7 +13,7 @@ import { translate } from "@/lib/language";
 import { compareByLatestInput } from "@/lib/record-order";
 import type { SupplierListItem } from "@/lib/suppliers-data";
 import { useLanguage } from "@/lib/useLanguage";
-import { formatDisplayName, formatLocalizedNumber } from "@/lib/display-format";
+import { formatDisplayName, formatLocalizedDate, formatLocalizedNumber } from "@/lib/display-format";
 
 type Supplier = SupplierListItem;
 
@@ -31,6 +31,15 @@ const getLocalDateInputValue = () => {
   return new Date(now.getTime() - offsetMs).toISOString().split("T")[0];
 };
 
+const getDateKey = (value?: string | Date | number | null) => {
+  if (!value && value !== 0) return "";
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
+
+  return parsed.toISOString().split("T")[0];
+};
+
 type SuppliersClientProps = {
   initialData: Supplier[];
 };
@@ -40,6 +49,7 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const getPrintDateLabel = (value?: string) => formatLocalizedDate(value || new Date(), language);
   const formatAmount = (value: number, maximumFractionDigits = 2) =>
     formatLocalizedNumber(value, language, { maximumFractionDigits });
   const getEditorRoleLabel = (role?: string) => (role === "superadmin" ? "Super Admin" : "Admin");
@@ -183,9 +193,12 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
   const [buyPopupMessage, setBuyPopupMessage] = useState("");
   const [showEditPopup, setShowEditPopup] = useState(false);
   const [editTarget, setEditTarget] = useState<Supplier | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editSaltAmount, setEditSaltAmount] = useState("");
   const [editPrice, setEditPrice] = useState("");
   const [editError, setEditError] = useState("");
   const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [tableFilterDate, setTableFilterDate] = useState("");
 
   // Add any other state and handlers that were previously misplaced here
   // ...existing code...
@@ -216,10 +229,14 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
     setShowPaymentPopup(true);
   }, [requestedPaymentSupplierId, suppliers]);
 
-  const totalSalt = suppliers.reduce((sum, supplier) => sum + (supplier.saltAmount ?? 0), 0);
-  const totalDue = suppliers.reduce((sum, supplier) => sum + (supplier.totalDue ?? 0), 0);
-  const totalPaid = suppliers.reduce((sum, supplier) => sum + (supplier.totalPaid ?? 0), 0);
-  const totalAmount = suppliers.reduce(
+  const filteredSuppliers = useMemo(
+    () => (tableFilterDate ? suppliers.filter((supplier) => getDateKey(supplier.lastActivityAt) === tableFilterDate) : suppliers),
+    [suppliers, tableFilterDate]
+  );
+  const totalSalt = filteredSuppliers.reduce((sum, supplier) => sum + (supplier.saltAmount ?? 0), 0);
+  const totalDue = filteredSuppliers.reduce((sum, supplier) => sum + (supplier.totalDue ?? 0), 0);
+  const totalPaid = filteredSuppliers.reduce((sum, supplier) => sum + (supplier.totalPaid ?? 0), 0);
+  const totalAmount = filteredSuppliers.reduce(
     (sum, supplier) => sum + (supplier.totalPurchaseAmount ?? (supplier.totalPaid ?? 0) + (supplier.totalDue ?? 0)),
     0
   );
@@ -421,6 +438,8 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
     if (!supplier.latestPurchaseId) return;
 
     setEditTarget(supplier);
+    setEditName(supplier.name ?? "");
+    setEditSaltAmount(supplier.latestPurchaseSaltAmount ? supplier.latestPurchaseSaltAmount.toFixed(2) : "0");
     setEditPrice(supplier.latestPricePerMaund ? supplier.latestPricePerMaund.toFixed(2) : "");
     setEditError("");
     setShowEditPopup(true);
@@ -429,6 +448,8 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
   const closeEditPopup = () => {
     setShowEditPopup(false);
     setEditTarget(null);
+    setEditName("");
+    setEditSaltAmount("");
     setEditPrice("");
     setEditError("");
     setIsSavingEdit(false);
@@ -443,6 +464,19 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
     }
 
     const nextPrice = Number(editPrice);
+    const nextSaltAmount = Number(editSaltAmount);
+    const nextName = editName.trim();
+
+    if (!nextName) {
+      setEditError("Enter a supplier name.");
+      return;
+    }
+
+    if (editSaltAmount.trim() === "" || Number.isNaN(nextSaltAmount) || nextSaltAmount < 0) {
+      setEditError("Enter a valid salt amount.");
+      return;
+    }
+
     if (editPrice.trim() === "" || Number.isNaN(nextPrice) || nextPrice < 0) {
       setEditError("Enter a valid price per Maund.");
       return;
@@ -458,6 +492,8 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
         body: JSON.stringify({
           action: "edit-price",
           transactionId: editTarget.latestPurchaseId,
+          supplierName: nextName,
+          saltAmount: nextSaltAmount,
           pricePerMaund: nextPrice,
         }),
       });
@@ -479,9 +515,9 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
     }
   };
 
-  const supplierRows = suppliers.map((supplier, index) => (
+  const supplierRows = filteredSuppliers.map((supplier, index) => (
     <tr key={supplier._id} className={`border-b border-slate-100 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}>
-      <td className="print-table-hidden px-4 py-4 text-slate-800">{formatDisplayName(supplier.name, "Unnamed supplier")}</td>
+      <td className="px-4 py-4 text-slate-800">{formatDisplayName(supplier.name, "Unnamed supplier")}</td>
       <td className="print-table-hidden px-4 py-4 text-center text-slate-600">{formatAmount(supplier.saltAmount ?? 0)}</td>
       <td className="px-4 py-4 text-center text-slate-600">Tk {formatAmount(supplier.totalPurchaseAmount ?? (supplier.totalPaid ?? 0) + (supplier.totalDue ?? 0))}</td>
       <td className="px-4 py-4 text-center text-slate-600">Tk {formatAmount(supplier.totalPaid ?? 0)}</td>
@@ -489,7 +525,16 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
         {formatTableBalanceStatus(supplier.totalDue ?? 0)}
       </td>
       <td className="print-table-hidden px-4 py-4 text-center text-slate-600">
-        {supplier.latestPurchaseId ? `Tk ${formatAmount(supplier.latestPricePerMaund ?? 0, 2)}` : "-"}
+        {supplier.latestPurchaseId ? (
+          <div className="flex flex-col items-center gap-1">
+            <span>Tk {formatAmount(supplier.latestPricePerMaund ?? 0, 2)}</span>
+            <span className="text-xs text-slate-400">
+              {formatLocalizedDate(supplier.editedAt ?? supplier.latestPurchaseDate ?? undefined, language)}
+            </span>
+          </div>
+        ) : (
+          "-"
+        )}
       </td>
       <td className="print-table-hidden px-4 py-4 text-center">
         <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
@@ -544,45 +589,39 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
           <h2 className="text-lg font-semibold text-slate-900">{translate(language, "newSupplier")}</h2>
           <form className="mt-5 space-y-4" onSubmit={handleAddSupplier}>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              <label className="space-y-2">
-                <span className="text-base text-slate-600">{translate(language, "nameLabel")}</span>
                 <input
                   name="supplierName"
                   value={name}
                   onChange={(event) => setName(event.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-base"
+                  className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white
+                placeholder:text-slate-500 placeholder:font-medium"
                   placeholder={translate(language, "supplierNameLabel")}
                   required
-                />
-              </label>
-              <label className="space-y-2">
-                <span className="text-base text-slate-600">{translate(language, "phoneLabelShort")}</span>
+                  autoComplete="off" />
                 <input
                   name="supplierPhone"
                   value={phone}
                   onChange={(event) => setPhone(event.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-base"
+                  className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white
+                placeholder:text-slate-500 placeholder:font-medium"
                   placeholder={translate(language, "phoneLabelShort")}
                   maxLength={11}
-                  required
+                  required autoComplete="off"
                 />
-              </label>
-              <label className="space-y-2">
-                <span className="text-base text-slate-600">{translate(language, "addressLabelShort")}</span>
                 <input
                   name="supplierAddress"
                   value={address}
                   onChange={(event) => setAddress(event.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-base"
+                  className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white
+                placeholder:text-slate-500 placeholder:font-medium"
                   placeholder={translate(language, "addressLabelShort")}
-                  required
+                  required autoComplete="off"
                 />
-              </label>
             </div>
             {error && <p className="text-sm text-red-600">{error}</p>}
             <button
               type="submit"
-              className="inline-flex w-full items-center justify-center rounded-lg bg-[#003366] px-6 py-3 text-sm font-semibold text-white shadow hover:bg-[#022749] disabled:opacity-50 sm:w-auto"
+              className="inline-flex w-full items-center justify-center rounded-lg bg-[#0077cc] px-5 py-3 text-base font-semibold text-white shadow hover:bg-[#005ea3] sm:w-auto"
               disabled={isSubmitting}
             >
               {isSubmitting ? translate(language, "addingEllipsis") : translate(language, "addSupplier")}
@@ -598,24 +637,20 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
 
         <form onSubmit={handleBuySubmit} className="mt-6 space-y-4">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <label className="block">
-              <span className="text-base font-medium text-slate-700">{translate(language, "supplierNameLabel")}</span>
               <input
                 name="purchaseSupplierName"
                 list="supplierNames"
                 value={supplierName}
                 onChange={(event) => setSupplierName(event.target.value)}
                 placeholder={translate(language, "supplierNameLabel")}
-                className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 outline-none focus:border-slate-400 focus:bg-white"
-              />
+                className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white
+              placeholder:text-slate-500 placeholder:font-medium"
+               autoComplete="off"/>
               <datalist id="supplierNames">
                 {suppliers.map((supplier) => (
                   <option key={supplier._id} value={supplier.name || ""} />
                 ))}
               </datalist>
-            </label>
-            <label className="block">
-              <span className="text-base font-medium text-slate-700">{translate(language, "totalMaund")}</span>
               <input
                 name="purchaseTotalMaund"
                 value={buySaltQuantity}
@@ -627,14 +662,13 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
                   setBuyDue(calculateDue(updatedTotal, buyPaid));
                 }}
                 type="number"
-                step="0.01"
+                step="1"
                 min="0"
-                placeholder="0"
-                className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 outline-none focus:border-slate-400 focus:bg-white"
+                placeholder={translate(language, "totalMaund")}
+                className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white
+              placeholder:text-slate-500 placeholder:font-medium"
+              autoComplete="off"
               />
-            </label>
-            <label className="block">
-              <span className="text-base font-medium text-slate-700">{translate(language, "pricePerMaund")}</span>
               <input
                 name="purchasePricePerMaund"
                 value={buyPricePerMaund}
@@ -646,28 +680,24 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
                   setBuyDue(calculateDue(updatedTotal, buyPaid));
                 }}
                 type="number"
-                step="0.01"
+                step="1"
                 min="0"
-                placeholder="0"
-                className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 outline-none focus:border-slate-400 focus:bg-white"
+                placeholder={translate(language, "pricePerMaund")}
+                 className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white
+              placeholder:text-slate-500 placeholder:font-medium"
+              autoComplete="off"
               />
-            </label>
-            
-            <label className="block">
-              <span className="text-base font-medium text-slate-700">{translate(language, "totalPriceTk")}</span>
               <input
                 name="purchaseTotalPrice"
                 value={buyTotalPrice}
                 readOnly
                 type="number"
-                step="0.01"
+                step="1"
                 min="0"
-                placeholder="0"
-                className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3 text-base text-slate-900 outline-none"
+                placeholder={translate(language, "totalPriceTk")}
+                className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white
+              placeholder:text-slate-500 placeholder:font-medium"
               />
-            </label>
-            <label className="block">
-              <span className="text-base font-medium text-slate-700">{translate(language, "paidAmount")}</span>
               <input
                 name="purchasePaidAmount"
                 value={buyPaid}
@@ -677,24 +707,22 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
                   setBuyDue(calculateDue(buyTotalPrice, value));
                 }}
                 type="number"
-                step="0.01"
+                step="1"
                 min="0"
-                placeholder="0"
-                className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 outline-none focus:border-slate-400 focus:bg-white"
+                placeholder={translate(language, "paidAmount")}
+                className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white
+              placeholder:text-slate-500 placeholder:font-medium"
               />
-            </label>
-            <label className="block">
-              <span className="text-base font-medium text-slate-700">{translate(language, "dueAmount")}</span>
               <input
                 name="purchaseDueAmount"
                 value={buyDue}
                 readOnly
                 type="number"
-                step="0.01"
-                placeholder="0"
-                className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3 text-base text-slate-900 outline-none"
+                step="1"
+                placeholder={translate(language, "dueAmount")}
+               className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white
+              placeholder:text-slate-500 placeholder:font-medium"
               />
-            </label>
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -737,20 +765,41 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
       </div>
 
       {/* Payment Now Button */}
-      <div className="print-hidden mb-4 flex justify-between items-center">
-        <button
+      <div className="print-hidden mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-[15rem]">
+          <CompactDateInput
+            name="supplierTableFilterDate"
+            label={translate(language, "dateLabel")}
+            value={tableFilterDate}
+            onChange={setTableFilterDate}
+            max={getLocalDateInputValue()}
+            inputClassName="mt-2 w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-base text-slate-900 outline-none transition focus:border-sky-400 focus:bg-white"
+          />
+        </div>
+        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
+          {tableFilterDate ? (
+            <button
+              type="button"
+              onClick={() => setTableFilterDate("")}
+              className="inline-flex w-full items-center justify-center rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow hover:bg-slate-50 sm:w-auto"
+            >
+              {translate(language, "cancel")}
+            </button>
+          ) : null}
+          <button
             type="button"
             onClick={() => window.print()}
             className="inline-flex w-full items-center justify-center rounded-lg bg-[#348CD4] px-5 py-3 text-sm font-semibold text-white shadow hover:bg-[#2F7FC0] sm:w-auto"
           >
             {translate(language, "printSupplierList")}
           </button>
-        <button
-          className="w-full rounded-lg bg-[#348CD4] px-6 py-2 text-base font-semibold text-white shadow hover:bg-[#2F7FC0] sm:w-auto"
-          onClick={() => setShowPaymentPopup(true)}
-        >
-          {translate(language, "paymentNow")}
-        </button>
+          <button
+            className="w-full rounded-lg bg-[#348CD4] px-6 py-2 text-base font-semibold text-white shadow hover:bg-[#2F7FC0] sm:w-auto"
+            onClick={() => setShowPaymentPopup(true)}
+          >
+            {translate(language, "paymentNow")}
+          </button>
+        </div>
       </div>
 
       {/* Payment Popup */}
@@ -784,7 +833,7 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
                   placeholder="Type or select supplier"
                   readOnly={isProfilePaymentFlow}
                   aria-readonly={isProfilePaymentFlow}
-                  required
+                  required autoComplete="off"
                 />
                 {isProfilePaymentFlow ? null : (
                   <datalist id="paymentSupplierList">
@@ -864,23 +913,53 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
           <form onSubmit={handleEditSubmit} className="space-y-4">
             <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
               <p className="font-semibold text-slate-900">{formatDisplayName(editTarget.name, "Unnamed supplier")}</p>
+              <p className="mt-1">Current salt amount: {formatAmount(editTarget.latestPurchaseSaltAmount ?? 0, 2)} Maund</p>
               <p className="mt-1">Current price: Tk {formatAmount(editTarget.latestPricePerMaund ?? 0, 2)} per Maund</p>
               <p className="mt-1 text-xs text-slate-500">{getEditedByText(editTarget)}</p>
             </div>
 
-            <label className="block">
-              <span className="text-sm font-medium text-slate-700">New price per Maund</span>
-              <input
-                name="editSupplierPrice"
-                type="number"
-                step="0.01"
-                min="0"
-                value={editPrice}
-                onChange={(e) => setEditPrice(e.target.value)}
-                className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:bg-white"
-                required
-              />
-            </label>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <label className="block sm:col-span-3">
+                <span className="text-sm font-medium text-slate-700">Supplier name</span>
+                <input
+                  name="editSupplierName"
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:bg-white"
+                  required
+                  autoComplete="off"
+                />
+              </label>
+
+              <label className="block">
+                <span className="text-sm font-medium text-slate-700">Salt amount</span>
+                <input
+                  name="editSupplierSaltAmount"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={editSaltAmount}
+                  onChange={(e) => setEditSaltAmount(e.target.value)}
+                  className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:bg-white"
+                  required
+                />
+              </label>
+
+              <label className="block sm:col-span-2">
+                <span className="text-sm font-medium text-slate-700">New price per Maund</span>
+                <input
+                  name="editSupplierPrice"
+                  type="number"
+                  step="1"
+                  min="0"
+                  value={editPrice}
+                  onChange={(e) => setEditPrice(e.target.value)}
+                  className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:bg-white"
+                  required
+                />
+              </label>
+            </div>
 
             {editError ? (
               <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
@@ -901,7 +980,7 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
                 disabled={isSavingEdit}
                 className="inline-flex items-center justify-center rounded-lg bg-[#348CD4] px-5 py-2.5 text-base font-semibold text-white transition hover:bg-[#2F7FC0] disabled:opacity-60"
               >
-                {isSavingEdit ? "Updating..." : "Update price"}
+                {isSavingEdit ? "Updating..." : "Update details"}
               </button>
             </div>
           </form>
@@ -944,16 +1023,20 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
       )}
 
       <div className="print-list-shell overflow-x-auto rounded-lg bg-white p-4 shadow-sm">
-        <table className="min-w-[60rem] w-full text-left">
-          <thead className="border-b border-slate-200 text-slate-500">
+        <div className="print-only border-b border-slate-200 px-4 py-4">
+          <h2 className="text-xl font-semibold text-slate-900">{translate(language, "printSupplierList")}</h2>
+          <p className="mt-1 text-sm text-slate-500">Date: {getPrintDateLabel(tableFilterDate)}</p>
+        </div>
+        <table className="min-w-[60rem] w-full text-left text-sm">
+          <thead className="border-b border-slate-200 text-sm text-slate-500">
             <tr>
-              <th className="print-table-hidden px-4 py-3">{translate(language, "supplierNameLabel")}</th>
+              <th className="px-4 py-3">{translate(language, "supplierNameLabel")}</th>
               <th className="print-table-hidden px-4 py-3 text-center">{translate(language, "saleStock")}</th>
               <th className="px-4 py-3 text-center">{translate(language, "totalSalesLabel")}</th>
               <th className="px-4 py-3 text-center">{translate(language, "totalReceived")}</th>
               <th className="px-4 py-3 text-center">{translate(language, "dueOrAdvance")}</th>
-              <th className="print-table-hidden px-4 py-3 text-center">Latest price</th>
-              <th className="print-table-hidden px-4 py-3 text-center">Edited by</th>
+              <th className="print-table-hidden px-4 py-3 text-center">{translate(language, "pricePerMaund")}</th>
+              <th className="print-table-hidden px-4 py-3 text-center">{translate(language, "editedBy")}</th>
               <th className="print-table-hidden px-4 py-3 text-center">{translate(language, "action")}</th>
             </tr>
           </thead>
@@ -971,7 +1054,7 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
               }
             />
             <tr className="border-t border-slate-200 bg-slate-50 font-semibold text-slate-800">
-                  <td className="print-table-hidden px-4 py-4">{translate(language, "totals")}</td>
+                  <td className="px-4 py-4">{translate(language, "totals")}</td>
                   <td className="print-table-hidden px-4 py-4 text-center">{formatAmount(totalSalt)}</td>
                   <td className="px-4 py-4 text-center">Tk {formatAmount(totalAmount)}</td>
                   <td className="px-4 py-4 text-center">Tk {formatAmount(totalPaid)}</td>

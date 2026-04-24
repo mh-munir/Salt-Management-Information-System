@@ -43,10 +43,26 @@ export async function PATCH(req: Request, context: RouteContext<"/api/suppliers/
 
   if (action === "edit-price") {
     const transactionId = String(body.transactionId ?? "").trim();
+    const supplierName = String(body.supplierName ?? "").trim();
+    const saltAmount = Number(body.saltAmount);
     const pricePerMaund = Number(body.pricePerMaund);
 
     if (!transactionId) {
       return new Response(JSON.stringify({ message: "Purchase record is required for editing price." }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    if (!supplierName) {
+      return new Response(JSON.stringify({ message: "Supplier name is required." }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    if (Number.isNaN(saltAmount) || saltAmount < 0) {
+      return new Response(JSON.stringify({ message: "Salt amount must be a valid non-negative number." }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
@@ -73,22 +89,17 @@ export async function PATCH(req: Request, context: RouteContext<"/api/suppliers/
     }
 
     const quantityMaund = Number(record.saltAmount ?? 0);
-    if (quantityMaund <= 0) {
-      return new Response(JSON.stringify({ message: "This purchase has no quantity to recalculate price." }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
     const currentTotal = Number(record.totalAmount ?? 0);
-    const nextTotal = Number((quantityMaund * pricePerMaund).toFixed(2));
+    const nextTotal = Number((saltAmount * pricePerMaund).toFixed(2));
     const totalDelta = nextTotal - currentTotal;
+    const quantityDelta = saltAmount - quantityMaund;
     const auditFields = await buildEditAuditFields(auth);
 
     await Transaction.updateOne(
       { _id: record._id },
       {
         $set: {
+          saltAmount,
           totalAmount: nextTotal,
           ...auditFields,
         },
@@ -106,7 +117,15 @@ export async function PATCH(req: Request, context: RouteContext<"/api/suppliers/
 
     const supplier = await Supplier.findByIdAndUpdate(
       id,
-      { $inc: { totalDue: totalDelta } },
+      {
+        $inc: {
+          totalDue: totalDelta,
+          saltAmount: quantityDelta,
+        },
+        $set: {
+          name: supplierName,
+        },
+      },
       { returnDocument: "after" }
     ).lean();
 
@@ -123,6 +142,7 @@ export async function PATCH(req: Request, context: RouteContext<"/api/suppliers/
         supplier,
         record: {
           _id: updatedRecord._id,
+          saltAmount: updatedRecord.saltAmount,
           totalAmount: updatedRecord.totalAmount,
           editedByName: updatedRecord.editedByName,
           editedByRole: updatedRecord.editedByRole,

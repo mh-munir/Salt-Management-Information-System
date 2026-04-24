@@ -1,5 +1,7 @@
 import { connectDB, isMongoConnectionError } from "@/lib/db";
 import { compareByLatestInput } from "@/lib/record-order";
+import Cost from "@/models/Cost";
+import Customer from "@/models/Customer";
 import Sale from "@/models/Sale";
 import Transaction from "@/models/Transaction";
 
@@ -22,6 +24,19 @@ type SaleDoc = {
   total?: number;
   createdAt?: string | Date;
   customerId?: unknown | TransactionsPopulatedRef;
+};
+
+type CostDoc = {
+  _id: unknown;
+  amount?: number;
+  date?: string | Date;
+  createdAt?: string | Date;
+  personName?: string;
+};
+
+type CustomerDoc = {
+  _id: unknown;
+  name?: string;
 };
 
 const getPopulatedId = (value: unknown): string | undefined => {
@@ -52,19 +67,26 @@ export type TransactionsFeedItem = {
   customerId?: string;
   supplierName?: string;
   customerName?: string;
+  personName?: string;
 };
 
 export async function getTransactionsFeed(): Promise<TransactionsFeedItem[]> {
   try {
     await connectDB();
 
-    const [transactions, sales] = (await Promise.all([
+    const [transactions, sales, costs, customers] = (await Promise.all([
       Transaction.find()
         .populate("supplierId", "name")
         .populate("customerId", "name")
         .lean(),
       Sale.find().populate("customerId", "name").lean(),
-    ])) as [TransactionsDoc[], SaleDoc[]];
+      Cost.find().lean(),
+      Customer.find().select("_id name").lean(),
+    ])) as [TransactionsDoc[], SaleDoc[], CostDoc[], CustomerDoc[]];
+
+    const customerNameById = new Map(
+      customers.map((customer) => [String(customer._id), typeof customer.name === "string" ? customer.name.trim() : ""])
+    );
 
     const normalizedTransactions = transactions.map((record) => ({
       _id: String(record._id),
@@ -74,7 +96,9 @@ export async function getTransactionsFeed(): Promise<TransactionsFeedItem[]> {
       supplierId: getPopulatedId(record.supplierId),
       customerId: getPopulatedId(record.customerId),
       supplierName: getPopulatedName(record.supplierId),
-      customerName: getPopulatedName(record.customerId),
+      customerName:
+        getPopulatedName(record.customerId) ??
+        (getPopulatedId(record.customerId) ? customerNameById.get(String(getPopulatedId(record.customerId))) : undefined),
     }));
 
     const normalizedSales = sales.map((sale) => ({
@@ -84,10 +108,22 @@ export async function getTransactionsFeed(): Promise<TransactionsFeedItem[]> {
       type: "sale",
       customerId: getPopulatedId(sale.customerId),
       supplierId: undefined,
-      customerName: getPopulatedName(sale.customerId),
+      customerName:
+        getPopulatedName(sale.customerId) ??
+        (getPopulatedId(sale.customerId) ? customerNameById.get(String(getPopulatedId(sale.customerId))) : undefined),
     }));
 
-    return [...normalizedTransactions, ...normalizedSales].sort((left, right) =>
+    const normalizedCosts = costs.map((cost) => ({
+      _id: String(cost._id),
+      amount: Number(cost.amount ?? 0),
+      date: cost.date ?? cost.createdAt,
+      type: "cost",
+      supplierId: undefined,
+      customerId: undefined,
+      personName: typeof cost.personName === "string" ? cost.personName.trim() : "",
+    }));
+
+    return [...normalizedTransactions, ...normalizedSales, ...normalizedCosts].sort((left, right) =>
       compareByLatestInput({ id: left._id, date: left.date }, { id: right._id, date: right.date })
     );
   } catch (error) {

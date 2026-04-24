@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useEffect, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import ModalShell from "@/components/ModalShell";
 import PlainImage from "@/components/PlainImage";
@@ -12,6 +12,7 @@ import {
   saveStoredSidebarBranding,
 } from "@/lib/sidebar-branding";
 import { translate } from "@/lib/language";
+import { DEFAULT_FAVICON_URL, DEFAULT_SITE_TITLE } from "@/lib/site-settings";
 import { useLanguage } from "@/lib/useLanguage";
 
 type AdminUser = {
@@ -21,6 +22,8 @@ type AdminUser = {
   role: "admin" | "superadmin";
   avatarUrl?: string;
   createdAt?: string;
+  lastLoginAt?: string;
+  isActive?: boolean;
 };
 
 type ProfileResponse = {
@@ -28,6 +31,8 @@ type ProfileResponse = {
   email: string;
   role: "admin" | "superadmin";
   avatarUrl: string;
+  faviconUrl: string;
+  siteTitle: string;
   sidebarLogoUrl: string;
   sidebarHeading: string;
   sidebarSubheading: string;
@@ -36,6 +41,33 @@ type ProfileResponse = {
 const DEFAULT_AVATAR =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Crect width='120' height='120' rx='60' fill='%230ea5e9'/%3E%3Cpath d='M60 64c13.255 0 24-10.745 24-24S73.255 16 60 16 36 26.745 36 40s10.745 24 24 24zm0 8c-16.569 0-30 13.431-30 30v2h60v-2c0-16.569-13.431-30-30-30z' fill='white'/%3E%3C/svg%3E";
 const MAX_IMAGE_UPLOAD_BYTES = 400 * 1024;
+const FAVICON_FILE_ACCEPT = ".ico,image/png,image/jpeg,image/svg+xml,image/x-icon,image/vnd.microsoft.icon";
+
+const syncDocumentSiteSettings = (nextFaviconUrl: string, nextSiteTitle: string) => {
+  if (typeof document === "undefined") return;
+
+  const resolvedTitle = nextSiteTitle.trim() || DEFAULT_SITE_TITLE;
+  const resolvedFaviconUrl = nextFaviconUrl.trim() || DEFAULT_FAVICON_URL;
+
+  document.title = resolvedTitle;
+
+  const upsertLink = (rel: string) => {
+    let link = document.head.querySelector(`link[data-live-site-icon="${rel}"]`) as HTMLLinkElement | null;
+
+    if (!link) {
+      link = document.createElement("link");
+      link.setAttribute("data-live-site-icon", rel);
+      link.rel = rel;
+      document.head.appendChild(link);
+    }
+
+    link.href = resolvedFaviconUrl;
+  };
+
+  upsertLink("icon");
+  upsertLink("shortcut icon");
+  upsertLink("apple-touch-icon");
+};
 
 export default function SettingsPage() {
   const { language } = useLanguage();
@@ -45,6 +77,8 @@ export default function SettingsPage() {
   const [sidebarLogoUrl, setSidebarLogoUrl] = useState("");
   const [sidebarHeading, setSidebarHeading] = useState(DEFAULT_BRAND_HEADING);
   const [sidebarSubheading, setSidebarSubheading] = useState(DEFAULT_BRAND_SUBHEADING);
+  const [faviconUrl, setFaviconUrl] = useState("");
+  const [siteTitle, setSiteTitle] = useState("");
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -70,9 +104,14 @@ export default function SettingsPage() {
   const [error, setError] = useState("");
   const [isSavingAvatar, setIsSavingAvatar] = useState(false);
   const [isSavingSidebarBranding, setIsSavingSidebarBranding] = useState(false);
+  const [isSavingFavicon, setIsSavingFavicon] = useState(false);
+  const [isSavingSiteSettings, setIsSavingSiteSettings] = useState(false);
   const [isCreatingAdmin, setIsCreatingAdmin] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [deletingAdminId, setDeletingAdminId] = useState<string | null>(null);
+  const [showResetAllDataModal, setShowResetAllDataModal] = useState(false);
+  const [isResettingAllData, setIsResettingAllData] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const isSuperAdmin = profile?.role === "superadmin";
 
   useEffect(() => {
@@ -112,6 +151,8 @@ export default function SettingsPage() {
         const branding = normalizeSidebarBranding(profileData);
         setProfile(profileData);
         setAvatarUrl(profileData.avatarUrl ?? "");
+        setFaviconUrl(profileData.faviconUrl ?? "");
+        setSiteTitle(profileData.siteTitle ?? "");
         setSidebarLogoUrl(branding.sidebarLogoUrl);
         setSidebarHeading(branding.sidebarHeading);
         setSidebarSubheading(branding.sidebarSubheading);
@@ -167,16 +208,93 @@ export default function SettingsPage() {
     };
   }, [router]);
 
+  useEffect(() => {
+    syncDocumentSiteSettings(faviconUrl, siteTitle);
+  }, [faviconUrl, siteTitle]);
+
+  const updateOwnAvatar = async (nextAvatarUrl: string) => {
+    setIsSavingAvatar(true);
+    setError("");
+    setMessage("");
+
+    const res = await fetch("/api/settings/profile", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ avatarUrl: nextAvatarUrl.trim() }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (res.status === 401) {
+      router.push("/login");
+      setIsSavingAvatar(false);
+      return;
+    }
+
+    if (!res.ok) {
+      setError(data?.message ?? "Failed to update image.");
+      setIsSavingAvatar(false);
+      return;
+    }
+
+    setProfile(data.user);
+    setAvatarUrl(data.user.avatarUrl ?? "");
+    saveStoredSidebarBranding(data.user);
+    setMessage("Top navbar image updated.");
+    window.dispatchEvent(new Event("profile-updated"));
+    setIsSavingAvatar(false);
+  };
+
+  const updateFavicon = async (nextFaviconUrl: string, previousFaviconUrl: string) => {
+    setIsSavingFavicon(true);
+    setError("");
+    setMessage("");
+
+    const res = await fetch("/api/settings/profile", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ faviconUrl: nextFaviconUrl.trim() }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (res.status === 401) {
+      setFaviconUrl(previousFaviconUrl);
+      router.push("/login");
+      setIsSavingFavicon(false);
+      return;
+    }
+
+    if (!res.ok) {
+      setFaviconUrl(previousFaviconUrl);
+      setError(data?.message ?? "Failed to update favicon.");
+      setIsSavingFavicon(false);
+      return;
+    }
+
+    setProfile(data.user);
+    setFaviconUrl(data.user.faviconUrl ?? "");
+    setMessage("Favicon updated.");
+    setIsSavingFavicon(false);
+  };
+
   const onPickImage = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+    const input = event.currentTarget;
+    const file = input.files?.[0];
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
       setError("Please choose a valid image file.");
+      input.value = "";
       return;
     }
     if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
       setError("Image is too large. Please upload an image smaller than 400KB.");
+      input.value = "";
       return;
     }
 
@@ -185,10 +303,12 @@ export default function SettingsPage() {
       const result = typeof reader.result === "string" ? reader.result : "";
       if (!result) {
         setError("Could not read the selected image.");
+        input.value = "";
         return;
       }
       setAvatarUrl(result);
-      setMessage("Image selected. Click Save image to apply.");
+      void updateOwnAvatar(result);
+      input.value = "";
     };
     reader.readAsDataURL(file);
   };
@@ -219,6 +339,38 @@ export default function SettingsPage() {
     reader.readAsDataURL(file);
   };
 
+  const onPickFavicon = (event: ChangeEvent<HTMLInputElement>) => {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/") && !file.name.toLowerCase().endsWith(".ico")) {
+      setError("Please choose a valid favicon image.");
+      input.value = "";
+      return;
+    }
+    if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
+      setError("Favicon is too large. Please upload an image smaller than 400KB.");
+      input.value = "";
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      if (!result) {
+        setError("Could not read the selected favicon.");
+        input.value = "";
+        return;
+      }
+      const previousFaviconUrl = faviconUrl;
+      setFaviconUrl(result);
+      void updateFavicon(result, previousFaviconUrl);
+      input.value = "";
+    };
+    reader.readAsDataURL(file);
+  };
+
   const onPickEditAvatar = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -243,42 +395,6 @@ export default function SettingsPage() {
       setMessage("Admin image selected. Click Update admin to save.");
     };
     reader.readAsDataURL(file);
-  };
-
-  const saveAvatar = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setIsSavingAvatar(true);
-    setError("");
-    setMessage("");
-
-    const res = await fetch("/api/settings/profile", {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ avatarUrl: avatarUrl.trim() }),
-    });
-
-    const data = await res.json().catch(() => ({}));
-
-    if (res.status === 401) {
-      router.push("/login");
-      setIsSavingAvatar(false);
-      return;
-    }
-
-    if (!res.ok) {
-      setError(data?.message ?? "Failed to update image.");
-      setIsSavingAvatar(false);
-      return;
-    }
-
-    setProfile(data.user);
-    setAvatarUrl(data.user.avatarUrl ?? "");
-    saveStoredSidebarBranding(data.user);
-    setMessage("Top navbar image updated.");
-    window.dispatchEvent(new Event("profile-updated"));
-    setIsSavingAvatar(false);
   };
 
   const createAdmin = async (event: FormEvent<HTMLFormElement>) => {
@@ -479,6 +595,44 @@ export default function SettingsPage() {
     setIsSavingSidebarBranding(false);
   };
 
+  const saveSiteSettings = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsSavingSiteSettings(true);
+    setError("");
+    setMessage("");
+
+    const res = await fetch("/api/settings/profile", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        faviconUrl: faviconUrl.trim(),
+        siteTitle: siteTitle.trim(),
+      }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (res.status === 401) {
+      router.push("/login");
+      setIsSavingSiteSettings(false);
+      return;
+    }
+
+    if (!res.ok) {
+      setError(data?.message ?? "Failed to update site settings.");
+      setIsSavingSiteSettings(false);
+      return;
+    }
+
+    setProfile(data.user);
+    setFaviconUrl(data.user.faviconUrl ?? "");
+    setSiteTitle(data.user.siteTitle ?? "");
+    setMessage("Favicon and site title updated.");
+    setIsSavingSiteSettings(false);
+  };
+
   const openPasswordDialog = (admin: AdminUser) => {
     setPasswordTarget(admin);
     setNewPassword("");
@@ -598,6 +752,49 @@ export default function SettingsPage() {
     setDeletingAdminId(null);
   };
 
+  const closeResetAllDataModal = () => {
+    if (isResettingAllData) return;
+    setShowResetAllDataModal(false);
+  };
+
+  const resetAllData = async () => {
+    if (!isSuperAdmin) {
+      setError("Only super admin can reset all data.");
+      setShowResetAllDataModal(false);
+      return;
+    }
+
+    setIsResettingAllData(true);
+    setError("");
+    setMessage("");
+
+    try {
+      const res = await fetch("/api/admin-users/reset-all-data", {
+        method: "POST",
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (res.status === 401) {
+        router.push("/login");
+        setIsResettingAllData(false);
+        return;
+      }
+
+      if (!res.ok) {
+        setError(data?.message ?? "Failed to reset all data.");
+        setIsResettingAllData(false);
+        return;
+      }
+
+      setShowResetAllDataModal(false);
+      window.location.assign("/dashboard");
+    } catch {
+      setError("Failed to reset all data.");
+      setIsResettingAllData(false);
+    }
+  };
+
   const updateAdminProfile = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!editTarget) return;
@@ -697,39 +894,39 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <form className="mt-6 space-y-4" onSubmit={saveAvatar}>
-            <div>
-              <label htmlFor="avatar-url" className="mb-1 block text-lg font-medium text-slate-700">Image URL</label>
-              <input
-                id="avatar-url"
-                name="avatarUrl"
-                value={avatarUrl}
-                onChange={(event) => setAvatarUrl(event.target.value)}
-                placeholder="https://example.com/avatar.jpg"
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-lg outline-none focus:border-sky-500"
-              />
+          <div className="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <button
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={isSavingAvatar}
+                className="group relative h-20 w-20 overflow-hidden rounded-full border border-slate-200 bg-white shadow-sm transition hover:border-sky-400 disabled:cursor-not-allowed disabled:opacity-70"
+                title="Click to change your profile image"
+              >
+                <PlainImage
+                  src={avatarUrl || profile?.avatarUrl || DEFAULT_AVATAR}
+                  alt="Click to change profile image"
+                  className="h-full w-full object-cover"
+                />
+                <span className="absolute inset-0 flex items-center justify-center bg-black/45 text-xs font-semibold text-white opacity-0 transition group-hover:opacity-100">
+                  Change
+                </span>
+              </button>
+              <div className="text-sm text-slate-600">
+                Click your image to change admin profile photo.
+                {isSavingAvatar ? " Updating..." : ""}
+              </div>
             </div>
-
-            <div>
-              <label htmlFor="avatar-upload" className="mb-1 block text-lg font-medium text-slate-700">Or upload from device</label>
-              <input
-                id="avatar-upload"
-                name="avatarUpload"
-                type="file"
-                accept="image/*"
-                onChange={onPickImage}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-lg text-slate-700"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={isSavingAvatar}
-              className="rounded-lg bg-[#348CD4] px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-70 hover:bg-[#2F7FC0]"
-            >
-              {isSavingAvatar ? "Saving..." : "Save image"}
-            </button>
-          </form>
+            <input
+              ref={avatarInputRef}
+              id="avatar-upload"
+              name="avatarUpload"
+              type="file"
+              accept="image/*"
+              onChange={onPickImage}
+              className="hidden"
+            />
+          </div>
 
           <div className="my-8 border-t border-slate-100" />
 
@@ -764,19 +961,7 @@ export default function SettingsPage() {
 
           <form className="mt-6 space-y-4" onSubmit={saveSidebarBranding}>
             <div>
-              <label htmlFor="sidebar-logo-url" className="mb-1 block text-sm font-medium text-slate-700">Logo URL</label>
-              <input
-                id="sidebar-logo-url"
-                name="sidebarLogoUrl"
-                value={sidebarLogoUrl}
-                onChange={(event) => setSidebarLogoUrl(event.target.value)}
-                placeholder="https://example.com/sidebar-logo.png"
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-sky-500"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="sidebar-logo-upload" className="mb-1 block text-sm font-medium text-slate-700">Or upload logo from device</label>
+              <label htmlFor="sidebar-logo-upload" className="mb-1 block text-sm font-medium text-slate-700">Upload logo from device</label>
               <input
                 id="sidebar-logo-upload"
                 name="sidebarLogoUpload"
@@ -819,6 +1004,69 @@ export default function SettingsPage() {
               className="rounded-lg bg-[#348CD4] px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-70 hover:bg-[#2F7FC0]"
             >
               {isSavingSidebarBranding ? "Saving..." : "Save branding"}
+            </button>
+          </form>
+
+          <div className="my-8 border-t border-slate-100" />
+
+          <form className="space-y-4" onSubmit={saveSiteSettings}>
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Favicon</h2>
+              <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-center gap-4">
+                  {faviconUrl ? (
+                    <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm">
+                      <PlainImage
+                        src={faviconUrl}
+                        alt="Favicon preview"
+                        className="h-8 w-8 object-contain"
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white text-xs font-medium text-slate-400">
+                      Icon
+                    </div>
+                  )}
+                  <div className="min-w-0 text-sm text-slate-600">
+                    <p className="font-medium text-slate-800">{siteTitle.trim() || DEFAULT_SITE_TITLE}</p>
+                    <p>{isSavingFavicon ? "Uploading and applying favicon..." : "Upload a favicon and it will update right away."}</p>
+                  </div>
+                </div>
+              </div>
+              <label htmlFor="favicon-upload" className="mt-4 mb-1 block text-sm font-medium text-slate-700">Upload favicon from device</label>
+              <input
+                id="favicon-upload"
+                name="faviconUpload"
+                type="file"
+                accept={FAVICON_FILE_ACCEPT}
+                onChange={onPickFavicon}
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+              />
+              <p className="mt-1 text-xs text-slate-500">
+                Supported: ICO, PNG, JPG, SVG. Max size 400KB.
+              </p>
+            </div>
+
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Site title Change</h2>
+              <label htmlFor="site-title" className="mt-2 mb-1 block text-sm font-medium text-slate-700">Site Title</label>
+              <input
+                id="site-title"
+                name="siteTitle"
+                value={siteTitle}
+                onChange={(event) => setSiteTitle(event.target.value)}
+                placeholder={DEFAULT_SITE_TITLE}
+                maxLength={80}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-sky-500"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSavingSiteSettings || isSavingFavicon}
+              className="rounded-lg bg-[#348CD4] px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-70 hover:bg-[#2F7FC0]"
+            >
+              {isSavingSiteSettings ? "Saving..." : isSavingFavicon ? "Updating favicon..." : "Save site settings"}
             </button>
           </form>
         </section>
@@ -962,9 +1210,28 @@ export default function SettingsPage() {
 
               return (
                 <div key={admin._id} className="admin-user-row flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="font-medium text-slate-900">{admin.name || "Unnamed Admin"}</p>
-                    <p className="text-sm text-slate-600">{admin.email}</p>
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <PlainImage
+                        src={admin.avatarUrl || DEFAULT_AVATAR}
+                        alt={`${admin.name || admin.email} avatar`}
+                        className="h-11 w-11 rounded-full border border-slate-200 object-cover"
+                      />
+                      <span
+                        className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white ${
+                          admin.isActive ? "bg-emerald-500" : "bg-slate-400"
+                        }`}
+                        aria-label={admin.isActive ? "Active admin" : "Inactive admin"}
+                        title={admin.isActive ? "Active admin" : "Inactive admin"}
+                      />
+                    </div>
+                    <div>
+                      <p className="font-medium text-slate-900">{admin.name || "Unnamed Admin"}</p>
+                      <p className="text-sm text-slate-600">{admin.email}</p>
+                      <p className={`text-xs font-medium ${admin.isActive ? "text-emerald-600" : "text-slate-500"}`}>
+                        {admin.isActive ? "Active" : "Inactive"}
+                      </p>
+                    </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="admin-user-badge rounded-full border border-slate-200 px-3 py-1 text-xs uppercase tracking-wide text-slate-600">
@@ -1007,6 +1274,22 @@ export default function SettingsPage() {
           )}
         </div>
       </section>
+
+      {isSuperAdmin ? (
+        <section className="rounded-md border border-rose-200 bg-rose-50 p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-rose-700">Reset All Data</h2>
+          <p className="mt-1 text-sm text-rose-600">
+            Remove all sales, transactions, customers, suppliers, costs, and products from the system.
+          </p>
+          <button
+            type="button"
+            onClick={() => setShowResetAllDataModal(true)}
+            className="mt-4 rounded-md bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700"
+          >
+            Reset All Data
+          </button>
+        </section>
+      ) : null}
 
       {editTarget ? (
         <ModalShell
@@ -1159,6 +1442,41 @@ export default function SettingsPage() {
               </button>
             </div>
           </form>
+        </ModalShell>
+      ) : null}
+
+      {showResetAllDataModal ? (
+        <ModalShell
+          title="Reset All Data"
+          description="Sure, You want to delete all data"
+          tone="rose"
+          widthClassName="max-w-md"
+          onClose={closeResetAllDataModal}
+        >
+          <div className="space-y-4">
+            <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              Sure, You want to delete all data
+            </div>
+
+            <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={closeResetAllDataModal}
+                disabled={isResettingAllData}
+                className="rounded-lg border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                No
+              </button>
+              <button
+                type="button"
+                onClick={resetAllData}
+                disabled={isResettingAllData}
+                className="rounded-lg bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {isResettingAllData ? "Deleting..." : "Yes"}
+              </button>
+            </div>
+          </div>
         </ModalShell>
       ) : null}
     </div>

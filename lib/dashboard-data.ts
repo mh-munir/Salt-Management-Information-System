@@ -156,6 +156,14 @@ export async function getDashboardPageData(): Promise<DashboardPageData> {
     historyStart.setDate(historyStart.getDate() - DASHBOARD_HISTORY_DAYS);
 
     const numericOrZero = (fieldPath: string) => ({ $toDouble: { $ifNull: [fieldPath, 0] } });
+    const dateOrNull = (fieldPath: string) => ({
+      $convert: {
+        input: fieldPath,
+        to: "date",
+        onError: null,
+        onNull: null,
+      },
+    });
     const saleQuantityExpr = {
       $cond: [
         { $gt: [{ $size: { $ifNull: ["$items", []] } }, 0] },
@@ -260,7 +268,9 @@ export async function getDashboardPageData(): Promise<DashboardPageData> {
           {
             $project: {
               amount: numericOrZero("$amount"),
-              effectiveDate: { $ifNull: ["$date", "$createdAt"] },
+              effectiveDate: {
+                $ifNull: [dateOrNull("$date"), dateOrNull("$createdAt")],
+              },
             },
           },
           {

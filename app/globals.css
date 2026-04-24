@@ -21,11 +21,16 @@ body {
   overflow-x: clip;
   background: #F0F1F7;
   color: #0f172a;
+  font-family: var(--font-dm-sans), "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   transition:
     background-color 0.25s ease,
     color 0.25s ease,
     border-color 0.25s ease,
     box-shadow 0.25s ease;
+}
+
+html.lang-bn body {
+  font-family: var(--font-noto-sans-bengali), "Noto Sans Bengali", "Hind Siliguri", sans-serif;
 }
 
 img,
@@ -34,6 +39,16 @@ canvas {
   max-width: 100%;
   height: auto;
   display: block;
+}
+
+table,
+table :is(th, td, th *, td *) {
+  font-size: 1rem !important;
+  line-height: 1.5rem !important;
+}
+
+.print-only {
+  display: none;
 }
 
 button,
@@ -87,15 +102,44 @@ html.theme-dark .sidebar-shell {
 }
 
 @media print {
+  html,
   body {
     background: #ffffff;
+  }
+
+  .sidebar-shell,
+  .navbar-shell,
+  footer {
+    display: none !important;
+  }
+
+  .dashboard-main,
+  .dashboard-content {
+    margin: 0 !important;
+    padding: 0 !important;
+    min-height: auto !important;
+    width: 100% !important;
+  }
+
+  .dashboard-shell,
+  .dashboard-main > main,
+  .dashboard-content > * {
+    background: #ffffff !important;
   }
 
   .print-hidden {
     display: none !important;
   }
 
+  .print-only {
+    display: block !important;
+  }
+
   .print-table-hidden {
+    display: none !important;
+  }
+
+  .print-target-hidden {
     display: none !important;
   }
 
@@ -418,6 +462,9 @@ html.theme-dark .to-sky-50 {
 
 .overflow-x-auto {
   -webkit-overflow-scrolling: touch;
+}
+input[type="*"]{
+  appearance: none !important; 
 }
 
 @media (max-width: 1023.98px) {

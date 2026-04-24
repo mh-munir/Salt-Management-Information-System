@@ -7,6 +7,8 @@ export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 export const revalidate = 0;
 
+const ACTIVE_WINDOW_MS = 20 * 60 * 1000;
+
 export async function GET(request: Request) {
   const authResult = requireAuth(request, ["admin", "superadmin"]);
   if (authResult instanceof Response) return authResult;
@@ -15,11 +17,34 @@ export async function GET(request: Request) {
     await connectDB();
     await ensureEnvSuperadminUser(authResult);
     const admins = await User.find({ role: { $in: ["admin", "superadmin"] } })
-      .select("name email role avatarUrl createdAt")
+      .select("name email role avatarUrl createdAt lastLoginAt")
       .sort({ createdAt: -1 })
       .lean();
 
-    return Response.json(admins, {
+    const now = Date.now();
+    const currentUserId = authResult.userId ? String(authResult.userId) : "";
+    const currentUserEmail = authResult.email.trim().toLowerCase();
+
+    const adminsWithStatus = admins.map((admin) => {
+      const lastLoginAt =
+        admin.lastLoginAt instanceof Date
+          ? admin.lastLoginAt
+          : admin.lastLoginAt
+            ? new Date(admin.lastLoginAt)
+            : null;
+      const isRecentlyActive = Boolean(lastLoginAt && now - lastLoginAt.getTime() <= ACTIVE_WINDOW_MS);
+      const isCurrentLoggedInUser =
+        (currentUserId && String(admin._id) === currentUserId) ||
+        String(admin.email ?? "").trim().toLowerCase() === currentUserEmail;
+      const isActive = isRecentlyActive || isCurrentLoggedInUser;
+
+      return {
+        ...admin,
+        isActive,
+      };
+    });
+
+    return Response.json(adminsWithStatus, {
       headers: {
         "Cache-Control": "no-store, no-cache, must-revalidate",
       },

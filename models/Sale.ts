@@ -3,6 +3,8 @@ import mongoose from "mongoose";
 const SaleSchema = new mongoose.Schema({
   customerId: String,
   saltAmount: Number,
+  numberOfBags: { type: Number, default: 0 },
+  bagType: { type: String, enum: ["50", "75"], default: "50" },
   hockExtendedSack: { type: Number, default: 0 },
   trackExpenses: { type: Number, default: 0 },
   items: [

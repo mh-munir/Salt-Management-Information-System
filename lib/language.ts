@@ -1,4 +1,4 @@
-export type Language = "en" | "bn";
+﻿export type Language = "en" | "bn";
 export type TranslationKey =
   | "dashboard"
   | "transactions"
@@ -37,9 +37,11 @@ export type TranslationKey =
   | "availableStock"
   | "printInvoice"
   | "supplierTransactions"
+  | "paidTransactions"
   | "customerTransactions"
   | "transactionsPageDescription"
   | "noSupplierTransactions"
+  | "noPaidTransactions"
   | "noCustomerTransactions"
   | "supplierProfile"
   | "customerProfile"
@@ -62,6 +64,9 @@ export type TranslationKey =
   | "noRecordsFound"
   | "viewLatestSupplier"
   | "viewLatestCustomer"
+  | "editedBy"
+  | "notEditedYet"
+  | "superAdminLabel"
   | "action"
   | "totals"
   | "noSuppliersFound"
@@ -119,6 +124,7 @@ export type TranslationKey =
   | "trackExpenses"
   | "totalMaund"
   | "totalSaltKg"
+  | "totalSaltKgWithBags"
   | "totalPriceTk"
   | "paidAmount"
   | "dueAmount"
@@ -246,9 +252,14 @@ export type TranslationKey =
   | "costSavedSuccessfully"
   | "personNameRequired"
   | "purposeRequired"
-  | "unknownPerson";
+  | "unknownPerson"
+  | "saltKg"
+  | "amount"
+  | "saltPricePerKg"
+  | "bagType"
+  | "trackCost";
 
-const LANGUAGE_STORAGE_KEY = "salt-mill-language";
+export const LANGUAGE_STORAGE_KEY = "salt-mill-language";
 
 const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
   en: {
@@ -289,9 +300,11 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     availableStock: "Available stock",
     printInvoice: "Print invoice",
     supplierTransactions: "Supplier Transactions",
+    paidTransactions: "Payment History",
     customerTransactions: "Customer Transactions",
     transactionsPageDescription: "All payment and purchase transactions with dates.",
     noSupplierTransactions: "No supplier transactions found.",
+    noPaidTransactions: "No paid transactions found.",
     noCustomerTransactions: "No customer transactions found.",
     supplierProfile: "Supplier profile",
     customerProfile: "Customer profile",
@@ -315,6 +328,9 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     viewLatestSupplier: "View latest supplier",
     viewLatestCustomer: "View latest customer",
     action: "Action",
+    editedBy: "Edited by",
+    notEditedYet: "Not edited yet",
+    superAdminLabel: "Super Admin",
     totals: "Totals",
     noSuppliersFound: "No suppliers found.",
     remainingDue: "Remaining due",
@@ -356,7 +372,7 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     sidebarBrandingDescription: "Update the sidebar logo and heading text shown above the menu.",
     manageAdmin: "Manage admin accounts, top navbar image, and sidebar branding.",
     saveButton: "Save",
-    addingEllipsis: "Adding…",
+    addingEllipsis: "Adding...",
     cancelAction: "Cancel",
     up: "Up",
     down: "Down",
@@ -366,6 +382,7 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     trackExpenses: "Track expenses (Tk)",
     totalMaund: "Total Maund",
     totalSaltKg: "Total Salt KG",
+    totalSaltKgWithBags: "Total Salt KG (Bags)",
     totalPriceTk: "Total price (Tk)",
     paidAmount: "Paid amount (Tk)",
     dueAmount: "Due amount (Tk)",
@@ -489,6 +506,11 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     personNameRequired: "Person name is required.",
     purposeRequired: "Purpose is required.",
     unknownPerson: "Unknown person",
+    saltKg: "Salt KG",
+    amount: "Amount",
+    saltPricePerKg: "Salt Price/kg",
+    bagType: "Bag Type",
+    trackCost: "Track Cost",
   },
   bn: {
     dashboard: "ড্যাশবোর্ড",
@@ -511,7 +533,7 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     password: "পাসওয়ার্ড",
     passwordPlaceholder: "পাসওয়ার্ড লিখুন",
     keepMeSignedIn: "মনে রাখুন",
-    forgotPassword: "পাসওয়ার্ড ভুলেছি?",
+    forgotPassword: "পাসওয়ার্ড ভুলেছেন?",
     signIn: "সাইন ইন",
     signingIn: "সাইন ইন হচ্ছে...",
     changeLanguage: "ভাষা পরিবর্তন করুন",
@@ -528,9 +550,11 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     availableStock: "উপলব্ধ স্টক",
     printInvoice: "প্রিন্ট",
     supplierTransactions: "সরবরাহকারী লেনদেন",
+    paidTransactions: "পেমেন্ট ইতিহাস",
     customerTransactions: "গ্রাহক লেনদেন",
     transactionsPageDescription: "তারিখ সহ সব পেমেন্ট এবং ক্রয় লেনদেন।",
     noSupplierTransactions: "কোনো সরবরাহকারী লেনদেন পাওয়া যায়নি।",
+    noPaidTransactions: "কোনো পরিশোধ লেনদেন পাওয়া যায়নি।",
     noCustomerTransactions: "কোনো গ্রাহক লেনদেন পাওয়া যায়নি।",
     supplierProfile: "সরবরাহকারী প্রোফাইল",
     customerProfile: "গ্রাহক প্রোফাইল",
@@ -554,6 +578,9 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     viewLatestSupplier: "সর্বশেষ সরবরাহকারী দেখুন",
     viewLatestCustomer: "সর্বশেষ গ্রাহক",
     action: "কর্ম",
+    editedBy: "সম্পাদনা করেছেন",
+    notEditedYet: "এখনও সম্পাদনা করা হয়নি",
+    superAdminLabel: "সুপার অ্যাডমিন",
     totals: "মোট",
     noSuppliersFound: "কোনো সরবরাহকারী পাওয়া যায়নি।",
     remainingDue: "অবশিষ্ট বাকি",
@@ -570,6 +597,7 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     trackExpenses: "ট্র্যাক খরচ (টাকা)",
     totalMaund: "মোট মণ",
     totalSaltKg: "মোট লবণ কেজি",
+    totalSaltKgWithBags: "মোট লবণ কেজি (বস্তা)",
     totalPriceTk: "মোট মূল্য (টাকা)",
     paidAmount: "পরিশোধিত পরিমাণ",
     dueAmount: "বাকি পরিমাণ",
@@ -712,7 +740,7 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     costAmountLabel: "খরচের পরিমাণ (টাকা)",
     costDateLabel: "খরচের তারিখ",
     purposeLabel: "উদ্দেশ্য",
-    purposePlaceholder: "কী উদ্দেশ্যে এই খরচ করা হয়েছে?",
+    purposePlaceholder: "কী উদ্দেশ্যে এই খরচ করা হয়েছে?",
     saveCost: "খরচ সেভ করুন",
     savingCost: "সেভ হচ্ছে...",
     totalCost: "মোট খরচ",
@@ -728,6 +756,11 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     personNameRequired: "ব্যক্তির নাম প্রয়োজন।",
     purposeRequired: "উদ্দেশ্য লিখতে হবে।",
     unknownPerson: "অজানা ব্যক্তি",
+    saltKg: "লবণ কেজি",
+    amount: "পরিমাণ",
+    saltPricePerKg: "লবণ মূল্য/কেজি",
+    bagType: "বস্তার ধরন",
+    trackCost: "ট্র্যাক খরচ",
   },
 };
 
@@ -743,12 +776,12 @@ export function loadStoredLanguage(): Language {
     return DEFAULT_LANGUAGE;
   }
 }
-
 export function saveStoredLanguage(language: Language) {
   if (typeof window === "undefined") return;
 
   try {
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
+    document.cookie = `${LANGUAGE_STORAGE_KEY}=${language}; path=/; max-age=31536000; samesite=lax`;
   } catch {
     // Ignore write failures.
   }

@@ -65,8 +65,13 @@ export async function PATCH(req: Request, context: RouteContext<"/api/customers/
     pricePerKg,
     hockExtendedSack,
     trackExpenses,
+    numberOfBags,
+    bagType,
   } = body;
   const validActions = ["sale", "buy", "payment", "edit-price"];
+  const editCustomerName = String(body.customerName ?? "").trim();
+  const nextSaltAmount = Number(saltAmount);
+  const nextPricePerKg = Number(pricePerKg);
 
   if (!validActions.includes(action)) {
     return new Response(JSON.stringify({ message: "Action must be sale, buy, payment, or edit-price." }), {
@@ -97,8 +102,21 @@ export async function PATCH(req: Request, context: RouteContext<"/api/customers/
       });
     }
   } else if (action === "edit-price") {
-    const nextPrice = Number(pricePerKg);
-    if (Number.isNaN(nextPrice) || nextPrice < 0) {
+    if (!editCustomerName) {
+      return new Response(JSON.stringify({ message: "Customer name is required." }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    if (Number.isNaN(nextSaltAmount) || nextSaltAmount < 0) {
+      return new Response(JSON.stringify({ message: "Salt amount must be a valid non-negative number." }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    if (Number.isNaN(nextPricePerKg) || nextPricePerKg < 0) {
       return new Response(JSON.stringify({ message: "Price per KG must be a valid non-negative number." }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
@@ -173,20 +191,14 @@ export async function PATCH(req: Request, context: RouteContext<"/api/customers/
       });
     }
 
-    const quantityKg = resolveSaleQuantity(sale);
-    if (quantityKg <= 0) {
-      return new Response(JSON.stringify({ message: "This sale has no quantity to recalculate price." }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
     const adjustments = resolveSaleAdjustments(sale);
     const currentTotal = Number(sale.total ?? 0);
+    const currentQuantityKg = resolveSaleQuantity(sale);
     const nextTotal = Number(
-      (quantityKg * Number(pricePerKg) + adjustments.hockExtendedSack - adjustments.trackExpenses).toFixed(2)
+      (nextSaltAmount * nextPricePerKg + adjustments.hockExtendedSack - adjustments.trackExpenses).toFixed(2)
     );
     const totalDelta = nextTotal - currentTotal;
+    const quantityDelta = nextSaltAmount - currentQuantityKg;
     const currentDue = Number(sale.due ?? 0);
     const nextDue = Number((currentDue + totalDelta).toFixed(2));
     const auditFields = await buildEditAuditFields(auth);
@@ -195,6 +207,7 @@ export async function PATCH(req: Request, context: RouteContext<"/api/customers/
       { _id: sale._id },
       {
         $set: {
+          saltAmount: nextSaltAmount,
           total: nextTotal,
           due: nextDue,
           ...auditFields,
@@ -213,7 +226,15 @@ export async function PATCH(req: Request, context: RouteContext<"/api/customers/
 
     const customer = await Customer.findByIdAndUpdate(
       id,
-      { $inc: { totalDue: totalDelta } },
+      {
+        $inc: {
+          totalDue: totalDelta,
+          saltAmount: quantityDelta,
+        },
+        $set: {
+          name: editCustomerName,
+        },
+      },
       { returnDocument: "after" }
     ).lean();
 
@@ -230,6 +251,7 @@ export async function PATCH(req: Request, context: RouteContext<"/api/customers/
         customer,
         sale: {
           _id: updatedSale._id,
+          saltAmount: updatedSale.saltAmount,
           total: updatedSale.total,
           due: updatedSale.due,
           editedByName: updatedSale.editedByName,
@@ -288,10 +310,14 @@ export async function PATCH(req: Request, context: RouteContext<"/api/customers/
     const dueValue = totalValue - paidValue;
     const hockExtendedSackValue = Number(hockExtendedSack ?? 0);
     const trackExpensesValue = Number(trackExpenses ?? 0);
+    const numberOfBagsValue = Number(numberOfBags ?? 0);
+    const bagTypeValue = String(bagType ?? "50");
 
     await Sale.create({
       customerId: id,
       saltAmount: saltValue,
+      numberOfBags: numberOfBagsValue,
+      bagType: bagTypeValue,
       hockExtendedSack: hockExtendedSackValue,
       trackExpenses: trackExpensesValue,
       total: totalValue,

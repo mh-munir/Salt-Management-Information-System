@@ -19,6 +19,8 @@ type SaleDoc = {
   _id: unknown;
   customerId?: unknown;
   saltAmount?: unknown;
+  numberOfBags?: unknown;
+  bagType?: unknown;
   items?: Array<{ quantity?: unknown }>;
   total?: unknown;
   paid?: unknown;
@@ -50,7 +52,11 @@ export type CustomerListItem = {
   totalPaid?: number;
   lastActivityAt?: number;
   latestSaleId?: string | null;
+  latestSaleSaltAmount?: number;
+  latestSaleDate?: string | null;
   latestPricePerKg?: number;
+  latestNumberOfBags?: number;
+  latestBagType?: string;
   editedByName?: string;
   editedByRole?: string;
   editedAt?: string | null;
@@ -76,7 +82,7 @@ export async function getCustomersPageData(): Promise<CustomerListItem[]> {
     const [customers, sales, payments] = (await Promise.all([
       Customer.find().select("_id name phone address totalDue saltAmount totalPaid").lean(),
       Sale.find()
-        .select("_id customerId saltAmount items total paid hockExtendedSack trackExpenses createdAt editedByName editedByRole editedAt")
+        .select("_id customerId saltAmount numberOfBags bagType items total paid hockExtendedSack trackExpenses createdAt editedByName editedByRole editedAt")
         .lean(),
       Transaction.find({ customerId: { $ne: null } }).select("_id customerId amount date").lean(),
     ])) as [CustomerDoc[], SaleDoc[], PaymentDoc[]];
@@ -165,7 +171,11 @@ export async function getCustomersPageData(): Promise<CustomerListItem[]> {
           totalPaid: summary.totalPaidAmount,
           lastActivityAt,
           latestSaleId: latestSale?._id ? String(latestSale._id) : null,
+          latestSaleSaltAmount: latestQuantity,
+          latestSaleDate: latestSale?.createdAt ? String(latestSale.createdAt) : null,
           latestPricePerKg,
+          latestNumberOfBags: latestSale ? Number(latestSale.numberOfBags ?? 0) : 0,
+          latestBagType: latestSale ? String(latestSale.bagType ?? "50") : "50",
           editedByName: typeof latestSale?.editedByName === "string" ? latestSale.editedByName : "",
           editedByRole: typeof latestSale?.editedByRole === "string" ? latestSale.editedByRole : "",
           editedAt: latestSale?.editedAt ? String(latestSale.editedAt) : null,

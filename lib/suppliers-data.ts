@@ -38,6 +38,8 @@ export type SupplierListItem = {
   totalPurchaseAmount?: number;
   lastActivityAt?: number;
   latestPurchaseId?: string | null;
+  latestPurchaseSaltAmount?: number;
+  latestPurchaseDate?: string | null;
   latestPricePerMaund?: number;
   editedByName?: string;
   editedByRole?: string;
@@ -110,6 +112,8 @@ export async function getSuppliersPageData(): Promise<SupplierListItem[]> {
           totalPurchaseAmount: summary.totalPurchaseAmount,
           lastActivityAt,
           latestPurchaseId: latestPurchase?._id ? String(latestPurchase._id) : null,
+          latestPurchaseSaltAmount: Number(latestPurchase?.saltAmount ?? 0),
+          latestPurchaseDate: latestPurchase?.date ? String(latestPurchase.date) : null,
           latestPricePerMaund,
           editedByName: typeof latestPurchase?.editedByName === "string" ? latestPurchase.editedByName : "",
           editedByRole: typeof latestPurchase?.editedByRole === "string" ? latestPurchase.editedByRole : "",

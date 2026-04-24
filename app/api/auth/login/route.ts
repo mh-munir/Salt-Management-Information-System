@@ -118,6 +118,12 @@ export async function POST(req: Request) {
         return Response.json({ message: "Super admin bootstrap is not configured correctly." }, { status: 500 });
       }
 
+      await User.updateOne(
+        { _id: superAdminUser._id },
+        { $set: { lastLoginAt: new Date() } },
+        { strict: false }
+      );
+
       const token = signAuthToken({
         userId: String(superAdminUser._id),
         email: normalizedEmail,
@@ -160,6 +166,12 @@ export async function POST(req: Request) {
   if (!isValidPassword) {
     return Response.json({ message: "Invalid email or password." }, { status: 401 });
   }
+
+  await User.updateOne(
+    { _id: user._id },
+    { $set: { lastLoginAt: new Date() } },
+    { strict: false }
+  );
 
   const token = signAuthToken({
     userId: String(user._id),

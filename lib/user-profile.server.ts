@@ -1,5 +1,7 @@
 import type { AuthTokenPayload, UserRole } from "@/lib/auth";
 import { connectDB, isMongoConnectionError, isValidMongoObjectId } from "@/lib/db";
+import { DEFAULT_FAVICON_URL, DEFAULT_SITE_TITLE } from "@/lib/site-settings";
+import { getSharedSiteSettingsSnapshot } from "@/lib/site-settings.server";
 import { ensureEnvSuperadminUser } from "@/lib/superadmin";
 import { getSharedSidebarBrandingSnapshot } from "@/lib/sidebar-branding.server";
 import User from "@/models/User";
@@ -9,6 +11,8 @@ export type UserProfileSnapshot = {
   email: string;
   role: UserRole;
   avatarUrl: string;
+  faviconUrl: string;
+  siteTitle: string;
   sidebarLogoUrl: string;
   sidebarHeading: string;
   sidebarSubheading: string;
@@ -25,12 +29,15 @@ const buildUserLookup = (userId: string | undefined, email: string) => {
 
 const createFallbackProfile = (
   auth: Pick<AuthTokenPayload, "email" | "role">,
-  branding: Pick<UserProfileSnapshot, "sidebarLogoUrl" | "sidebarHeading" | "sidebarSubheading">
+  branding: Pick<UserProfileSnapshot, "sidebarLogoUrl" | "sidebarHeading" | "sidebarSubheading">,
+  siteSettings: Pick<UserProfileSnapshot, "faviconUrl" | "siteTitle">
 ): UserProfileSnapshot => ({
   name: auth.role === "superadmin" ? "Super Admin" : "",
   email: auth.email,
   role: auth.role,
   avatarUrl: "",
+  faviconUrl: siteSettings.faviconUrl,
+  siteTitle: siteSettings.siteTitle,
   sidebarLogoUrl: branding.sidebarLogoUrl,
   sidebarHeading: branding.sidebarHeading,
   sidebarSubheading: branding.sidebarSubheading,
@@ -43,16 +50,17 @@ export async function getCurrentUserProfileSnapshot(
     await connectDB();
 
     let user = await User.findOne(buildUserLookup(auth.userId, auth.email)).select(
-      "name email role avatarUrl sidebarLogoUrl sidebarHeading sidebarSubheading"
+      "name email role avatarUrl sidebarLogoUrl sidebarHeading sidebarSubheading faviconUrl siteTitle"
     );
     const sharedBranding = await getSharedSidebarBrandingSnapshot();
+    const sharedSiteSettings = await getSharedSiteSettingsSnapshot();
 
     if (!user) {
       user = await ensureEnvSuperadminUser(auth);
     }
 
     if (!user) {
-      return createFallbackProfile(auth, sharedBranding);
+      return createFallbackProfile(auth, sharedBranding, sharedSiteSettings);
     }
 
     return {
@@ -60,6 +68,8 @@ export async function getCurrentUserProfileSnapshot(
       email: user.email,
       role: user.role,
       avatarUrl: user.avatarUrl ?? "",
+      faviconUrl: sharedSiteSettings.faviconUrl,
+      siteTitle: sharedSiteSettings.siteTitle,
       sidebarLogoUrl: sharedBranding.sidebarLogoUrl,
       sidebarHeading: sharedBranding.sidebarHeading,
       sidebarSubheading: sharedBranding.sidebarSubheading,
@@ -73,6 +83,9 @@ export async function getCurrentUserProfileSnapshot(
       sidebarLogoUrl: "",
       sidebarHeading: "",
       sidebarSubheading: "",
+    }, {
+      faviconUrl: DEFAULT_FAVICON_URL,
+      siteTitle: DEFAULT_SITE_TITLE,
     });
   }
 }
