@@ -98,18 +98,18 @@ const CustomerSaltActions = ({ customerId }: Props) => {
           </p>
         </div>
 
-        <div className="inline-flex rounded-full border border-slate-200 bg-slate-100 p-1">
+        <div className="inline-flex rounded-lg border border-slate-200 bg-slate-100 p-1">
           <button
             type="button"
             onClick={() => setMode("sale")}
-            className={`rounded-full px-4 py-2 text-base font-medium ${mode === "sale" ? "bg-[#348CD4] text-white" : "text-slate-600"}`}
+            className={`button-utility rounded-lg px-4 py-2 text-base font-medium ${mode === "sale" ? "bg-[#348CD4] text-white" : "text-slate-600"}`}
           >
             Sale salt
           </button>
           <button
             type="button"
             onClick={() => setMode("buy")}
-            className={`rounded-full px-4 py-2 text-base font-medium ${mode === "buy" ? "bg-[#348CD4] text-white" : "text-slate-600"}`}
+            className={`button-utility rounded-lg px-4 py-2 text-base font-medium ${mode === "buy" ? "bg-[#348CD4] text-white" : "text-slate-600"}`}
           >
             Buy salt
           </button>

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import CompactDateInput from "@/components/CompactDateInput";
 import LoadMoreTable from "@/components/LoadMoreTable";
@@ -35,7 +35,7 @@ const getDateKey = (value?: string | Date) => {
 export default function TransactionsClient({ initialData }: TransactionsClientProps) {
   const { language } = useLanguage();
   const originalTitleRef = useRef("");
-  const defaultFilterDate = todayIso();
+  const defaultFilterDate = "";
   const [printTarget, setPrintTarget] = useState<"paid" | "customer" | null>(null);
   const [paidFilterDate, setPaidFilterDate] = useState(defaultFilterDate);
   const [customerFilterDate, setCustomerFilterDate] = useState(defaultFilterDate);
@@ -95,53 +95,69 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
       ? customerData.filter((item) => getDateKey(item.date) === customerFilterDate)
       : customerData;
   }, [data, customerFilterDate]);
+  const deferredPaidTransactions = useDeferredValue(paidTransactions);
+  const deferredCustomerTransactions = useDeferredValue(customerTransactions);
 
-  const paidTotalAmount = paidTransactions.reduce((sum, transaction) => sum + toSafeAmount(transaction.amount), 0);
-  const customerTotalAmount = customerTransactions.reduce((sum, transaction) => sum + toSafeAmount(transaction.amount), 0);
+  const paidTotalAmount = useMemo(
+    () => deferredPaidTransactions.reduce((sum, transaction) => sum + toSafeAmount(transaction.amount), 0),
+    [deferredPaidTransactions]
+  );
+  const customerTotalAmount = useMemo(
+    () => deferredCustomerTransactions.reduce((sum, transaction) => sum + toSafeAmount(transaction.amount), 0),
+    [deferredCustomerTransactions]
+  );
 
-  const paidTransactionRows = paidTransactions.map((t, index) => (
-    <tr key={t._id} className={`border-b border-slate-100 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}>
-      <td className="px-4 py-4 text-sm text-slate-800">{formatLocalizedDate(t.date, language)}</td>
-      <td className="px-4 py-4 text-sm text-slate-800">{t.supplierName || t.personName || "-"}</td>
-      <td className="px-4 py-4 text-sm text-slate-600">{getPaidTypeLabel(t.type)}</td>
-      <td className="px-4 py-4 text-sm text-slate-600">
-        Tk {formatLocalizedNumber(Number(t.amount ?? 0), language, { maximumFractionDigits: 0 })}
-      </td>
-      <td className="px-4 py-4">
-        {t.supplierId ? (
-          <Link
-            href={`/invoices/suppliers/${t.supplierId}`}
-            target="_blank"
-            className="text-sm font-medium text-emerald-700 hover:underline"
-          >
-            Print
-          </Link>
-        ) : (
-          <span className="text-sm text-slate-400">-</span>
-        )}
-      </td>
-    </tr>
-  ));
+  const paidTransactionRows = useMemo(
+    () =>
+      deferredPaidTransactions.map((t, index) => (
+        <tr key={t._id} className={`border-b border-slate-100 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}>
+          <td className="px-4 py-4 text-sm text-slate-800">{formatLocalizedDate(t.date, language)}</td>
+          <td className="px-4 py-4 text-sm text-slate-800">{t.supplierName || t.personName || "-"}</td>
+          <td className="px-4 py-4 text-sm text-slate-600">{getPaidTypeLabel(t.type)}</td>
+          <td className="px-4 py-4 text-sm text-slate-600">
+            Tk {formatLocalizedNumber(Number(t.amount ?? 0), language, { maximumFractionDigits: 0 })}
+          </td>
+          <td className="px-4 py-4">
+            {t.supplierId ? (
+              <Link
+                href={`/invoices/suppliers/${t.supplierId}`}
+                target="_blank"
+                className="text-sm font-medium text-emerald-700 hover:underline"
+              >
+                Print
+              </Link>
+            ) : (
+              <span className="text-sm text-slate-400">-</span>
+            )}
+          </td>
+        </tr>
+      )),
+    [deferredPaidTransactions, language]
+  );
 
-  const customerTransactionRows = customerTransactions.map((t, index) => (
-    <tr key={t._id} className={`border-b border-slate-100 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}>
-      <td className="px-4 py-4 text-sm text-slate-800">{formatLocalizedDate(t.date, language)}</td>
-      <td className="px-4 py-4 text-sm text-slate-800">{t.customerName || "-"}</td>
-      <td className="px-4 py-4 text-sm text-slate-600">{t.type}</td>
-      <td className="px-4 py-4 text-sm text-slate-600">
-        Tk {formatLocalizedNumber(Number(t.amount ?? 0), language, { maximumFractionDigits: 0 })}
-      </td>
-      <td className="px-4 py-4">
-        <Link
-          href={`/invoices/customers/${t.customerId}`}
-          target="_blank"
-          className="text-sm font-medium text-emerald-700 hover:underline"
-        >
-          Print
-        </Link>
-      </td>
-    </tr>
-  ));
+  const customerTransactionRows = useMemo(
+    () =>
+      deferredCustomerTransactions.map((t, index) => (
+        <tr key={t._id} className={`border-b border-slate-100 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}>
+          <td className="px-4 py-4 text-sm text-slate-800">{formatLocalizedDate(t.date, language)}</td>
+          <td className="px-4 py-4 text-sm text-slate-800">{t.customerName || "-"}</td>
+          <td className="px-4 py-4 text-sm text-slate-600">{t.type}</td>
+          <td className="px-4 py-4 text-sm text-slate-600">
+            Tk {formatLocalizedNumber(Number(t.amount ?? 0), language, { maximumFractionDigits: 0 })}
+          </td>
+          <td className="px-4 py-4">
+            <Link
+              href={`/invoices/customers/${t.customerId}`}
+              target="_blank"
+              className="text-sm font-medium text-emerald-700 hover:underline"
+            >
+              Print
+            </Link>
+          </td>
+        </tr>
+      )),
+    [deferredCustomerTransactions, language]
+  );
 
   return (
     <div className="space-y-4">
@@ -160,7 +176,7 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
           <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
             <div>
               <h2 className="text-xl font-semibold text-slate-900">{translate(language, "paidTransactions")}</h2>
-              <span className="mt-2 inline-flex rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700">
+              <span className="mt-2 inline-flex rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700">
                 {formatLocalizedNumber(paidTransactions.length, language, { maximumFractionDigits: 0 })} {translate(language, "entries")}
               </span>
             </div>
@@ -179,7 +195,7 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
                 <button
                   type="button"
                   onClick={() => setPaidFilterDate(defaultFilterDate)}
-                  className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                  className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                 >
                   {translate(language, "cancel")}
                 </button>
@@ -235,7 +251,7 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
           <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
             <div>
               <h2 className="text-xl font-semibold text-slate-900">{translate(language, "customerTransactions")}</h2>
-              <span className="mt-2 inline-flex rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700">
+              <span className="mt-2 inline-flex rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700">
                 {formatLocalizedNumber(customerTransactions.length, language, { maximumFractionDigits: 0 })} {translate(language, "entries")}
               </span>
             </div>
@@ -254,7 +270,7 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
                 <button
                   type="button"
                   onClick={() => setCustomerFilterDate(defaultFilterDate)}
-                  className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                  className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                 >
                   {translate(language, "cancel")}
                 </button>

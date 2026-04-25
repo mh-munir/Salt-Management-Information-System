@@ -2,6 +2,7 @@
 
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import FloatingInput from "@/components/FloatingInput";
 import ModalShell from "@/components/ModalShell";
 import PlainImage from "@/components/PlainImage";
 import {
@@ -886,7 +887,7 @@ export default function SettingsPage() {
             <PlainImage
               src={avatarUrl || profile?.avatarUrl || DEFAULT_AVATAR}
               alt="Navbar avatar preview"
-              className="h-16 w-16 rounded-full border border-slate-200 object-cover"
+              className="h-16 w-16 rounded-lg border border-slate-200 object-cover"
             />
             <div>
               <p className="text-sm font-medium text-slate-800">{profile?.email ?? "Loading..."}</p>
@@ -900,7 +901,7 @@ export default function SettingsPage() {
                 type="button"
                 onClick={() => avatarInputRef.current?.click()}
                 disabled={isSavingAvatar}
-                className="group relative h-20 w-20 overflow-hidden rounded-full border border-slate-200 bg-white shadow-sm transition hover:border-sky-400 disabled:cursor-not-allowed disabled:opacity-70"
+                className="group relative h-20 w-20 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition hover:border-sky-400 disabled:cursor-not-allowed disabled:opacity-70"
                 title="Click to change your profile image"
               >
                 <PlainImage
@@ -972,31 +973,27 @@ export default function SettingsPage() {
               />
             </div>
 
-            <div>
-              <label htmlFor="sidebar-heading" className="mb-1 block text-sm font-medium text-slate-700">Sidebar Heading</label>
-              <input
-                id="sidebar-heading"
-                name="sidebarHeading"
-                value={sidebarHeading}
-                onChange={(event) => setSidebarHeading(event.target.value)}
-                placeholder={DEFAULT_BRAND_HEADING}
-                maxLength={40}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-sky-500"
-              />
-            </div>
+            <FloatingInput
+              id="sidebar-heading"
+              name="sidebarHeading"
+              label="Sidebar Heading"
+              value={sidebarHeading}
+              onChange={(event) => setSidebarHeading(event.target.value)}
+              maxLength={40}
+              inputClassName="w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-sky-500"
+              labelClassName="bg-white text-slate-500"
+            />
 
-            <div>
-              <label htmlFor="sidebar-subheading" className="mb-1 block text-sm font-medium text-slate-700">Sidebar Subheading</label>
-              <input
-                id="sidebar-subheading"
-                name="sidebarSubheading"
-                value={sidebarSubheading}
-                onChange={(event) => setSidebarSubheading(event.target.value)}
-                placeholder={DEFAULT_BRAND_SUBHEADING}
-                maxLength={80}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-sky-500"
-              />
-            </div>
+            <FloatingInput
+              id="sidebar-subheading"
+              name="sidebarSubheading"
+              label="Sidebar Subheading"
+              value={sidebarSubheading}
+              onChange={(event) => setSidebarSubheading(event.target.value)}
+              maxLength={80}
+              inputClassName="w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-sky-500"
+              labelClassName="bg-white text-slate-500"
+            />
 
             <button
               type="submit"
@@ -1049,15 +1046,16 @@ export default function SettingsPage() {
 
             <div>
               <h2 className="text-lg font-semibold text-slate-900">Site title Change</h2>
-              <label htmlFor="site-title" className="mt-2 mb-1 block text-sm font-medium text-slate-700">Site Title</label>
-              <input
+              <FloatingInput
                 id="site-title"
                 name="siteTitle"
+                label="Site Title"
                 value={siteTitle}
                 onChange={(event) => setSiteTitle(event.target.value)}
-                placeholder={DEFAULT_SITE_TITLE}
                 maxLength={80}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-sky-500"
+                containerClassName="mt-2"
+                inputClassName="w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-sky-500"
+                labelClassName="bg-white text-slate-500"
               />
             </div>
 
@@ -1083,49 +1081,43 @@ export default function SettingsPage() {
           ) : null}
 
           <form className="mt-5 space-y-4" onSubmit={createAdmin}>
-            <div>
-              <label htmlFor="admin-name" className="mb-1 block text-sm font-medium text-slate-700">Name (optional)</label>
-              <input
-                id="admin-name"
-                name="adminName"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder="Admin name"
-                disabled={!isSuperAdmin || Boolean(pendingAdminPayload)}
-                className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-sky-500"
-              />
-            </div>
+            <FloatingInput
+              id="admin-name"
+              name="adminName"
+              label="Name (optional)"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              disabled={!isSuperAdmin || Boolean(pendingAdminPayload)}
+              inputClassName="w-full rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:border-sky-500"
+              labelClassName="bg-white text-slate-500"
+            />
 
-            <div>
-              <label htmlFor="admin-email" className="mb-1 block text-sm font-medium text-slate-700">Email</label>
-              <input
-                id="admin-email"
-                name="adminEmail"
-                type="email"
-                required
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="newadmin@gmail.com"
-                disabled={!isSuperAdmin || Boolean(pendingAdminPayload)}
-                className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-sky-500"
-              />
-            </div>
+            <FloatingInput
+              id="admin-email"
+              name="adminEmail"
+              type="email"
+              label="Email"
+              required
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              disabled={!isSuperAdmin || Boolean(pendingAdminPayload)}
+              inputClassName="w-full rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:border-sky-500"
+              labelClassName="bg-white text-slate-500"
+            />
 
-            <div>
-              <label htmlFor="admin-password" className="mb-1 block text-sm font-medium text-slate-700">Password</label>
-              <input
-                id="admin-password"
-                name="adminPassword"
-                type="password"
-                required
-                minLength={8}
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="At least 8 characters"
-                disabled={!isSuperAdmin || Boolean(pendingAdminPayload)}
-                className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-sky-500"
-              />
-            </div>
+            <FloatingInput
+              id="admin-password"
+              name="adminPassword"
+              type="password"
+              label="Password"
+              required
+              minLength={8}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              disabled={!isSuperAdmin || Boolean(pendingAdminPayload)}
+              inputClassName="w-full rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:border-sky-500"
+              labelClassName="bg-white text-slate-500"
+            />
 
             <button
               type="submit"
@@ -1152,19 +1144,17 @@ export default function SettingsPage() {
                 </p>
               ) : null}
 
-              <div>
-                <label htmlFor="admin-otp-code" className="mb-1 block text-sm font-medium text-slate-700">Enter OTP</label>
-                <input
-                  id="admin-otp-code"
-                  name="otpCode"
-                  value={otpCode}
-                  onChange={(event) => setOtpCode(event.target.value)}
-                  placeholder="6-digit OTP"
-                  maxLength={6}
-                  required
-                  className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-sky-500"
-                />
-              </div>
+              <FloatingInput
+                id="admin-otp-code"
+                name="otpCode"
+                label="Enter OTP"
+                value={otpCode}
+                onChange={(event) => setOtpCode(event.target.value)}
+                maxLength={6}
+                required
+                inputClassName="w-full rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:border-sky-500"
+                labelClassName="bg-white text-slate-500"
+              />
 
               <div className="flex flex-wrap items-center gap-2">
                 <button
@@ -1215,10 +1205,10 @@ export default function SettingsPage() {
                       <PlainImage
                         src={admin.avatarUrl || DEFAULT_AVATAR}
                         alt={`${admin.name || admin.email} avatar`}
-                        className="h-11 w-11 rounded-full border border-slate-200 object-cover"
+                        className="h-11 w-11 rounded-lg border border-slate-200 object-cover"
                       />
                       <span
-                        className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white ${
+                        className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-lg border-2 border-white ${
                           admin.isActive ? "bg-emerald-500" : "bg-slate-400"
                         }`}
                         aria-label={admin.isActive ? "Active admin" : "Inactive admin"}
@@ -1234,7 +1224,7 @@ export default function SettingsPage() {
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="admin-user-badge rounded-full border border-slate-200 px-3 py-1 text-xs uppercase tracking-wide text-slate-600">
+                    <span className="admin-user-badge rounded-lg border border-slate-200 px-3 py-1 text-xs uppercase tracking-wide text-slate-600">
                       {admin.role}
                     </span>
                     <button
@@ -1307,17 +1297,16 @@ export default function SettingsPage() {
                   alt="Admin avatar preview"
                   className="h-20 w-20 rounded-3xl border border-white object-cover shadow-sm"
                 />
-                <div className="flex-1">
-                  <label htmlFor="edit-admin-avatar-url" className="mb-1.5 block text-sm font-medium text-slate-700">Avatar URL</label>
-                  <input
-                    id="edit-admin-avatar-url"
-                    name="editAvatarUrl"
-                    value={editAvatarUrl}
-                    onChange={(event) => setEditAvatarUrl(event.target.value)}
-                    placeholder="https://example.com/avatar.png"
-                    className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-sky-400 focus:bg-white"
-                  />
-                </div>
+                <FloatingInput
+                  id="edit-admin-avatar-url"
+                  name="editAvatarUrl"
+                  label="Avatar URL"
+                  value={editAvatarUrl}
+                  onChange={(event) => setEditAvatarUrl(event.target.value)}
+                  containerClassName="flex-1"
+                  inputClassName="w-full rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-sky-400 focus:bg-white"
+                  labelClassName="bg-white text-slate-500"
+                />
               </div>
 
               <div className="mt-4">
@@ -1334,32 +1323,28 @@ export default function SettingsPage() {
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label htmlFor="edit-admin-name" className="mb-1.5 block text-sm font-medium text-slate-700">Name</label>
-                <input
-                  id="edit-admin-name"
-                  name="editAdminName"
-                  value={editName}
-                  onChange={(event) => setEditName(event.target.value)}
-                  placeholder="Admin name"
-                  required
-                  className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-sky-400 focus:bg-white"
-                />
-              </div>
+              <FloatingInput
+                id="edit-admin-name"
+                name="editAdminName"
+                label="Name"
+                value={editName}
+                onChange={(event) => setEditName(event.target.value)}
+                required
+                inputClassName="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 text-sm outline-none transition focus:border-sky-400 focus:bg-white"
+                labelClassName="bg-slate-50 text-slate-500"
+              />
 
-              <div>
-                <label htmlFor="edit-admin-email" className="mb-1.5 block text-sm font-medium text-slate-700">Email</label>
-                <input
-                  id="edit-admin-email"
-                  name="editAdminEmail"
-                  type="email"
-                  value={editEmail}
-                  onChange={(event) => setEditEmail(event.target.value)}
-                  placeholder="admin@example.com"
-                  required
-                  className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-sky-400 focus:bg-white"
-                />
-              </div>
+              <FloatingInput
+                id="edit-admin-email"
+                name="editAdminEmail"
+                type="email"
+                label="Email"
+                value={editEmail}
+                onChange={(event) => setEditEmail(event.target.value)}
+                required
+                inputClassName="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 text-sm outline-none transition focus:border-sky-400 focus:bg-white"
+                labelClassName="bg-slate-50 text-slate-500"
+              />
             </div>
 
             <div className="flex flex-wrap items-center justify-end gap-3 pt-1">
@@ -1395,35 +1380,31 @@ export default function SettingsPage() {
               Set a new password for this account. Use at least 8 characters for a stronger login credential.
             </div>
 
-            <div>
-              <label htmlFor="admin-new-password" className="mb-1.5 block text-sm font-medium text-slate-700">New password</label>
-              <input
-                id="admin-new-password"
-                name="newPassword"
-                type="password"
-                minLength={8}
-                value={newPassword}
-                onChange={(event) => setNewPassword(event.target.value)}
-                placeholder="At least 8 characters"
-                required
-                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-sky-400 focus:bg-white"
-              />
-            </div>
+            <FloatingInput
+              id="admin-new-password"
+              name="newPassword"
+              type="password"
+              minLength={8}
+              label="New password"
+              value={newPassword}
+              onChange={(event) => setNewPassword(event.target.value)}
+              required
+              inputClassName="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 text-sm outline-none transition focus:border-sky-400 focus:bg-white"
+              labelClassName="bg-slate-50 text-slate-500"
+            />
 
-            <div>
-              <label htmlFor="admin-confirm-password" className="mb-1.5 block text-sm font-medium text-slate-700">Confirm password</label>
-              <input
-                id="admin-confirm-password"
-                name="confirmPassword"
-                type="password"
-                minLength={8}
-                value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.target.value)}
-                placeholder="Retype new password"
-                required
-                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-sky-400 focus:bg-white"
-              />
-            </div>
+            <FloatingInput
+              id="admin-confirm-password"
+              name="confirmPassword"
+              type="password"
+              minLength={8}
+              label="Confirm password"
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              required
+              inputClassName="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 text-sm outline-none transition focus:border-sky-400 focus:bg-white"
+              labelClassName="bg-slate-50 text-slate-500"
+            />
 
             <div className="flex flex-wrap items-center justify-end gap-3 pt-1">
               <button

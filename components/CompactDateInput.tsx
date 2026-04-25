@@ -10,6 +10,7 @@ type CompactDateInputProps = {
   max?: string;
   required?: boolean;
   inputClassName?: string;
+  labelClassName?: string;
 };
 
 const pad = (value: number) => String(value).padStart(2, "0");
@@ -61,14 +62,28 @@ export default function CompactDateInput({
   max,
   required = false,
   inputClassName = "",
+  labelClassName = "",
 }: CompactDateInputProps) {
   const inputId = useId();
   const nativeDateInputRef = useRef<HTMLInputElement>(null);
   const [displayValue, setDisplayValue] = useState(() => isoToCompactDate(value));
+  const [isMobileLayout, setIsMobileLayout] = useState(false);
 
   useEffect(() => {
     setDisplayValue(isoToCompactDate(value));
   }, [value]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const mediaQuery = window.matchMedia("(max-width: 767.98px), (pointer: coarse)");
+    const syncLayout = () => setIsMobileLayout(mediaQuery.matches);
+
+    syncLayout();
+    mediaQuery.addEventListener("change", syncLayout);
+
+    return () => mediaQuery.removeEventListener("change", syncLayout);
+  }, []);
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const formattedValue = formatCompactDate(event.target.value);
@@ -124,18 +139,37 @@ export default function CompactDateInput({
     nativeInput.click();
   };
 
+  if (isMobileLayout) {
+    return (
+      <label className="block">
+        <span className={`mb-2 block text-sm font-semibold text-slate-600 ${labelClassName}`.trim()}>
+          {label}
+        </span>
+        <input
+          id={inputId}
+          name={name}
+          type="date"
+          value={value}
+          onChange={handleNativeDateChange}
+          max={max}
+          required={required}
+          className={`${inputClassName} min-h-12 rounded-xl pr-4`.replace("mt-2", "").trim()}
+        />
+      </label>
+    );
+  }
+
   return (
-    <label className="block">
-      <span className="text-sm font-medium text-slate-700">{label}</span>
-      <div className="relative mt-2">
+    <label className="floating-field block">
+      <div className="relative">
         <input
           id={inputId}
           name={`${name}Display`}
           type="text"
           inputMode="numeric"
           autoComplete="off"
-          placeholder="dd/mm/yyyy"
-          className={`${inputClassName.replace("mt-2", "").trim()} pr-12`}
+          placeholder=" "
+          className={`floating-field__input ${inputClassName.replace("mt-2", "").trim()} pr-12`}
           value={displayValue}
           onChange={handleChange}
           onBlur={handleBlur}
@@ -157,11 +191,14 @@ export default function CompactDateInput({
           aria-hidden="true"
           className="pointer-events-none absolute right-0 top-0 h-full w-0 opacity-0"
         />
+        <span className={`floating-field__label ${labelClassName || "bg-white text-slate-600"}`.trim()}>
+          {label}
+        </span>
         <button
           type="button"
           onClick={openCalendar}
           aria-label={`Open ${label.toLowerCase()} calendar`}
-          className="absolute right-3 top-1/2 inline-flex -translate-y-1/2 items-center justify-center rounded-lg p-1 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+          className="button-utility absolute right-3 top-1/2 inline-flex -translate-y-1/2 items-center justify-center rounded-lg p-1 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"

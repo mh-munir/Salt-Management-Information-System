@@ -1,5 +1,6 @@
 import { connectDB, isMongoConnectionError } from "@/lib/db";
 import { requireAuth, validateSameOrigin } from "@/lib/auth";
+import { DASHBOARD_API_CACHE_CONTROL } from "@/lib/cache-control";
 import { getSuppliersPageData } from "@/lib/suppliers-data";
 import Customer from "@/models/Customer";
 import Supplier from "@/models/Supplier";
@@ -21,7 +22,9 @@ export async function GET(request: Request) {
   const authResult = requireAuth(request, ["admin", "superadmin"]);
   if (authResult instanceof Response) return authResult;
 
-  return Response.json(await getSuppliersPageData());
+  return Response.json(await getSuppliersPageData(), {
+    headers: { "Cache-Control": DASHBOARD_API_CACHE_CONTROL },
+  });
 }
 
 export async function POST(req: Request) {

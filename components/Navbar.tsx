@@ -184,7 +184,7 @@ export default function Navbar({ initialLanguage, initialProfile }: NavbarProps)
         <button
           type="button"
           onClick={toggleSidebar}
-          className="mobile-menu-button inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 lg:hidden"
+          className="mobile-menu-button inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 lg:hidden"
           aria-label="Open navigation menu"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-5 w-5">
@@ -201,7 +201,7 @@ export default function Navbar({ initialLanguage, initialProfile }: NavbarProps)
           <button
             type="button"
             onClick={() => setLanguageMenuOpen((open) => !open)}
-            className="theme-toggle-button light-navbar-button inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 sm:px-3 sm:text-base dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100 dark:hover:bg-slate-800"
+            className="theme-toggle-button light-navbar-button inline-flex h-10 min-w-[4.6rem] shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 sm:min-w-[4.9rem] sm:text-base dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100 dark:hover:bg-slate-800"
             aria-label={translate(language, "changeLanguage")}
             aria-expanded={languageMenuOpen}
           >
@@ -240,12 +240,12 @@ export default function Navbar({ initialLanguage, initialProfile }: NavbarProps)
           <button
             type="button"
             onClick={() => setMenuOpen((open) => !open)}
-            className="profile-trigger-button light-navbar-button flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 transition hover:bg-slate-50"
+            className="profile-trigger-button light-navbar-button flex h-10 min-w-10 shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-1.5 transition hover:bg-slate-50 sm:px-2"
           >
             <PlainImage
               src={avatarUrl || DEFAULT_AVATAR}
               alt="Admin avatar"
-              className="profile-avatar h-9 w-9 rounded-full border border-slate-200 object-cover"
+              className="profile-avatar h-8 w-8 rounded-full border border-slate-200 object-cover sm:h-9 sm:w-9"
             />
             <div className="hidden min-w-0 text-left md:block">
               <p className="max-w-24 truncate text-sm font-medium leading-tight text-sky-700 sm:max-w-30">

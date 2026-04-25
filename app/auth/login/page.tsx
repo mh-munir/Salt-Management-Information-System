@@ -57,8 +57,8 @@ export default function LoginPage() {
       </div>
       <div className="pointer-events-none absolute -left-16 bottom-0 h-64 w-64 rotate-[-35deg] rounded-[48px] border border-fuchsia-200/70 bg-linear-to-br from-fuchsia-200/40 via-transparent to-sky-200/40" />
       <div className="pointer-events-none absolute -right-14 top-0 h-64 w-64 rotate-[35deg] rounded-[48px] border border-indigo-200/70 bg-linear-to-br from-sky-200/40 via-transparent to-fuchsia-200/40" />
-      <div className="pointer-events-none absolute left-20 top-1/2 h-14 w-14 rounded-full border border-indigo-200/70 bg-indigo-100/60" />
-      <div className="pointer-events-none absolute right-20 top-1/3 h-10 w-10 rounded-full border border-fuchsia-200/70 bg-fuchsia-100/60" />
+      <div className="pointer-events-none absolute left-20 top-1/2 h-14 w-14 rounded-lg border border-indigo-200/70 bg-indigo-100/60" />
+      <div className="pointer-events-none absolute right-20 top-1/3 h-10 w-10 rounded-lg border border-fuchsia-200/70 bg-fuchsia-100/60" />
 
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-xl items-center justify-center">
         <section className="w-full max-w-md rounded-md border border-slate-200 bg-white px-6 py-7 shadow-[0_20px_50px_rgba(15,23,42,0.08)]">
@@ -118,7 +118,7 @@ export default function LoginPage() {
                 />
                 {translate(language, "keepMeSignedIn")}
               </label>
-              <button type="button" className="text-sm font-medium text-slate-400 hover:text-slate-600">
+              <button type="button" className="button-utility text-sm font-medium text-slate-400 hover:text-slate-600">
                 {translate(language, "forgotPassword")}
               </button>
             </div>

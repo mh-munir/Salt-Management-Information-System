@@ -201,7 +201,7 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
         <td className="px-4 py-4 text-sm text-slate-800">{formatDate(record.date)}</td>
         <td className="px-4 py-4 text-sm">
           <span
-            className={`inline-flex rounded-full px-2.5 py-1 text-sm font-semibold ${
+            className={`inline-flex rounded-lg px-2.5 py-1 text-sm font-semibold ${
               isPurchase ? "bg-indigo-100 text-indigo-700" : "bg-emerald-100 text-emerald-700"
             }`}
           >
@@ -230,21 +230,21 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
   return (
     <div className="space-y-5">
       <section className="relative overflow-hidden rounded-[32px] border border-slate-200/80 bg-linear-to-br from-indigo-50 via-white to-sky-50 p-5 shadow-sm sm:p-6 lg:p-8">
-        <div className="pointer-events-none absolute -right-8 -top-14 h-40 w-40 rounded-full bg-indigo-200/50 blur-3xl" />
-        <div className="pointer-events-none absolute left-8 top-10 h-28 w-28 rounded-full bg-sky-200/40 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-16 left-1/3 h-44 w-44 rounded-full bg-violet-200/40 blur-3xl" />
+        <div className="pointer-events-none absolute -right-8 -top-14 h-40 w-40 rounded-lg bg-indigo-200/50 blur-3xl" />
+        <div className="pointer-events-none absolute left-8 top-10 h-28 w-28 rounded-lg bg-sky-200/40 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-16 left-1/3 h-44 w-44 rounded-lg bg-violet-200/40 blur-3xl" />
 
         <div className="relative grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.95fr)] xl:items-stretch">
           <div className="rounded-[28px] border border-slate-200/80 bg-white/90 p-5 shadow-sm backdrop-blur sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <Link
                 href="/suppliers"
-                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600 transition hover:bg-slate-50"
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600 transition hover:bg-slate-50"
               >
                 <span aria-hidden="true">&larr;</span>
                 Suppliers
               </Link>
-              <span className="inline-flex rounded-full border border-indigo-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-indigo-600">
+              <span className="inline-flex rounded-lg border border-indigo-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-indigo-600">
                 Supplier profile
               </span>
             </div>
@@ -267,13 +267,13 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
                 </p>
 
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600">
+                  <span className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600">
                     Phone: {supplier.phone || "-"}
                   </span>
-                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600">
+                  <span className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600">
                     Address: {supplier.address || "-"}
                   </span>
-                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600">
+                  <span className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600">
                     {records.length} {translate(language, "entries")}
                   </span>
                 </div>
@@ -359,13 +359,13 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold uppercase tracking-[0.16em] text-slate-600">
+            <span className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold uppercase tracking-[0.16em] text-slate-600">
               {filteredRecords.length} {translate(language, "entries")}
             </span>
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-600">
+            <span className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-600">
               Purchase Tk {formatAmount(filteredEstimatedPurchase)}
             </span>
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-600">
+            <span className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-600">
               Paid Tk {formatAmount(filteredTotalPaid)}
             </span>
             <TableDateFilterToolbar
@@ -377,7 +377,7 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
           </div>
         </div>
 
-        <div className="mt-6 overflow-hidden rounded-[24px] border border-slate-200">
+        <div className="mt-6 overflow-hidden rounded-lg border border-slate-200">
           <div className="w-full overflow-x-auto">
             <table className="min-w-[46rem] w-full text-left text-sm">
               <thead className="bg-slate-50/80 text-slate-500">

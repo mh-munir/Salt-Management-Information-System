@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import FloatingInput from "@/components/FloatingInput";
 import PlainImage from "@/components/PlainImage";
 import ThemeToggle from "@/components/ThemeToggle";
 import {
@@ -64,8 +65,8 @@ export default function LoginPage() {
       </div>
       <div className="pointer-events-none absolute -left-16 bottom-0 h-64 w-64 rotate-[-35deg] rounded-[48px] border border-fuchsia-200/70 bg-linear-to-br from-fuchsia-200/40 via-transparent to-sky-200/40" />
       <div className="pointer-events-none absolute -right-14 top-0 h-64 w-64 rotate-[35deg] rounded-[48px] border border-indigo-200/70 bg-linear-to-br from-sky-200/40 via-transparent to-fuchsia-200/40" />
-      <div className="pointer-events-none absolute left-20 top-1/2 h-14 w-14 rounded-full border border-indigo-200/70 bg-indigo-100/60" />
-      <div className="pointer-events-none absolute right-20 top-1/3 h-10 w-10 rounded-full border border-fuchsia-200/70 bg-fuchsia-100/60" />
+      <div className="pointer-events-none absolute left-20 top-1/2 h-14 w-14 rounded-lg border border-indigo-200/70 bg-indigo-100/60" />
+      <div className="pointer-events-none absolute right-20 top-1/3 h-10 w-10 rounded-lg border border-fuchsia-200/70 bg-fuchsia-100/60" />
 
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-xl items-center justify-center">
         <section className="w-full max-w-md rounded-lg border border-slate-200 bg-white px-6 py-7 shadow-[0_20px_50px_rgba(15,23,42,0.08)]">
@@ -90,35 +91,31 @@ export default function LoginPage() {
           </div>
 
           <form className="space-y-4" onSubmit={handleSubmit}>
-            <div>
-              <label htmlFor="login-email" className="mb-1.5 block text-lg font-medium text-slate-700">{translate(language, "emailAddress")}</label>
-              <input
-                id="login-email"
-                name="email"
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder={translate(language, "emailPlaceholder")}
-                autoComplete="email"
-                required
-                className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-lg text-slate-800 outline-none transition focus:border-blue-500"
-              />
-            </div>
+            <FloatingInput
+              id="login-email"
+              name="email"
+              type="email"
+              label={translate(language, "emailAddress")}
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              autoComplete="email"
+              required
+              inputClassName="w-full rounded-lg border border-slate-200 bg-white px-3 text-lg text-slate-800 outline-none transition focus:border-blue-500"
+              labelClassName="bg-white text-slate-500"
+            />
 
-            <div>
-              <label htmlFor="login-password" className="mb-1.5 block text-lg font-medium text-slate-700">{translate(language, "password")}</label>
-              <input
-                id="login-password"
-                name="password"
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder={translate(language, "passwordPlaceholder")}
-                autoComplete="current-password"
-                required
-                className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-lg text-slate-800 outline-none transition focus:border-blue-500"
-              />
-            </div>
+            <FloatingInput
+              id="login-password"
+              name="password"
+              type="password"
+              label={translate(language, "password")}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              autoComplete="current-password"
+              required
+              inputClassName="w-full rounded-lg border border-slate-200 bg-white px-3 text-lg text-slate-800 outline-none transition focus:border-blue-500"
+              labelClassName="bg-white text-slate-500"
+            />
 
             <div className="flex items-center justify-between gap-3">
               <label className="flex items-center gap-2 text-lg text-slate-600">

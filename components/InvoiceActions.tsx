@@ -20,7 +20,7 @@ export default function InvoiceActions({ backHref }: InvoiceActionsProps) {
         <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
           <Link
             href={backHref}
-            className="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 sm:w-auto"
+            className="inline-flex w-full items-center justify-center rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 sm:w-auto"
           >
             Back to profile
           </Link>
@@ -28,7 +28,7 @@ export default function InvoiceActions({ backHref }: InvoiceActionsProps) {
           <button
             type="button"
             onClick={() => window.print()}
-            className="inline-flex w-full items-center justify-center rounded-full bg-[#348CD4] px-5 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-[#2F7FC0] sm:w-auto"
+            className="inline-flex w-full items-center justify-center rounded-lg bg-[#348CD4] px-5 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-[#2F7FC0] sm:w-auto"
           >
             Print invoice
           </button>

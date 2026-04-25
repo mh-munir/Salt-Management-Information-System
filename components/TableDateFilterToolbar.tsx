@@ -52,7 +52,7 @@ export default function TableDateFilterToolbar({
         <button
           type="button"
           onClick={() => updateFilter("")}
-          className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
         >
           {translate(language, "cancel")}
         </button>
@@ -60,7 +60,7 @@ export default function TableDateFilterToolbar({
       <button
         type="button"
         onClick={() => window.print()}
-        className="inline-flex items-center justify-center rounded-full bg-[#0f172a] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1e293b]"
+        className="inline-flex items-center justify-center rounded-lg bg-[#0f172a] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1e293b]"
       >
         {printLabel ?? translate(language, "print")}
       </button>

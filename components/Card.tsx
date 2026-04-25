@@ -343,7 +343,7 @@ export default function Card({
 
         {hasPieChart ? (
           <div className="mt-5 flex flex-col gap-4 md:flex-row md:items-center">
-            <div className="dashboard-card-surface mx-auto grid h-48 w-48 shrink-0 place-items-center rounded-full bg-white/80 p-2 ring-1 ring-slate-200/70 backdrop-blur-sm dark:bg-slate-900/80 dark:ring-slate-800 md:mx-0">
+            <div className="dashboard-card-surface mx-auto grid h-48 w-48 shrink-0 place-items-center rounded-lg bg-white/80 p-2 ring-1 ring-slate-200/70 backdrop-blur-sm dark:bg-slate-900/80 dark:ring-slate-800 md:mx-0">
               <svg viewBox="0 0 100 100" className="h-full w-full">
                 {pieChartSegments.map((segment) => (
                   <path
@@ -366,7 +366,7 @@ export default function Card({
                 >
                   <div className="flex min-w-0 items-center gap-2.5">
                     <span
-                      className="h-3 w-3 shrink-0 rounded-full"
+                      className="h-3 w-3 shrink-0 rounded-lg"
                       style={{ backgroundColor: segment.color }}
                       aria-hidden="true"
                     />
@@ -385,7 +385,7 @@ export default function Card({
 
         <div className="mt-auto flex flex-wrap items-center gap-2 pt-4 text-sm">
           <span
-            className={`inline-flex items-center rounded-full px-2.5 py-1 font-semibold ${
+            className={`inline-flex items-center rounded-lg px-2.5 py-1 font-semibold ${
               trendDirection === "up"
                 ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10"
                 : trendDirection === "down"

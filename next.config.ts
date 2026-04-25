@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { STATIC_ASSET_CACHE_CONTROL } from "./lib/cache-control";
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
@@ -29,11 +30,9 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        source: "/api/:path*",
+        source: "/((?!_next/static|_next/image).+\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|woff2))",
         headers: [
-          { key: "Cache-Control", value: "no-store, no-cache, must-revalidate, max-age=0" },
-          { key: "Pragma", value: "no-cache" },
-          { key: "Expires", value: "0" },
+          { key: "Cache-Control", value: STATIC_ASSET_CACHE_CONTROL },
         ],
       },
     ];

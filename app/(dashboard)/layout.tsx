@@ -12,10 +12,6 @@ export const metadata = {
   title: "Dashboard | Salt Mill",
 };
 
-export const dynamic = "force-dynamic";
-export const fetchCache = "force-no-store";
-export const revalidate = 0;
-
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   const auth = await getServerAuthOrRedirect();
   const cookieStore = await cookies();

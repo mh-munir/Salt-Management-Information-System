@@ -1,3 +1,19 @@
+/* Floating select style (same as input) */
+.floating-field select.floating-field__input {
+  background: inherit;
+  border-radius: 0.5rem;
+  border: 1px solid #e2e8f0;
+  width: 100%;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1e293b;
+  outline: none;
+}
+
+.floating-field select.floating-field__input:focus {
+  border-color: #94a3b8;
+  background: #fff;
+}
 @import "tailwindcss";
 
 :root {
@@ -63,6 +79,45 @@ input[type="button"]:disabled,
 input[type="submit"]:disabled,
 input[type="reset"]:disabled {
   cursor: not-allowed;
+}
+
+button:not(.button-utility):not(.theme-toggle-button):not(.light-navbar-button):not(.mobile-menu-button):not(.profile-trigger-button),
+input[type="button"]:not(.button-utility),
+input[type="submit"]:not(.button-utility),
+input[type="reset"]:not(.button-utility) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.85rem !important;
+  border: 1px solid transparent !important;
+  background: #0077cc !important;
+  color: #ffffff !important;
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+  line-height: 1.5rem;
+  letter-spacing: -0.01em;
+  box-shadow: 0 10px 24px -16px rgba(15, 23, 42, 0.45), 0 2px 6px rgba(15, 23, 42, 0.12);
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    opacity 0.2s ease;
+}
+
+button:not(.button-utility):not(.theme-toggle-button):not(.light-navbar-button):not(.mobile-menu-button):not(.profile-trigger-button):hover,
+input[type="button"]:not(.button-utility):hover,
+input[type="submit"]:not(.button-utility):hover,
+input[type="reset"]:not(.button-utility):hover {
+  background: #005ea3 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px -18px rgba(15, 23, 42, 0.48), 0 4px 10px rgba(15, 23, 42, 0.14);
+}
+
+button:not(.button-utility):not(.theme-toggle-button):not(.light-navbar-button):not(.mobile-menu-button):not(.profile-trigger-button):disabled,
+input[type="button"]:not(.button-utility):disabled,
+input[type="submit"]:not(.button-utility):disabled,
+input[type="reset"]:not(.button-utility):disabled {
+  opacity: 0.7;
 }
 
 input[type="number"] {
@@ -463,11 +518,87 @@ html.theme-dark .to-sky-50 {
 .overflow-x-auto {
   -webkit-overflow-scrolling: touch;
 }
+
+.floating-field {
+  position: relative;
+  display: block;
+}
+
+.floating-field__input {
+  padding-top: .8rem !important;
+  padding-bottom: .8rem !important;
+}
+
+.floating-field__input::placeholder {
+  color: transparent;
+}
+
+.floating-field__label {
+  position: absolute;
+  left: 0.75rem;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  max-width: calc(100% - 1.5rem);
+  overflow: hidden;
+  padding-inline: 0.35rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.1;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  top: 16px;
+  transform: scale(1);
+  transform-origin: left center;
+  transition:
+    top 0.2s ease,
+    transform 0.2s ease,
+    color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.floating-field:focus-within .floating-field__label,
+  .floating-field__input:not(:placeholder-shown) ~ .floating-field__label {
+  top: -7px;
+  transform: scale(0.95);
+}
+
+.floating-field:focus-within .floating-field__label {
+  color: #2563eb;
+}
+
+.floating-field__input:read-only ~ .floating-field__label {
+  color: inherit;
+}
+
+
 input[type="*"]{
   appearance: none !important; 
 }
 
 @media (max-width: 1023.98px) {
+  button:not(.button-utility):not(.theme-toggle-button):not(.light-navbar-button):not(.mobile-menu-button):not(.profile-trigger-button),
+  input[type="button"]:not(.button-utility),
+  input[type="submit"]:not(.button-utility),
+  input[type="reset"]:not(.button-utility) {
+    min-height: 3.05rem !important;
+    padding-inline: 1rem !important;
+    padding-block: 0.8rem !important;
+    border-radius: 0.95rem !important;
+    font-size: 1rem !important;
+    font-weight: 700 !important;
+    box-shadow: 0 12px 26px -16px rgba(15, 23, 42, 0.42), 0 4px 10px rgba(15, 23, 42, 0.12);
+  }
+
+  button:not(.button-utility):not(.theme-toggle-button):not(.light-navbar-button):not(.mobile-menu-button):not(.profile-trigger-button):active,
+  input[type="button"]:not(.button-utility):active,
+  input[type="submit"]:not(.button-utility):active,
+  input[type="reset"]:not(.button-utility):active {
+    transform: translateY(0) scale(0.99);
+    box-shadow: 0 8px 18px -16px rgba(15, 23, 42, 0.4), 0 2px 6px rgba(15, 23, 42, 0.14);
+  }
+
   .dashboard-main {
     margin-left: 0 !important;
   }
@@ -499,12 +630,14 @@ input[type="*"]{
     background-color: #348CD4 !important;
     border-color: #348CD4 !important;
     color: #ffffff !important;
-    transition: background-color 0.3s ease, border-color 0.3s ease !important;
+    box-shadow: 0 10px 22px -14px rgba(52, 140, 212, 0.9), 0 4px 8px rgba(15, 23, 42, 0.14) !important;
+    transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease !important;
   }
 
   html.theme-light .mobile-menu-button:hover {
     background-color: #2F7FC0 !important;
     border-color: #2F7FC0 !important;
+    box-shadow: 0 14px 26px -16px rgba(47, 127, 192, 0.92), 0 6px 10px rgba(15, 23, 42, 0.16) !important;
   }
 
   html.theme-dark .navbar-shell.mobile-navbar-shell {
@@ -520,6 +653,7 @@ input[type="*"]{
     background-color: #0f172a !important;
     border-color: #0f172a !important;
     color: #ffffff !important;
+    box-shadow: 0 12px 26px -18px rgba(15, 23, 42, 0.7), 0 4px 10px rgba(15, 23, 42, 0.14) !important;
   }
 
   .navbar-shell.mobile-navbar-shell .profile-trigger-button {

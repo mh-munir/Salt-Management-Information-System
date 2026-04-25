@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { DM_Sans, Noto_Sans_Bengali } from "next/font/google";
-import { Toaster } from "react-hot-toast";
 import LanguageRootSync from "@/components/LanguageRootSync";
+import LazyToaster from "@/components/LazyToaster";
 import SiteFooter from "@/components/SiteFooter";
 import type { Language } from "@/lib/language";
 import { getSharedSiteSettingsSnapshot } from "@/lib/site-settings.server";
@@ -37,10 +37,6 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export const dynamic = "force-dynamic";
-export const fetchCache = "force-no-store";
-export const revalidate = 0;
-
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -62,16 +58,7 @@ export default async function RootLayout({
       <body suppressHydrationWarning>
         <LanguageRootSync initialLanguage={initialLanguage} />
         {children}
-        <Toaster
-          position="top-center"
-          toastOptions={{
-            duration: 20000, // 20 seconds
-            style: {
-              background: '#363636',
-              color: '#fff',
-            },
-          }}
-        />
+        <LazyToaster />
         <SiteFooter />
       </body>
     </html>

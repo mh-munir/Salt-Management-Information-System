@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useDeferredValue, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
@@ -8,6 +8,7 @@ import ActionDropdown from "@/components/ActionDropdown";
 import LoadMoreTable from "@/components/LoadMoreTable";
 import ModalShell from "@/components/ModalShell";
 import CompactDateInput from "@/components/CompactDateInput";
+import FloatingInput from "@/components/FloatingInput";
 import { getBalanceSummary } from "@/lib/balance";
 import { translate } from "@/lib/language";
 import { compareByLatestInput } from "@/lib/record-order";
@@ -233,10 +234,11 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
     () => (tableFilterDate ? suppliers.filter((supplier) => getDateKey(supplier.lastActivityAt) === tableFilterDate) : suppliers),
     [suppliers, tableFilterDate]
   );
-  const totalSalt = filteredSuppliers.reduce((sum, supplier) => sum + (supplier.saltAmount ?? 0), 0);
-  const totalDue = filteredSuppliers.reduce((sum, supplier) => sum + (supplier.totalDue ?? 0), 0);
-  const totalPaid = filteredSuppliers.reduce((sum, supplier) => sum + (supplier.totalPaid ?? 0), 0);
-  const totalAmount = filteredSuppliers.reduce(
+  const deferredFilteredSuppliers = useDeferredValue(filteredSuppliers);
+  const totalSalt = deferredFilteredSuppliers.reduce((sum, supplier) => sum + (supplier.saltAmount ?? 0), 0);
+  const totalDue = deferredFilteredSuppliers.reduce((sum, supplier) => sum + (supplier.totalDue ?? 0), 0);
+  const totalPaid = deferredFilteredSuppliers.reduce((sum, supplier) => sum + (supplier.totalPaid ?? 0), 0);
+  const totalAmount = deferredFilteredSuppliers.reduce(
     (sum, supplier) => sum + (supplier.totalPurchaseAmount ?? (supplier.totalPaid ?? 0) + (supplier.totalDue ?? 0)),
     0
   );
@@ -515,48 +517,52 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
     }
   };
 
-  const supplierRows = filteredSuppliers.map((supplier, index) => (
-    <tr key={supplier._id} className={`border-b border-slate-100 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}>
-      <td className="px-4 py-4 text-slate-800">{formatDisplayName(supplier.name, "Unnamed supplier")}</td>
-      <td className="print-table-hidden px-4 py-4 text-center text-slate-600">{formatAmount(supplier.saltAmount ?? 0)}</td>
-      <td className="px-4 py-4 text-center text-slate-600">Tk {formatAmount(supplier.totalPurchaseAmount ?? (supplier.totalPaid ?? 0) + (supplier.totalDue ?? 0))}</td>
-      <td className="px-4 py-4 text-center text-slate-600">Tk {formatAmount(supplier.totalPaid ?? 0)}</td>
-      <td className={`px-4 py-4 text-center ${getBalanceClassName(supplier.totalDue ?? 0)}`}>
-        {formatTableBalanceStatus(supplier.totalDue ?? 0)}
-      </td>
-      <td className="print-table-hidden px-4 py-4 text-center text-slate-600">
-        {supplier.latestPurchaseId ? (
-          <div className="flex flex-col items-center gap-1">
-            <span>Tk {formatAmount(supplier.latestPricePerMaund ?? 0, 2)}</span>
-            <span className="text-xs text-slate-400">
-              {formatLocalizedDate(supplier.editedAt ?? supplier.latestPurchaseDate ?? undefined, language)}
+  const supplierRows = useMemo(
+    () =>
+      deferredFilteredSuppliers.map((supplier, index) => (
+        <tr key={supplier._id} className={`border-b border-slate-100 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}>
+          <td className="px-4 py-4 text-slate-800">{formatDisplayName(supplier.name, "Unnamed supplier")}</td>
+          <td className="print-table-hidden px-4 py-4 text-center text-slate-600">{formatAmount(supplier.saltAmount ?? 0)}</td>
+          <td className="px-4 py-4 text-center text-slate-600">Tk {formatAmount(supplier.totalPurchaseAmount ?? (supplier.totalPaid ?? 0) + (supplier.totalDue ?? 0))}</td>
+          <td className="px-4 py-4 text-center text-slate-600">Tk {formatAmount(supplier.totalPaid ?? 0)}</td>
+          <td className={`px-4 py-4 text-center ${getBalanceClassName(supplier.totalDue ?? 0)}`}>
+            {formatTableBalanceStatus(supplier.totalDue ?? 0)}
+          </td>
+          <td className="print-table-hidden px-4 py-4 text-center text-slate-600">
+            {supplier.latestPurchaseId ? (
+              <div className="flex flex-col items-center gap-1">
+                <span>Tk {formatAmount(supplier.latestPricePerMaund ?? 0, 2)}</span>
+                <span className="text-xs text-slate-400">
+                  {formatLocalizedDate(supplier.editedAt ?? supplier.latestPurchaseDate ?? undefined, language)}
+                </span>
+              </div>
+            ) : (
+              "-"
+            )}
+          </td>
+          <td className="print-table-hidden px-4 py-4 text-center">
+            <span className="inline-flex rounded-lg border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+              {getEditedByText(supplier)}
             </span>
-          </div>
-        ) : (
-          "-"
-        )}
-      </td>
-      <td className="print-table-hidden px-4 py-4 text-center">
-        <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
-          {getEditedByText(supplier)}
-        </span>
-      </td>
-      <td className="print-table-hidden px-4 py-4 text-center">
-        <ActionDropdown
-          viewHref={`/suppliers/${supplier._id}`}
-          onEdit={() => openEditPopup(supplier)}
-          onPrint={() => {
-            const invoiceWindow = window.open(`/invoices/suppliers/${supplier._id}`, "_blank");
-            invoiceWindow?.addEventListener("load", () => {
-              invoiceWindow.print();
-            });
-          }}
-          canEdit={!!supplier.latestPurchaseId}
-          language={language}
-        />
-      </td>
-    </tr>
-  ));
+          </td>
+          <td className="print-table-hidden px-4 py-4 text-center">
+            <ActionDropdown
+              viewHref={`/suppliers/${supplier._id}`}
+              onEdit={() => openEditPopup(supplier)}
+              onPrint={() => {
+                const invoiceWindow = window.open(`/invoices/suppliers/${supplier._id}`, "_blank");
+                invoiceWindow?.addEventListener("load", () => {
+                  invoiceWindow.print();
+                });
+              }}
+              canEdit={!!supplier.latestPurchaseId}
+              language={language}
+            />
+          </td>
+        </tr>
+      )),
+    [deferredFilteredSuppliers, formatAmount, getEditedByText, language]
+  );
 
   return (
     <div className="space-y-4">
@@ -589,34 +595,37 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
           <h2 className="text-lg font-semibold text-slate-900">{translate(language, "newSupplier")}</h2>
           <form className="mt-5 space-y-4" onSubmit={handleAddSupplier}>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <input
-                  name="supplierName"
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white
-                placeholder:text-slate-500 placeholder:font-medium"
-                  placeholder={translate(language, "supplierNameLabel")}
-                  required
-                  autoComplete="off" />
-                <input
-                  name="supplierPhone"
-                  value={phone}
-                  onChange={(event) => setPhone(event.target.value)}
-                  className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white
-                placeholder:text-slate-500 placeholder:font-medium"
-                  placeholder={translate(language, "phoneLabelShort")}
-                  maxLength={11}
-                  required autoComplete="off"
-                />
-                <input
-                  name="supplierAddress"
-                  value={address}
-                  onChange={(event) => setAddress(event.target.value)}
-                  className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white
-                placeholder:text-slate-500 placeholder:font-medium"
-                  placeholder={translate(language, "addressLabelShort")}
-                  required autoComplete="off"
-                />
+              <FloatingInput
+                name="supplierName"
+                label={translate(language, "supplierNameLabel")}
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                required
+                autoComplete="off"
+                inputClassName="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white"
+                labelClassName="bg-slate-50 text-slate-500"
+              />
+              <FloatingInput
+                name="supplierPhone"
+                label={translate(language, "phoneLabelShort")}
+                value={phone}
+                onChange={(event) => setPhone(event.target.value)}
+                maxLength={11}
+                required
+                autoComplete="off"
+                inputClassName="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white"
+                labelClassName="bg-slate-50 text-slate-500"
+              />
+              <FloatingInput
+                name="supplierAddress"
+                label={translate(language, "addressLabelShort")}
+                value={address}
+                onChange={(event) => setAddress(event.target.value)}
+                required
+                autoComplete="off"
+                inputClassName="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white"
+                labelClassName="bg-slate-50 text-slate-500"
+              />
             </div>
             {error && <p className="text-sm text-red-600">{error}</p>}
             <button
@@ -637,92 +646,93 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
 
         <form onSubmit={handleBuySubmit} className="mt-6 space-y-4">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              <input
-                name="purchaseSupplierName"
-                list="supplierNames"
-                value={supplierName}
-                onChange={(event) => setSupplierName(event.target.value)}
-                placeholder={translate(language, "supplierNameLabel")}
-                className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white
-              placeholder:text-slate-500 placeholder:font-medium"
-               autoComplete="off"/>
+            <FloatingInput
+              name="purchaseSupplierName"
+              list="supplierNames"
+              label={translate(language, "supplierNameLabel")}
+              value={supplierName}
+              onChange={(event) => setSupplierName(event.target.value)}
+              autoComplete="off"
+              inputClassName="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white"
+              labelClassName="bg-slate-50 text-slate-500"
+            />
               <datalist id="supplierNames">
                 {suppliers.map((supplier) => (
                   <option key={supplier._id} value={supplier.name || ""} />
                 ))}
               </datalist>
-              <input
-                name="purchaseTotalMaund"
-                value={buySaltQuantity}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  setBuySaltQuantity(value);
-                  const updatedTotal = calculateTotalPrice(value, buyPricePerMaund);
-                  setBuyTotalPrice(updatedTotal);
-                  setBuyDue(calculateDue(updatedTotal, buyPaid));
-                }}
-                type="number"
-                step="1"
-                min="0"
-                placeholder={translate(language, "totalMaund")}
-                className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white
-              placeholder:text-slate-500 placeholder:font-medium"
+            <FloatingInput
+              name="purchaseTotalMaund"
+              type="number"
+              step="1"
+              min="0"
+              label={translate(language, "totalMaund")}
+              value={buySaltQuantity}
+              onChange={(event) => {
+                const value = event.target.value;
+                setBuySaltQuantity(value);
+                const updatedTotal = calculateTotalPrice(value, buyPricePerMaund);
+                setBuyTotalPrice(updatedTotal);
+                setBuyDue(calculateDue(updatedTotal, buyPaid));
+              }}
               autoComplete="off"
-              />
-              <input
-                name="purchasePricePerMaund"
-                value={buyPricePerMaund}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  setBuyPricePerMaund(value);
-                  const updatedTotal = calculateTotalPrice(buySaltQuantity, value);
-                  setBuyTotalPrice(updatedTotal);
-                  setBuyDue(calculateDue(updatedTotal, buyPaid));
-                }}
-                type="number"
-                step="1"
-                min="0"
-                placeholder={translate(language, "pricePerMaund")}
-                 className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white
-              placeholder:text-slate-500 placeholder:font-medium"
+              inputClassName="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white"
+              labelClassName="bg-slate-50 text-slate-500"
+            />
+            <FloatingInput
+              name="purchasePricePerMaund"
+              type="number"
+              step="1"
+              min="0"
+              label={translate(language, "pricePerMaund")}
+              value={buyPricePerMaund}
+              onChange={(event) => {
+                const value = event.target.value;
+                setBuyPricePerMaund(value);
+                const updatedTotal = calculateTotalPrice(buySaltQuantity, value);
+                setBuyTotalPrice(updatedTotal);
+                setBuyDue(calculateDue(updatedTotal, buyPaid));
+              }}
               autoComplete="off"
-              />
-              <input
-                name="purchaseTotalPrice"
-                value={buyTotalPrice}
-                readOnly
-                type="number"
-                step="1"
-                min="0"
-                placeholder={translate(language, "totalPriceTk")}
-                className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white
-              placeholder:text-slate-500 placeholder:font-medium"
-              />
-              <input
-                name="purchasePaidAmount"
-                value={buyPaid}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  setBuyPaid(value);
-                  setBuyDue(calculateDue(buyTotalPrice, value));
-                }}
-                type="number"
-                step="1"
-                min="0"
-                placeholder={translate(language, "paidAmount")}
-                className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white
-              placeholder:text-slate-500 placeholder:font-medium"
-              />
-              <input
-                name="purchaseDueAmount"
-                value={buyDue}
-                readOnly
-                type="number"
-                step="1"
-                placeholder={translate(language, "dueAmount")}
-               className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white
-              placeholder:text-slate-500 placeholder:font-medium"
-              />
+              inputClassName="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white"
+              labelClassName="bg-slate-50 text-slate-500"
+            />
+            <FloatingInput
+              name="purchaseTotalPrice"
+              type="number"
+              step="1"
+              min="0"
+              label={translate(language, "totalPriceTk")}
+              value={buyTotalPrice}
+              readOnly
+              inputClassName="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white"
+              labelClassName="bg-slate-50 text-slate-500"
+            />
+            <FloatingInput
+              name="purchasePaidAmount"
+              type="number"
+              step="1"
+              min="0"
+              label={translate(language, "paidAmount")}
+              value={buyPaid}
+              onChange={(event) => {
+                const value = event.target.value;
+                setBuyPaid(value);
+                setBuyDue(calculateDue(buyTotalPrice, value));
+              }}
+              inputClassName="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white"
+              labelClassName="bg-slate-50 text-slate-500"
+            />
+            <FloatingInput
+              name="purchaseDueAmount"
+              type="number"
+              step="1"
+              label={translate(language, "dueAmount")}
+              value={buyDue}
+              readOnly
+              inputClassName="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white"
+              labelClassName="bg-slate-50 text-slate-500"
+            />
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -794,7 +804,7 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
             {translate(language, "printSupplierList")}
           </button>
           <button
-            className="w-full rounded-lg bg-[#348CD4] px-6 py-2 text-base font-semibold text-white shadow hover:bg-[#2F7FC0] sm:w-auto"
+            className="w-full rounded-lg bg-[#348CD4] px-6 py-3 text-base font-semibold text-white shadow hover:bg-[#2F7FC0] sm:w-auto"
             onClick={() => setShowPaymentPopup(true)}
           >
             {translate(language, "paymentNow")}
@@ -813,12 +823,11 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
         >
           <form onSubmit={handlePaymentSubmit} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
-              <label className="block">
-                <span className="text-sm font-medium text-slate-700">{translate(language, "selectSupplier")}</span>
-                <input
+              <div>
+                <FloatingInput
                   name="paymentSupplier"
-                  className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:bg-white"
                   list="paymentSupplierList"
+                  label={translate(language, "selectSupplier")}
                   value={
                     paymentSupplierId
                       ? suppliers.find((s) => s._id === paymentSupplierId)?.name || ""
@@ -830,10 +839,12 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
                     const found = suppliers.find((s) => s.name === name);
                     setPaymentSupplierId(found ? found._id : null);
                   }}
-                  placeholder="Type or select supplier"
                   readOnly={isProfilePaymentFlow}
                   aria-readonly={isProfilePaymentFlow}
-                  required autoComplete="off"
+                  required
+                  autoComplete="off"
+                  inputClassName="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:bg-white"
+                  labelClassName="bg-slate-50 text-slate-500"
                 />
                 {isProfilePaymentFlow ? null : (
                   <datalist id="paymentSupplierList">
@@ -842,7 +853,7 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
                     ))}
                   </datalist>
                 )}
-              </label>
+              </div>
 
               <CompactDateInput
                 name="supplierPaymentDate"
@@ -855,18 +866,17 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
               />
             </div>
 
-            <label className="block">
-              <span className="text-sm font-medium text-slate-700">{translate(language, "paidAmount")}</span>
-              <input
-                name="supplierPaymentAmount"
-                type="number"
-                className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:bg-white"
-                value={paymentAmount}
-                onChange={(e) => setPaymentAmount(e.target.value)}
-                min="1"
-                required
-              />
-            </label>
+            <FloatingInput
+              name="supplierPaymentAmount"
+              type="number"
+              min="1"
+              label={translate(language, "paidAmount")}
+              value={paymentAmount}
+              onChange={(e) => setPaymentAmount(e.target.value)}
+              required
+              inputClassName="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:bg-white"
+              labelClassName="bg-slate-50 text-slate-500"
+            />
 
             {paymentSupplierId ? (
               <div className="rounded-lg border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-slate-700">
@@ -919,46 +929,45 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
             </div>
 
             <div className="grid gap-4 sm:grid-cols-3">
-              <label className="block sm:col-span-3">
-                <span className="text-sm font-medium text-slate-700">Supplier name</span>
-                <input
-                  name="editSupplierName"
-                  type="text"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:bg-white"
-                  required
-                  autoComplete="off"
-                />
-              </label>
+              <FloatingInput
+                name="editSupplierName"
+                type="text"
+                label="Supplier name"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                required
+                autoComplete="off"
+                containerClassName="sm:col-span-3"
+                inputClassName="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:bg-white"
+                labelClassName="bg-slate-50 text-slate-500"
+              />
 
-              <label className="block">
-                <span className="text-sm font-medium text-slate-700">Salt amount</span>
-                <input
-                  name="editSupplierSaltAmount"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={editSaltAmount}
-                  onChange={(e) => setEditSaltAmount(e.target.value)}
-                  className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:bg-white"
-                  required
-                />
-              </label>
+              <FloatingInput
+                name="editSupplierSaltAmount"
+                type="number"
+                step="0.01"
+                min="0"
+                label="Salt amount"
+                value={editSaltAmount}
+                onChange={(e) => setEditSaltAmount(e.target.value)}
+                required
+                inputClassName="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:bg-white"
+                labelClassName="bg-slate-50 text-slate-500"
+              />
 
-              <label className="block sm:col-span-2">
-                <span className="text-sm font-medium text-slate-700">New price per Maund</span>
-                <input
-                  name="editSupplierPrice"
-                  type="number"
-                  step="1"
-                  min="0"
-                  value={editPrice}
-                  onChange={(e) => setEditPrice(e.target.value)}
-                  className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:bg-white"
-                  required
-                />
-              </label>
+              <FloatingInput
+                name="editSupplierPrice"
+                type="number"
+                step="1"
+                min="0"
+                label="New price per Maund"
+                value={editPrice}
+                onChange={(e) => setEditPrice(e.target.value)}
+                required
+                containerClassName="sm:col-span-2"
+                inputClassName="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:bg-white"
+                labelClassName="bg-slate-50 text-slate-500"
+              />
             </div>
 
             {editError ? (

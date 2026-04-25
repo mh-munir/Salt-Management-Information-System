@@ -22,6 +22,7 @@ type NavItem = {
   href: string;
   label: TranslationKey;
   icon: NavIconType;
+  description: string;
 };
 
 type NavGroup = {
@@ -33,22 +34,22 @@ const navGroups: NavGroup[] = [
   {
     title: "main",
     items: [
-      { href: "/dashboard", label: "dashboard", icon: "dashboard" },
-      { href: "/transactions", label: "transactions", icon: "transactions" },
+      { href: "/dashboard", label: "dashboard", icon: "dashboard", description: "Overview and daily insights" },
+      { href: "/transactions", label: "transactions", icon: "transactions", description: "Payment and ledger activity" },
     ],
   },
   {
     title: "management",
     items: [
-      { href: "/suppliers", label: "suppliers", icon: "suppliers" },
-      { href: "/customers", label: "customers", icon: "customers" },
-      { href: "/stock", label: "stock", icon: "stock" },
-      { href: "/cost", label: "cost", icon: "cost" },
+      { href: "/suppliers", label: "suppliers", icon: "suppliers", description: "Vendor balances and purchases" },
+      { href: "/customers", label: "customers", icon: "customers", description: "Client sales and due tracking" },
+      { href: "/stock", label: "stock", icon: "stock", description: "Inventory position and movement" },
+      { href: "/cost", label: "cost", icon: "cost", description: "Operational expense records" },
     ],
   },
   {
     title: "system",
-    items: [{ href: "/settings", label: "settings", icon: "settings" }],
+    items: [{ href: "/settings", label: "settings", icon: "settings", description: "Branding, profile, and preferences" }],
   },
 ];
 
@@ -329,7 +330,7 @@ export default function Sidebar({
             </div>
 
             <p
-              className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${
+              className={`rounded-lg px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${
                 isDarkTheme
                   ? "bg-slate-800/90 text-sky-200 ring-1 ring-slate-700/70"
                   : "bg-slate-100 text-slate-600 ring-1 ring-slate-200"
@@ -341,18 +342,37 @@ export default function Sidebar({
           </div>
       </div>
 
-      <nav className="space-y-6 px-4 py-5 sm:px-5 sm:py-6 lg:space-y-7 lg:px-4 lg:py-5">
+      <nav className="space-y-5 px-4 py-5 sm:px-5 sm:py-6 lg:space-y-6 lg:px-4 lg:py-5">
         {navGroups.map((group) => (
-          <div key={group.title}>
-            <p
-              className={`px-2 text-[11px] font-semibold uppercase tracking-[0.18em] ${
-                isDarkTheme ? "text-slate-400" : "text-slate-500"
+          <div
+            key={group.title}
+            className={`relative overflow-hidden rounded-3xl border p-2.5 ${
+              isDarkTheme
+                ? "border-white/6 bg-linear-to-br from-white/[0.05] via-white/[0.03] to-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+                : "border-slate-200/80 bg-linear-to-br from-white via-white to-slate-50/80 shadow-[0_14px_34px_rgba(148,163,184,0.10)] backdrop-blur-sm"
+            }`}
+          >
+            <div
+              className={`pointer-events-none absolute right-0 top-0 h-20 w-20 rounded-full blur-3xl ${
+                isDarkTheme ? "bg-sky-400/10" : "bg-sky-200/50"
               }`}
-            >
-              {translate(language, group.title)}
-            </p>
+            />
+            <div className="flex items-center gap-2 px-2 pb-2">
+              <span
+                className={`h-px flex-1 ${
+                  isDarkTheme ? "bg-gradient-to-r from-sky-300/35 to-transparent" : "bg-gradient-to-r from-sky-200 to-transparent"
+                }`}
+              />
+              <p
+                className={`shrink-0 text-[11px] font-semibold uppercase tracking-[0.2em] ${
+                  isDarkTheme ? "text-slate-400" : "text-slate-500"
+                }`}
+              >
+                {translate(language, group.title)}
+              </p>
+            </div>
 
-            <div className="mt-3 space-y-1.5">
+            <div className="space-y-2">
               {group.items.map((item) => {
                 const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
 
@@ -361,18 +381,27 @@ export default function Sidebar({
                     key={item.href}
                     href={item.href}
                     onClick={() => setMobileOpen(false)}
-                    className={`group relative flex items-center gap-3 overflow-hidden rounded-2xl px-3 py-3 text-[0.96rem] font-medium transition-all duration-200 sm:px-3.5 sm:py-3.5 lg:px-3.5 lg:py-3 ${
+                    className={`group relative flex items-center gap-3 overflow-hidden rounded-[1.45rem] px-3 py-3 text-[0.96rem] font-medium transition-all duration-300 sm:px-3.5 sm:py-3.5 lg:px-3.5 lg:py-3 ${
                       isDarkTheme
                         ? isActive
-                          ? "bg-linear-to-r from-sky-500/18 via-blue-500/14 to-transparent text-white shadow-[inset_0_0_0_1px_rgba(125,211,252,0.18)]"
-                          : "text-white/78 hover:bg-white/6 hover:text-white"
+                          ? "bg-linear-to-r from-sky-500/24 via-blue-500/16 to-slate-900/12 text-white shadow-[0_16px_34px_rgba(8,47,73,0.34)] ring-1 ring-sky-300/12"
+                          : "text-white/78 hover:bg-white/[0.08] hover:text-white"
                         : isActive
-                          ? "bg-linear-to-r from-sky-50 via-white to-white text-slate-900 shadow-[0_10px_30px_rgba(148,163,184,0.14)] ring-1 ring-sky-100"
-                          : "text-slate-700 hover:bg-white/85 hover:text-slate-900 hover:shadow-[0_8px_24px_rgba(148,163,184,0.10)]"
+                          ? "bg-linear-to-r from-sky-50 via-white to-sky-50/80 text-slate-900 shadow-[0_18px_36px_rgba(148,163,184,0.18)] ring-1 ring-sky-100"
+                          : "text-slate-700 hover:bg-white/95 hover:text-slate-900 hover:shadow-[0_12px_28px_rgba(148,163,184,0.13)]"
                     }`}
                   >
                     <span
-                      className={`absolute inset-y-2 left-0 w-1 rounded-full transition-all duration-200 ${
+                      className={`pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 ${
+                        isActive
+                          ? isDarkTheme
+                            ? "bg-[radial-gradient(circle_at_right,rgba(125,211,252,0.14),transparent_42%)] opacity-100"
+                            : "bg-[radial-gradient(circle_at_right,rgba(186,230,253,0.65),transparent_42%)] opacity-100"
+                          : "group-hover:opacity-100"
+                      }`}
+                    />
+                    <span
+                      className={`absolute inset-y-2 left-0 w-1 rounded-r-full transition-all duration-200 ${
                         isActive
                           ? isDarkTheme
                             ? "bg-sky-300 opacity-100"
@@ -381,36 +410,40 @@ export default function Sidebar({
                       }`}
                     />
                     <span
-                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-all duration-200 ${
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border transition-all duration-200 ${
                         isDarkTheme
                           ? isActive
-                            ? "border-sky-300/18 bg-slate-900/80 text-sky-200"
-                            : "border-transparent bg-white/6 text-white/78 group-hover:bg-white/10 group-hover:text-white"
+                            ? "border-sky-300/18 bg-slate-900/85 text-sky-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+                            : "border-transparent bg-white/[0.07] text-white/78 group-hover:bg-white/[0.12] group-hover:text-white"
                           : isActive
-                            ? "border-sky-100 bg-sky-50 text-sky-700"
-                            : "border-transparent bg-slate-100/80 text-slate-500 group-hover:bg-slate-200/70 group-hover:text-slate-700"
+                            ? "border-sky-100 bg-linear-to-br from-sky-50 to-white text-sky-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]"
+                            : "border-transparent bg-slate-100/85 text-slate-500 group-hover:bg-slate-200/85 group-hover:text-slate-700"
                       }`}
                     >
                       <NavIcon type={item.icon} />
                     </span>
-                    <span className="flex-1">
-                      <span className="block leading-tight">{translate(language, item.label)}</span>
+                    <span className="flex-1 min-w-0">
+                      <span
+                        className={`block leading-tight tracking-[-0.02em] ${
+                          isActive ? "font-semibold" : ""
+                        }`}
+                      >
+                        {translate(language, item.label)}
+                      </span>
+                      <span
+                        className={`mt-1 block truncate text-[11px] font-medium leading-tight ${
+                          isDarkTheme
+                            ? isActive
+                              ? "text-white/70"
+                              : "text-white/42 group-hover:text-white/62"
+                            : isActive
+                              ? "text-slate-500"
+                              : "text-slate-400 group-hover:text-slate-500"
+                        }`}
+                      >
+                        {item.description}
+                      </span>
                     </span>
-                    <svg
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                      className={`h-4 w-4 transition-all duration-200 group-hover:translate-x-0.5 ${
-                        isDarkTheme
-                          ? isActive
-                            ? "text-sky-200"
-                            : "text-white/40 group-hover:text-white/75"
-                          : isActive
-                            ? "text-sky-600"
-                            : "text-slate-400 group-hover:text-slate-700"
-                      }`}
-                    >
-                      <path d="M7.3 4.8a.75.75 0 0 1 1.06 0l4.47 4.47a.75.75 0 0 1 0 1.06L8.36 14.8a.75.75 0 1 1-1.06-1.06L11.24 10 7.3 6.06a.75.75 0 0 1 0-1.06Z" />
-                    </svg>
                   </Link>
                 );
               })}

@@ -1,8 +1,9 @@
 "use client";
 
-import { type FormEvent, type ReactNode, startTransition, useCallback, useEffect, useMemo, useState } from "react";
+import { type FormEvent, type ReactNode, startTransition, useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import CompactDateInput from "@/components/CompactDateInput";
 import Card from "@/components/Card";
+import FloatingInput from "@/components/FloatingInput";
 import LoadMoreTable from "@/components/LoadMoreTable";
 import { formatDisplayName, formatLocalizedDate, formatLocalizedNumber } from "@/lib/display-format";
 import { translate } from "@/lib/language";
@@ -63,9 +64,9 @@ function DashboardPanel({
       className={`dashboard-card-shell group relative overflow-hidden rounded-lg border border-gray-200 bg-white/95 p-6 shadow-sm transition duration-300 dark:border-slate-700 dark:bg-[#1F2128] ${className}`.trim()}
     >
       <div
-        className={`dashboard-card-gradient pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-br ${accents[tone]} opacity-90`}
+        className={`pointer-events-none absolute inset-x-0 top-0 h-20`}
       />
-      <div className="dashboard-card-glow pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.85),transparent_42%)]" />
+      <div className="pointer-events-none absolute inset-0" />
       <div className="relative">{children}</div>
     </div>
   );
@@ -119,9 +120,10 @@ export default function CostPage() {
     () => (historyFilterDate ? costs.filter((item) => getDateKey(item.date) === historyFilterDate) : costs),
     [costs, historyFilterDate]
   );
+  const deferredFilteredCosts = useDeferredValue(filteredCosts);
   const filteredCostTotal = useMemo(
-    () => filteredCosts.reduce((sum, item) => sum + Number(item.amount ?? 0), 0),
-    [filteredCosts]
+    () => deferredFilteredCosts.reduce((sum, item) => sum + Number(item.amount ?? 0), 0),
+    [deferredFilteredCosts]
   );
   const recentCostPoints = useMemo(() => {
     const points = costs
@@ -218,30 +220,34 @@ export default function CostPage() {
     }
   };
 
-  const costRows = filteredCosts.map((cost, index) => (
-    <tr
-      key={cost._id}
-      className={`border-b border-slate-200/80 dark:border-slate-800 ${index % 2 === 0 ? "bg-white/90 dark:bg-slate-950/50" : "bg-slate-50/70 dark:bg-slate-900/60"}`}
-    >
-      <td className="px-4 py-4 text-slate-700 dark:text-slate-200">{formatLocalizedDate(cost.date, language)}</td>
-      <td className="px-4 py-4">
-        <div className="min-w-0">
-          <p className="truncate font-semibold text-slate-900 dark:text-slate-100">
-            {formatDisplayName(cost.personName, translate(language, "unknownPerson"))}
-          </p>
-        </div>
-      </td>
-      <td className="px-4 py-4 text-slate-600 dark:text-slate-300">{cost.purpose}</td>
-      <td className="px-4 py-4 text-right font-semibold text-slate-900 dark:text-slate-100">
-        {formatCurrency(Number(cost.amount ?? 0))}
-      </td>
-    </tr>
-  ));
+  const costRows = useMemo(
+    () =>
+      deferredFilteredCosts.map((cost, index) => (
+        <tr
+          key={cost._id}
+          className={`border-b border-slate-200/80 dark:border-slate-800 ${index % 2 === 0 ? "bg-white/90 dark:bg-slate-950/50" : "bg-slate-50/70 dark:bg-slate-900/60"}`}
+        >
+          <td className="px-4 py-4 text-slate-700 dark:text-slate-200">{formatLocalizedDate(cost.date, language)}</td>
+          <td className="px-4 py-4">
+            <div className="min-w-0">
+              <p className="truncate font-semibold text-slate-900 dark:text-slate-100">
+                {formatDisplayName(cost.personName, translate(language, "unknownPerson"))}
+              </p>
+            </div>
+          </td>
+          <td className="px-4 py-4 text-slate-600 dark:text-slate-300">{cost.purpose}</td>
+          <td className="px-4 py-4 text-right font-semibold text-slate-900 dark:text-slate-100">
+            {formatCurrency(Number(cost.amount ?? 0))}
+          </td>
+        </tr>
+      )),
+    [deferredFilteredCosts, formatCurrency, language]
+  );
 
   return (
     <div className="space-y-6">
       <section className="print-hidden sm:p-7">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between items-end">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">Expense Overview</p>
             <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-100 sm:text-[2.5rem]">
@@ -252,11 +258,11 @@ export default function CostPage() {
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <span className="dashboard-card-surface rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-200/70 backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200 dark:ring-slate-800">
+          <div className="flex flex-wrap gap-2 items-center">
+            <span className="dashboard-card-surface rounded-lg border border-slate-200 bg-white/80 px-4 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-200/70 backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200 dark:ring-slate-800">
               Today: {formatCurrency(todayCost)}
             </span>
-            <span className="dashboard-card-surface rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-200/70 backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200 dark:ring-slate-800">
+            <span className="dashboard-card-surface rounded-lg border border-slate-200 bg-white/80 px-4 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-200/70 backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200 dark:ring-slate-800">
               Entries: {formatLocalizedNumber(costs.length, language, { maximumFractionDigits: 0 })}
             </span>
           </div>
@@ -273,39 +279,35 @@ export default function CostPage() {
               </h2>
               <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-300">{translate(language, "recordDailyCost")}</p>
             </div>
-            <span className="dashboard-card-surface rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-200/70 backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200 dark:ring-slate-800">
+            <span className="dashboard-card-surface rounded-lg border border-slate-200 bg-white/80 px-4 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-200/70 backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200 dark:ring-slate-800">
               {formatLocalizedDate(date || todayKey, language)}
             </span>
           </div>
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-5">
             <div className="grid gap-4 md:grid-cols-2">
-              <label className="block">
-                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{translate(language, "costForLabel")}</span>
-                <input
-                  name="costPersonName"
-                  value={personName}
-                  onChange={(event) => setPersonName(event.target.value)}
-                  placeholder={translate(language, "costForPlaceholder")}
-                  className="dashboard-card-surface mt-2 w-full rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-sm text-slate-900 outline-none ring-1 ring-slate-200/70 backdrop-blur-sm transition focus:border-sky-400 focus:bg-white dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-100 dark:ring-slate-800"
-                  required
-                />
-              </label>
+              <FloatingInput
+                name="costPersonName"
+                label={translate(language, "costForLabel")}
+                value={personName}
+                onChange={(event) => setPersonName(event.target.value)}
+                required
+                inputClassName="dashboard-card-surface w-full rounded-2xl border border-slate-200 bg-white/80 px-4 text-sm text-slate-900 outline-none ring-1 ring-slate-200/70 backdrop-blur-sm transition focus:border-sky-400 focus:bg-white dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-100 dark:ring-slate-800"
+                labelClassName="bg-white text-slate-600 dark:bg-slate-900 dark:text-slate-300"
+              />
 
-              <label className="block">
-                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{translate(language, "costAmountLabel")}</span>
-                <input
-                  name="costAmount"
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  value={amount}
-                  onChange={(event) => setAmount(event.target.value)}
-                  placeholder="0"
-                  className="dashboard-card-surface mt-2 w-full rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-sm text-slate-900 outline-none ring-1 ring-slate-200/70 backdrop-blur-sm transition focus:border-sky-400 focus:bg-white dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-100 dark:ring-slate-800"
-                  required
-                />
-              </label>
+              <FloatingInput
+                name="costAmount"
+                type="number"
+                min="0.01"
+                step="0.01"
+                label={translate(language, "costAmountLabel")}
+                value={amount}
+                onChange={(event) => setAmount(event.target.value)}
+                required
+                inputClassName="dashboard-card-surface w-full rounded-2xl border border-slate-200 bg-white/80 px-4 text-sm text-slate-900 outline-none ring-1 ring-slate-200/70 backdrop-blur-sm transition focus:border-sky-400 focus:bg-white dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-100 dark:ring-slate-800"
+                labelClassName="bg-white text-slate-600 dark:bg-slate-900 dark:text-slate-300"
+              />
             </div>
 
             <CompactDateInput
@@ -318,17 +320,15 @@ export default function CostPage() {
               inputClassName="dashboard-card-surface mt-2 w-full rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-sm text-slate-900 outline-none ring-1 ring-slate-200/70 backdrop-blur-sm transition focus:border-sky-400 focus:bg-white dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-100 dark:ring-slate-800"
             />
 
-            <label className="block">
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{translate(language, "purposeLabel")}</span>
-              <input
-                name="costPurpose"
-                value={purpose}
-                onChange={(event) => setPurpose(event.target.value)}
-                placeholder={translate(language, "purposePlaceholder")}
-                className="dashboard-card-surface mt-2 w-full rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-sm text-slate-900 outline-none ring-1 ring-slate-200/70 backdrop-blur-sm transition focus:border-sky-400 focus:bg-white dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-100 dark:ring-slate-800"
-                required
-              />
-            </label>
+            <FloatingInput
+              name="costPurpose"
+              label={translate(language, "purposeLabel")}
+              value={purpose}
+              onChange={(event) => setPurpose(event.target.value)}
+              required
+              inputClassName="dashboard-card-surface w-full rounded-2xl border border-slate-200 bg-white/80 px-4 text-sm text-slate-900 outline-none ring-1 ring-slate-200/70 backdrop-blur-sm transition focus:border-sky-400 focus:bg-white dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-100 dark:ring-slate-800"
+              labelClassName="bg-white text-slate-600 dark:bg-slate-900 dark:text-slate-300"
+            />
 
             {error ? (
               <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
@@ -346,7 +346,7 @@ export default function CostPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="inline-flex items-center justify-center rounded-full bg-[#0f172a] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#1e293b] disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex items-center justify-center rounded-lg bg-[#0f172a] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#1e293b] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isSubmitting ? translate(language, "savingCost") : translate(language, "saveCost")}
               </button>
@@ -403,23 +403,6 @@ export default function CostPage() {
             />
           </div>
 
-          <DashboardPanel tone="violet">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-300">Quick Notes</p>
-            <div className="mt-4 space-y-3">
-              <div className="dashboard-card-surface rounded-2xl border border-slate-200 bg-white/80 p-4 ring-1 ring-slate-200/70 backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/80 dark:ring-slate-800">
-                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Latest payee</p>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">
-                  {latestCost ? formatDisplayName(latestCost.personName, translate(language, "unknownPerson")) : "-"}
-                </p>
-              </div>
-              <div className="dashboard-card-surface rounded-2xl border border-slate-200 bg-white/80 p-4 ring-1 ring-slate-200/70 backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/80 dark:ring-slate-800">
-                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Register status</p>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">
-                  {costs.length > 0 ? "Cost entries are active and available for review." : "Add the first cost entry to start the register."}
-                </p>
-              </div>
-            </div>
-          </DashboardPanel>
         </div>
       </section>
 
@@ -435,7 +418,7 @@ export default function CostPage() {
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 items-center">
             <div className="print-hidden min-w-[15rem]">
               <CompactDateInput
                 name="costHistoryFilterDate"
@@ -450,7 +433,7 @@ export default function CostPage() {
               <button
                 type="button"
                 onClick={() => setHistoryFilterDate("")}
-                className="print-hidden inline-flex items-center justify-center rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-sm font-semibold text-slate-700 ring-1 ring-slate-200/70 backdrop-blur-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200 dark:ring-slate-800"
+                className="print-hidden inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white/80 px-4 py-3 text-sm font-semibold text-slate-700 ring-1 ring-slate-200/70 backdrop-blur-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200 dark:ring-slate-800"
               >
                 {translate(language, "cancel")}
               </button>
@@ -458,23 +441,23 @@ export default function CostPage() {
             <button
               type="button"
               onClick={() => window.print()}
-              className="print-hidden inline-flex items-center justify-center rounded-full bg-[#0f172a] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1e293b]"
+              className="print-hidden inline-flex items-center justify-center rounded-lg bg-[#0f172a] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#1e293b]"
             >
               {printCostListLabel}
             </button>
-            <span className="dashboard-card-surface rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-200/70 backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200 dark:ring-slate-800">
-              {formatLocalizedNumber(filteredCosts.length, language, { maximumFractionDigits: 0 })} {translate(language, "entries")}
+            <span className="dashboard-card-surface rounded-lg border border-slate-200 bg-white/80 px-4 py-3 text-sm font-medium text-slate-700 ring-1 ring-slate-200/70 backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200 dark:ring-slate-800">
+              {formatLocalizedNumber(deferredFilteredCosts.length, language, { maximumFractionDigits: 0 })} {translate(language, "entries")}
             </span>
-            <span className="dashboard-card-surface rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-200/70 backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200 dark:ring-slate-800">
+            <span className="dashboard-card-surface rounded-lg border border-slate-200 bg-white/80 px-4 py-3 text-sm font-medium text-slate-700 ring-1 ring-slate-200/70 backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200 dark:ring-slate-800">
               Total {formatCurrency(filteredCostTotal)}
             </span>
           </div>
         </div>
 
-        <div className="dashboard-card-surface mt-6 overflow-hidden rounded-[24px] border border-slate-200 bg-white/80 ring-1 ring-slate-200/70 backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/80 dark:ring-slate-800">
+        <div className="dashboard-card-surface mt-6 overflow-hidden rounded-lg border border-slate-200 bg-white/80 ring-1 ring-slate-200/70 backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/80 dark:ring-slate-800">
           <div className="overflow-x-auto">
             <table className="min-w-[42rem] w-full text-left text-sm">
-              <thead className="bg-slate-50/90 text-sm uppercase tracking-[0.16em] text-slate-500 dark:bg-slate-950/70 dark:text-slate-300">
+              <thead className="text-sm capitalize tracking-[0.16em] border-b border-gray-200 dark:border-gray-100  dark:bg-slate-900 dark:text-slate-300">
                 <tr>
                   <th className="px-4 py-4">{translate(language, "dateLabel")}</th>
                   <th className="px-4 py-4">{translate(language, "costForLabel")}</th>
