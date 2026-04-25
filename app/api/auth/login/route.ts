@@ -101,61 +101,60 @@ export async function POST(req: Request) {
     );
   }
 
-  if (
+  const isBootstrapLogin =
     isSuperuserBootstrapConfigured &&
     normalizedEmail === SUPERUSER_EMAIL &&
-    rawPassword === SUPERUSER_PASSWORD
-  ) {
-    try {
-      await connectDB();
+    rawPassword === SUPERUSER_PASSWORD;
 
-      const superAdminUser = await ensureEnvSuperadminUser({
-        email: normalizedEmail,
-        role: "superadmin",
-      });
-
-      if (!superAdminUser) {
-        return Response.json({ message: "Super admin bootstrap is not configured correctly." }, { status: 500 });
-      }
-
-      await User.updateOne(
-        { _id: superAdminUser._id },
-        { $set: { lastLoginAt: new Date() } },
-        { strict: false }
-      );
-
-      const token = signAuthToken({
-        userId: String(superAdminUser._id),
-        email: normalizedEmail,
-        role: "superadmin",
-      });
-
-      return normalizeSuccessResponse(token, {
-        email: superAdminUser.email,
-        role: superAdminUser.role,
-        avatarUrl: superAdminUser.avatarUrl ?? "",
-      });
-    } catch (error) {
-      if (!isMongoConnectionError(error)) {
-        throw error;
-      }
-
-      console.warn("MongoDB unavailable during superuser bootstrap login. Using token-only superadmin session.");
-
-      const token = signAuthToken({
-        email: normalizedEmail,
-        role: "superadmin",
-      });
-
-      return normalizeSuccessResponse(token, {
-        email: normalizedEmail,
-        role: "superadmin",
-        avatarUrl: "",
-      });
+  try {
+    await connectDB();
+  } catch (error) {
+    if (!isBootstrapLogin || isProduction || !isMongoConnectionError(error)) {
+      throw error;
     }
+
+    console.warn("MongoDB unavailable during superuser bootstrap login. Using token-only superadmin session.");
+
+    const token = signAuthToken({
+      email: normalizedEmail,
+      role: "superadmin",
+    });
+
+    return normalizeSuccessResponse(token, {
+      email: normalizedEmail,
+      role: "superadmin",
+      avatarUrl: "",
+    });
   }
 
-  await connectDB();
+  if (isBootstrapLogin) {
+    const superAdminUser = await ensureEnvSuperadminUser({
+      email: normalizedEmail,
+      role: "superadmin",
+    });
+
+    if (!superAdminUser) {
+      return Response.json({ message: "Super admin bootstrap is not configured correctly." }, { status: 500 });
+    }
+
+    await User.updateOne(
+      { _id: superAdminUser._id },
+      { $set: { lastLoginAt: new Date() } },
+      { strict: false }
+    );
+
+    const token = signAuthToken({
+      userId: String(superAdminUser._id),
+      email: normalizedEmail,
+      role: "superadmin",
+    });
+
+    return normalizeSuccessResponse(token, {
+      email: superAdminUser.email,
+      role: superAdminUser.role,
+      avatarUrl: superAdminUser.avatarUrl ?? "",
+    });
+  }
 
   const user = await User.findOne({ email: normalizedEmail });
   if (!user) {
