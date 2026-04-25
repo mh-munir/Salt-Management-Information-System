@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { attachMongooseDatabasePool, resetMongooseDatabasePoolAttachment } from "@/lib/mongodb";
 
 const isProduction = process.env.NODE_ENV === "production";
 const envMongoUri = process.env.MONGODB_URI?.trim();
@@ -100,6 +101,7 @@ export async function connectDB() {
   const mongoUri = getMongoUri();
 
   if (mongoose.connection.readyState === 1) {
+    attachMongooseDatabasePool();
     mongooseCache.conn = mongoose;
     mongooseCache.lastFailureAt = 0;
     return mongoose;
@@ -122,6 +124,7 @@ export async function connectDB() {
         serverSelectionTimeoutMS: 10000,
       })
       .then((instance) => {
+        attachMongooseDatabasePool();
         mongooseCache.conn = instance;
         mongooseCache.lastFailureAt = 0;
         return instance;
@@ -130,6 +133,7 @@ export async function connectDB() {
         mongooseCache.promise = null;
         mongooseCache.conn = null;
         mongooseCache.lastFailureAt = Date.now();
+        resetMongooseDatabasePoolAttachment();
         logMongoConnectionFailure(error);
         await mongoose.disconnect().catch(() => undefined);
         throw new Error(MONGO_ERROR_MESSAGE);
