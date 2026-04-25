@@ -1,14 +1,22 @@
 import { randomBytes, scryptSync, timingSafeEqual } from "crypto";
 import jwt from "jsonwebtoken";
 
+const isProduction = process.env.NODE_ENV === "production";
 const DEV_FALLBACK_JWT_SECRET = "dev-only-insecure-secret-change-me";
-const rawJwtSecret = process.env.JWT_SECRET?.trim();
 
-if (process.env.NODE_ENV === "production" && !rawJwtSecret) {
+function getJwtSecret(): string {
+  const rawJwtSecret = process.env.JWT_SECRET?.trim();
+
+  if (rawJwtSecret) {
+    return rawJwtSecret;
+  }
+
+  if (!isProduction) {
+    return DEV_FALLBACK_JWT_SECRET;
+  }
+
   throw new Error("JWT_SECRET must be configured in production.");
 }
-
-const JWT_SECRET = rawJwtSecret || DEV_FALLBACK_JWT_SECRET;
 
 export const AUTH_COOKIE_NAME = "sms_auth";
 export const AUTH_TOKEN_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
@@ -24,12 +32,12 @@ export type AuthTokenPayload = {
 type JwtPayloadLike = jwt.JwtPayload & AuthTokenPayload;
 
 export function signAuthToken(payload: AuthTokenPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: "7d" });
+  return jwt.sign(payload, getJwtSecret(), { expiresIn: "7d" });
 }
 
 export function verifyAuthToken(token: string): AuthTokenPayload | null {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, getJwtSecret());
     if (typeof decoded === "string") return null;
 
     const parsed = decoded as JwtPayloadLike;
