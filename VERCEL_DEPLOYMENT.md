@@ -13,14 +13,14 @@ This guide will help you deploy the Salt Mill System to Vercel.
 Before deploying, you'll need these production values ready:
 
 ### 1. **MONGODB_URI** (Database Connection)
-- Current: `mongodb+srv://munir:Mhmunir%401234@cluster0...`
+- Current: `mongodb+srv://farhad_salt:Tq0X3dySai4zFsbv@cluster0.vwjiad7.mongodb.net/?appName=Cluster0`
 - Action: Keep your existing MongoDB Atlas connection
 - **IMPORTANT**: Add Vercel's IP addresses to MongoDB Atlas whitelist
   - Go to MongoDB Atlas → Network Access → IP Whitelist
   - Add: `0.0.0.0/0` for Vercel IPs (or use Vercel's specific ranges from their docs)
 
 ### 2. **JWT_SECRET** (Token Signing)
-- Current: `salt-mill-dev-jwt-secret-change-this` (development only)
+- Current: `2f0ab1296dc4b61824a42d3e2fc43950314745611b85d649c221d43116119a0d3af3a676b0de72b9a3de8e5b432caf72c2676be2207da46fa9e8f11cc4ccaf4a` (development only)
 - Action: Generate a new 64+ character random string
 - Example: Use https://1password.com/password-generator/ or `openssl rand -base64 32`
 
