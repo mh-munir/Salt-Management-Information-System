@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { connectDB, isMongoConnectionError } from "@/lib/db";
+import { connectDB } from "@/lib/db";
 import {
   AUTH_COOKIE_NAME,
   AUTH_TOKEN_MAX_AGE_SECONDS,
@@ -106,26 +106,7 @@ export async function POST(req: Request) {
     normalizedEmail === SUPERUSER_EMAIL &&
     rawPassword === SUPERUSER_PASSWORD;
 
-  try {
-    await connectDB();
-  } catch (error) {
-    if (!isBootstrapLogin || isProduction || !isMongoConnectionError(error)) {
-      throw error;
-    }
-
-    console.warn("MongoDB unavailable during superuser bootstrap login. Using token-only superadmin session.");
-
-    const token = signAuthToken({
-      email: normalizedEmail,
-      role: "superadmin",
-    });
-
-    return normalizeSuccessResponse(token, {
-      email: normalizedEmail,
-      role: "superadmin",
-      avatarUrl: "",
-    });
-  }
+  await connectDB();
 
   if (isBootstrapLogin) {
     const superAdminUser = await ensureEnvSuperadminUser({
