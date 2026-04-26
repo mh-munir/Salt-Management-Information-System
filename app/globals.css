@@ -127,6 +127,8 @@ input[type="number"] {
 
 html.theme-light .profile-avatar {
   border-color: #94a3b8 !important;
+}
+img.profile-avatar {
   width: 40px !important;
   height: 40px !important;
   object-fit: cover !important;
