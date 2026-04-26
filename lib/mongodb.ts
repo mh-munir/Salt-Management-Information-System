@@ -10,12 +10,17 @@ const options: MongoClientOptions = {
   maxIdleTimeMS: 5000,
 };
 
-const client = new MongoClient(mongoUri, options);
-
-// Attach the client to ensure proper cleanup on function suspension.
-attachDatabasePool(client);
-
 let hasAttachedMongooseDatabasePool = false;
+let mongoClient: MongoClient | null = null;
+
+export function getMongoClient() {
+  if (!mongoClient) {
+    mongoClient = new MongoClient(mongoUri, options);
+    attachDatabasePool(mongoClient);
+  }
+
+  return mongoClient;
+}
 
 export function attachMongooseDatabasePool() {
   if (hasAttachedMongooseDatabasePool || mongoose.connection.readyState !== 1) {
@@ -29,6 +34,3 @@ export function attachMongooseDatabasePool() {
 export function resetMongooseDatabasePoolAttachment() {
   hasAttachedMongooseDatabasePool = false;
 }
-
-// Export a module-scoped MongoClient to ensure the client can be shared across functions.
-export default client;

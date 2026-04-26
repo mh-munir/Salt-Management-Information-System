@@ -122,8 +122,10 @@ async function openMongoConnection(mongoUri: string) {
   for (let attempt = 1; attempt <= MAX_CONNECT_ATTEMPTS; attempt += 1) {
     try {
       return await mongoose.connect(mongoUri, {
+        autoIndex: !isProduction,
         maxPoolSize: MONGODB_MAX_POOL_SIZE,
         minPoolSize: MONGODB_MIN_POOL_SIZE,
+        maxConnecting: 2,
         maxIdleTimeMS: 45_000,
         connectTimeoutMS: MONGODB_CONNECT_TIMEOUT_MS,
         serverSelectionTimeoutMS: MONGODB_SERVER_SELECTION_TIMEOUT_MS,
