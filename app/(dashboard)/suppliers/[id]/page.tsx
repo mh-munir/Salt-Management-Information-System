@@ -215,7 +215,7 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
           </div>
         </td>
         <td className="px-4 py-4 text-sm text-slate-700">Tk {formatAmount(Number(record.amount ?? 0))}</td>
-        <td className={`px-4 py-4 text-sm ${recordBalanceSummary.isAdvance ? "text-emerald-600" : "text-rose-600"}`}>
+        <td className={`px-4 py-4 text-sm ${recordBalanceSummary.isAdvance ? "text-sky-600" : "text-rose-600"}`}>
           {recordBalanceSummary.isAdvance
             ? `${translate(language, "advanceBalance")} Tk ${formatAmount(recordBalanceSummary.absoluteAmount)}`
             : `Tk ${formatAmount(recordBalanceSummary.absoluteAmount)}`}
@@ -297,7 +297,7 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
               </div>
               <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Balance status</p>
-                <p className={`mt-2 text-lg font-semibold ${balance.isAdvance ? "text-emerald-600" : "text-rose-600"}`}>
+                <p className={`mt-2 text-lg font-semibold ${balance.isAdvance ? "text-sky-600" : "text-rose-600"}`}>
                   {balance.isAdvance ? translate(language, "advanceBalance") : translate(language, "outstandingDue")}
                 </p>
                 <p className="mt-1 text-xs text-slate-500">Live summary from purchase and payment history</p>
@@ -415,7 +415,7 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
                     </div>
                   </td>
                   <td className="px-4 py-4 text-sm">Tk {formatAmount(filteredTotalPaid)}</td>
-                  <td className={`px-4 py-4 text-sm ${filteredEndingBalance.isAdvance ? "text-emerald-600" : "text-rose-600"}`}>
+                  <td className={`px-4 py-4 text-sm ${filteredEndingBalance.isAdvance ? "text-sky-600" : "text-rose-600"}`}>
                     {filteredEndingBalance.isAdvance
                       ? `${translate(language, "advanceBalance")} Tk ${formatAmount(filteredEndingBalance.absoluteAmount)}`
                       : `Tk ${formatAmount(filteredEndingBalance.absoluteAmount)}`}
@@ -430,4 +430,3 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
     </div>
   );
 }
-

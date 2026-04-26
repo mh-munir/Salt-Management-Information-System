@@ -189,7 +189,7 @@ export default async function CustomerTimelinePrintPage({
                   <td className="border border-slate-200 px-4 py-3">Tk {formatAmount(record.hockExtendedSack)}</td>
                   <td className="border border-slate-200 px-4 py-3">Tk {formatAmount(record.trackExpenses)}</td>
                   <td className="border border-slate-200 px-4 py-3">Tk {formatAmount(record.paidAmount)}</td>
-                  <td className="border border-slate-200 px-4 py-3">
+                  <td className={`border border-slate-200 px-4 py-3 ${recordBalanceSummary.isAdvance ? "text-sky-600" : "text-rose-600"}`}>
                     {recordBalanceSummary.isAdvance
                       ? `${translate(language, "advanceBalance")} Tk ${formatAmount(recordBalanceSummary.absoluteAmount)}`
                       : `Tk ${formatAmount(recordBalanceSummary.absoluteAmount)}`}
@@ -214,7 +214,7 @@ export default async function CustomerTimelinePrintPage({
             <td className="border border-slate-200 px-4 py-3">Tk {formatAmount(filteredHockExtendedSack)}</td>
             <td className="border border-slate-200 px-4 py-3">Tk {formatAmount(filteredTrackExpenses)}</td>
             <td className="border border-slate-200 px-4 py-3">Tk {formatAmount(filteredReceivedAmount)}</td>
-            <td className="border border-slate-200 px-4 py-3">
+            <td className={`border border-slate-200 px-4 py-3 ${filteredEndingBalance.isAdvance ? "text-sky-600" : "text-rose-600"}`}>
               {filteredEndingBalance.isAdvance
                 ? `${translate(language, "advanceBalance")} Tk ${formatAmount(filteredEndingBalance.absoluteAmount)}`
                 : `Tk ${formatAmount(filteredEndingBalance.absoluteAmount)}`}

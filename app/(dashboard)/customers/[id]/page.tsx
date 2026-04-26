@@ -255,7 +255,7 @@ export default async function CustomerDetailPage({ params, searchParams }: Custo
         <td className="px-4 py-4 text-sm text-slate-700">Tk {formatAmount(record.hockExtendedSack)}</td>
         <td className="px-4 py-4 text-sm text-slate-700">Tk {formatAmount(record.trackExpenses)}</td>
         <td className="px-4 py-4 text-sm text-slate-700">Tk {formatAmount(record.paidAmount)}</td>
-        <td className={`px-4 py-4 text-sm ${recordBalanceSummary.isAdvance ? "text-emerald-600" : "text-rose-600"}`}>
+        <td className={`px-4 py-4 text-sm ${recordBalanceSummary.isAdvance ? "text-sky-600" : "text-rose-600"}`}>
           {recordBalanceSummary.isAdvance
             ? `${translate(language, "advanceBalance")} Tk ${formatAmount(recordBalanceSummary.absoluteAmount)}`
             : `Tk ${formatAmount(recordBalanceSummary.absoluteAmount)}`}
@@ -452,7 +452,7 @@ export default async function CustomerDetailPage({ params, searchParams }: Custo
                   <td className="px-4 py-4 text-sm">Tk {formatAmount(filteredHockExtendedSack)}</td>
                   <td className="px-4 py-4 text-sm">Tk {formatAmount(filteredTrackExpenses)}</td>
                   <td className="px-4 py-4 text-sm">Tk {formatAmount(filteredReceivedAmount)}</td>
-                  <td className={`px-4 py-4 text-sm ${filteredEndingBalance.isAdvance ? "text-emerald-600" : "text-rose-600"}`}>
+                  <td className={`px-4 py-4 text-sm ${filteredEndingBalance.isAdvance ? "text-sky-600" : "text-rose-600"}`}>
                     {filteredEndingBalance.isAdvance
                       ? `${translate(language, "advanceBalance")} Tk ${formatAmount(filteredEndingBalance.absoluteAmount)}`
                       : `Tk ${formatAmount(filteredEndingBalance.absoluteAmount)}`}
@@ -467,4 +467,3 @@ export default async function CustomerDetailPage({ params, searchParams }: Custo
     </div>
   );
 }
-

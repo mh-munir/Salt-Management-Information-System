@@ -85,7 +85,7 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
     return `Tk ${formatAmount(balance.absoluteAmount)}`;
   };
   const getBalanceClassName = (value: number) =>
-    getBalanceSummary(value).isAdvance ? "text-emerald-600" : "text-slate-600";
+    getBalanceSummary(value).isAdvance ? "text-sky-600" : "text-rose-600";
   const [customers, setCustomers] = useState<Customer[]>(() =>
     sortCustomersByLatestInput(initialData.map((customer) => ({ ...customer, totalPaid: customer.totalPaid ?? 0 })))
   );
