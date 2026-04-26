@@ -15,6 +15,19 @@ const emptySidebarBranding: SidebarBrandingSnapshot = {
   sidebarSubheading: DEFAULT_BRAND_SUBHEADING,
 };
 
+const SHARED_BRANDING_TIMEOUT_MS = 1500;
+const SHARED_BRANDING_SUCCESS_TTL_MS = 60_000;
+const SHARED_BRANDING_FAILURE_TTL_MS = 15_000;
+
+type SharedSidebarBrandingCache = {
+  value: SidebarBrandingSnapshot;
+  expiresAt: number;
+};
+
+const globalForSharedSidebarBranding = globalThis as typeof globalThis & {
+  sharedSidebarBrandingCache?: SharedSidebarBrandingCache;
+};
+
 const buildUserLookup = (userId: string | undefined, email: string) => {
   const filters: Array<{ _id?: string; email?: string }> = [{ email: email.toLowerCase() }];
   if (isValidMongoObjectId(userId)) {
@@ -37,50 +50,86 @@ const hasCustomBranding = (user: {
       user?.sidebarSubheading?.toString().trim()
   );
 
+const getCachedSharedSidebarBranding = () => {
+  const cache = globalForSharedSidebarBranding.sharedSidebarBrandingCache;
+  if (!cache) return null;
+  if (Date.now() > cache.expiresAt) return null;
+  return cache.value;
+};
+
+const setCachedSharedSidebarBranding = (value: SidebarBrandingSnapshot, ttlMs: number) => {
+  globalForSharedSidebarBranding.sharedSidebarBrandingCache = {
+    value,
+    expiresAt: Date.now() + ttlMs,
+  };
+};
+
+async function loadSharedSidebarBrandingFromDb(): Promise<SidebarBrandingSnapshot> {
+  await connectDB();
+
+  const preferredSuperadmin = await User.findOne({
+    role: "superadmin",
+    $or: [
+      { sidebarLogoUrl: { $exists: true, $ne: "" } },
+      { sidebarHeading: { $exists: true, $ne: "" } },
+      { sidebarSubheading: { $exists: true, $ne: "" } },
+    ],
+  })
+    .sort({ updatedAt: -1, _id: -1 })
+    .select(SHARED_BRANDING_SELECT)
+    .lean();
+
+  if (hasCustomBranding(preferredSuperadmin)) {
+    return normalizeSidebarBranding(preferredSuperadmin);
+  }
+
+  const preferredAnyAdmin = await User.findOne({
+    role: { $in: ["admin", "superadmin"] },
+    $or: [
+      { sidebarLogoUrl: { $exists: true, $ne: "" } },
+      { sidebarHeading: { $exists: true, $ne: "" } },
+      { sidebarSubheading: { $exists: true, $ne: "" } },
+    ],
+  })
+    .sort({ updatedAt: -1, _id: -1 })
+    .select(SHARED_BRANDING_SELECT)
+    .lean();
+
+  if (hasCustomBranding(preferredAnyAdmin)) {
+    return normalizeSidebarBranding(preferredAnyAdmin);
+  }
+
+  return emptySidebarBranding;
+}
+
 export async function getSharedSidebarBrandingSnapshot(): Promise<SidebarBrandingSnapshot> {
+  const cached = getCachedSharedSidebarBranding();
+  if (cached) {
+    return cached;
+  }
+
   try {
-    await connectDB();
+    const branding = await Promise.race<SidebarBrandingSnapshot>([
+      loadSharedSidebarBrandingFromDb(),
+      new Promise<SidebarBrandingSnapshot>((resolve) => {
+        setTimeout(() => resolve(emptySidebarBranding), SHARED_BRANDING_TIMEOUT_MS);
+      }),
+    ]);
 
-    const preferredSuperadmin = await User.findOne({
-      role: "superadmin",
-      $or: [
-        { sidebarLogoUrl: { $exists: true, $ne: "" } },
-        { sidebarHeading: { $exists: true, $ne: "" } },
-        { sidebarSubheading: { $exists: true, $ne: "" } },
-      ],
-    })
-      .sort({ updatedAt: -1, _id: -1 })
-      .select(SHARED_BRANDING_SELECT)
-      .lean();
-
-    if (hasCustomBranding(preferredSuperadmin)) {
-      return normalizeSidebarBranding(preferredSuperadmin);
-    }
-
-    const preferredAnyAdmin = await User.findOne({
-      role: { $in: ["admin", "superadmin"] },
-      $or: [
-        { sidebarLogoUrl: { $exists: true, $ne: "" } },
-        { sidebarHeading: { $exists: true, $ne: "" } },
-        { sidebarSubheading: { $exists: true, $ne: "" } },
-      ],
-    })
-      .sort({ updatedAt: -1, _id: -1 })
-      .select(SHARED_BRANDING_SELECT)
-      .lean();
-
-    if (hasCustomBranding(preferredAnyAdmin)) {
-      return normalizeSidebarBranding(preferredAnyAdmin);
-    }
-
-    return emptySidebarBranding;
+    setCachedSharedSidebarBranding(
+      branding,
+      branding === emptySidebarBranding ? SHARED_BRANDING_FAILURE_TTL_MS : SHARED_BRANDING_SUCCESS_TTL_MS
+    );
+    return branding;
   } catch (error) {
     if (isMongoConnectionError(error)) {
+      setCachedSharedSidebarBranding(emptySidebarBranding, SHARED_BRANDING_FAILURE_TTL_MS);
       return emptySidebarBranding;
     }
 
     const reason = error instanceof Error ? error.message : "unknown error";
     console.warn(`Shared sidebar branding unavailable, using defaults: ${reason}`);
+    setCachedSharedSidebarBranding(emptySidebarBranding, SHARED_BRANDING_FAILURE_TTL_MS);
     return emptySidebarBranding;
   }
 }

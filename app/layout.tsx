@@ -10,6 +10,8 @@ import { getSharedSiteSettingsSnapshot } from "@/lib/site-settings.server";
 import { DEFAULT_THEME, THEME_COOKIE_NAME } from "@/lib/theme";
 import "./globals.css";
 
+export const maxDuration = 30;
+
 const dmSans = DM_Sans({
   subsets: ["latin"],
   variable: "--font-dm-sans",

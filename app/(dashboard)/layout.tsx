@@ -8,6 +8,8 @@ import { DEFAULT_THEME, THEME_COOKIE_NAME } from "@/lib/theme";
 import type { Language } from "@/lib/language";
 import { getCurrentUserProfileSnapshot } from "@/lib/user-profile.server";
 
+export const maxDuration = 30;
+
 export const metadata = {
   title: "Dashboard | Salt Mill",
 };

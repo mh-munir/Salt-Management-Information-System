@@ -49,11 +49,15 @@ export async function getCurrentUserProfileSnapshot(
   try {
     await connectDB();
 
-    let user = await User.findOne(buildUserLookup(auth.userId, auth.email)).select(
-      "name email role avatarUrl sidebarLogoUrl sidebarHeading sidebarSubheading faviconUrl siteTitle"
-    );
-    const sharedBranding = await getSharedSidebarBrandingSnapshot();
-    const sharedSiteSettings = await getSharedSiteSettingsSnapshot();
+    let [user] = await Promise.all([
+      User.findOne(buildUserLookup(auth.userId, auth.email)).select(
+        "name email role avatarUrl sidebarLogoUrl sidebarHeading sidebarSubheading faviconUrl siteTitle"
+      ),
+    ]);
+    const [sharedBranding, sharedSiteSettings] = await Promise.all([
+      getSharedSidebarBrandingSnapshot(),
+      getSharedSiteSettingsSnapshot(),
+    ]);
 
     if (!user) {
       user = await ensureEnvSuperadminUser(auth);
