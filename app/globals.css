@@ -127,6 +127,10 @@ input[type="number"] {
 
 html.theme-light .profile-avatar {
   border-color: #94a3b8 !important;
+  width: 40px !important;
+  height: 40px !important;
+  object-fit: cover !important;
+  object-position: top center !important;
 }
 
 html.theme-light .sidebar-shell {
