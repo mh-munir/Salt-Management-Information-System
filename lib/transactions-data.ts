@@ -4,6 +4,7 @@ import Cost from "@/models/Cost";
 import Customer from "@/models/Customer";
 import Sale from "@/models/Sale";
 import Transaction from "@/models/Transaction";
+import type { PaginatedResponse, PaginationParams } from "@/lib/pagination";
 
 type TransactionsPopulatedRef = {
   _id?: unknown;
@@ -70,26 +71,47 @@ export type TransactionsFeedItem = {
   personName?: string;
 };
 
-export async function getTransactionsFeed(): Promise<TransactionsFeedItem[]> {
+type TransactionsFeedOptions = PaginationParams;
+
+export type TransactionsFeedPage = PaginatedResponse<TransactionsFeedItem>;
+
+const DEFAULT_PAGE = 1;
+const DEFAULT_LIMIT = 50;
+const MAX_FETCH_WINDOW = 500;
+
+export async function getTransactionsFeed(
+  options: Partial<TransactionsFeedOptions> = {}
+): Promise<TransactionsFeedPage> {
   try {
     await connectDB();
 
-    const [transactions, sales, costs] = (await Promise.all([
+    const page = Math.max(DEFAULT_PAGE, Number(options.page ?? DEFAULT_PAGE));
+    const limit = Math.max(1, Number(options.limit ?? DEFAULT_LIMIT));
+    const offset = (page - 1) * limit;
+    const fetchWindow = Math.min(page * limit, MAX_FETCH_WINDOW);
+
+    const [transactionCount, saleCount, costCount, transactions, sales, costs] = (await Promise.all([
+      Transaction.countDocuments(),
+      Sale.countDocuments(),
+      Cost.countDocuments(),
       Transaction.find()
         .select("_id amount date type supplierId customerId")
         .sort({ date: -1, _id: -1 })
+        .limit(fetchWindow)
         .populate("supplierId", "name")
         .populate("customerId", "name")
         .lean(),
       Sale.find()
         .select("_id total createdAt customerId")
         .sort({ createdAt: -1, _id: -1 })
+        .limit(fetchWindow)
         .lean(),
       Cost.find()
         .select("_id amount date createdAt personName")
         .sort({ date: -1, createdAt: -1, _id: -1 })
+        .limit(fetchWindow)
         .lean(),
-    ])) as [TransactionsDoc[], SaleDoc[], CostDoc[]];
+    ])) as [number, number, number, TransactionsDoc[], SaleDoc[], CostDoc[]];
 
     const customerIds = Array.from(
       new Set(
@@ -143,12 +165,30 @@ export async function getTransactionsFeed(): Promise<TransactionsFeedItem[]> {
       personName: typeof cost.personName === "string" ? cost.personName.trim() : "",
     }));
 
-    return [...normalizedTransactions, ...normalizedSales, ...normalizedCosts].sort((left, right) =>
+    const items = [...normalizedTransactions, ...normalizedSales, ...normalizedCosts]
+      .sort((left, right) =>
       compareByLatestInput({ id: left._id, date: left.date }, { id: right._id, date: right.date })
-    );
+      )
+      .slice(offset, offset + limit);
+
+    const total = transactionCount + saleCount + costCount;
+
+    return {
+      items,
+      page,
+      limit,
+      total,
+      hasMore: offset + items.length < total,
+    };
   } catch (error) {
     if (isMongoConnectionError(error)) {
-      return [];
+      return {
+        items: [],
+        page: Math.max(DEFAULT_PAGE, Number(options.page ?? DEFAULT_PAGE)),
+        limit: Math.max(1, Number(options.limit ?? DEFAULT_LIMIT)),
+        total: 0,
+        hasMore: false,
+      };
     }
 
     throw error;

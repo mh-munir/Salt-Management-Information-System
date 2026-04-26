@@ -37,7 +37,6 @@ export async function sendAdminOtpEmail({
     if (isProduction) {
       throw new Error("Email service is not configured. Set RESEND_API_KEY and OTP_FROM_EMAIL.");
     }
-    console.log(`[DEV OTP EMAIL] to=${to} otp=${otpCode}`);
     return { delivered: false, provider: "console" as const };
   }
 
@@ -88,7 +87,6 @@ export async function sendPasswordResetOtpEmail({
     if (isProduction) {
       throw new Error("Email service is not configured. Set RESEND_API_KEY and OTP_FROM_EMAIL.");
     }
-    console.log(`[DEV OTP EMAIL] to=${to} otp=${otpCode}`);
     return { delivered: false, provider: "console" as const };
   }
 

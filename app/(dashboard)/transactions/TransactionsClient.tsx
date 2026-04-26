@@ -7,11 +7,11 @@ import CompactDateInput from "@/components/CompactDateInput";
 import LoadMoreTable from "@/components/LoadMoreTable";
 import { formatLocalizedDate, formatLocalizedNumber } from "@/lib/display-format";
 import { translate } from "@/lib/language";
-import type { TransactionsFeedItem } from "@/lib/transactions-data";
+import type { TransactionsFeedItem, TransactionsFeedPage } from "@/lib/transactions-data";
 import { useLanguage } from "@/lib/useLanguage";
 
 type TransactionsClientProps = {
-  initialData: TransactionsFeedItem[];
+  initialData: TransactionsFeedPage;
 };
 
 const todayIso = () => {
@@ -36,10 +36,15 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
   const { language } = useLanguage();
   const originalTitleRef = useRef("");
   const defaultFilterDate = "";
+  const [items, setItems] = useState<TransactionsFeedItem[]>(initialData.items);
+  const [page, setPage] = useState(initialData.page);
+  const [limit] = useState(initialData.limit);
+  const [hasMore, setHasMore] = useState(initialData.hasMore);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [printTarget, setPrintTarget] = useState<"paid" | "customer" | null>(null);
   const [paidFilterDate, setPaidFilterDate] = useState(defaultFilterDate);
   const [customerFilterDate, setCustomerFilterDate] = useState(defaultFilterDate);
-  const data = initialData;
+  const data = items;
 
   useEffect(() => {
     const handleBeforePrint = () => {
@@ -75,6 +80,24 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
   const toSafeAmount = (value?: number) => {
     const parsed = Number(value ?? 0);
     return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  const loadNextPage = async () => {
+    if (isLoadingMore || !hasMore) return;
+
+    setIsLoadingMore(true);
+
+    try {
+      const response = await fetch(`/api/transactions?page=${page + 1}&limit=${limit}`, { cache: "no-store" });
+      if (!response.ok) return;
+
+      const nextPage = (await response.json()) as TransactionsFeedPage;
+      setItems((current) => [...current, ...(Array.isArray(nextPage.items) ? nextPage.items : [])]);
+      setPage(nextPage.page ?? page + 1);
+      setHasMore(Boolean(nextPage.hasMore));
+    } finally {
+      setIsLoadingMore(false);
+    }
   };
 
   const handleTablePrint = (target: "paid" | "customer") => {
@@ -224,6 +247,9 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
                 rows={paidTransactionRows}
                 colSpan={5}
                 loadMoreLabel="Show more"
+                hasMoreOverride={hasMore}
+                isLoadingMore={isLoadingMore}
+                onLoadMore={loadNextPage}
                 emptyState={
                   <tr>
                     <td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-500">
@@ -299,6 +325,9 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
                 rows={customerTransactionRows}
                 colSpan={5}
                 loadMoreLabel="Show more"
+                hasMoreOverride={hasMore}
+                isLoadingMore={isLoadingMore}
+                onLoadMore={loadNextPage}
                 emptyState={
                   <tr>
                     <td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-500">

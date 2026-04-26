@@ -89,8 +89,7 @@ export default function StockClient({ initialData }: StockClientProps) {
         conversionKgPerMound: data.conversionKgPerMound,
       });
       setTransactions(Array.isArray(data.transactions) ? data.transactions : []);
-    } catch (error) {
-      console.error("Error fetching stock page data:", error);
+    } catch {
       setStock(null);
       setTransactions([]);
     } finally {

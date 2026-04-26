@@ -5,8 +5,8 @@ import Sale from "@/models/Sale";
 import Transaction from "@/models/Transaction";
 
 const KG_PER_MOUND = 40;
-const STOCK_HISTORY_DAYS = 60;
-const STOCK_HISTORY_RECORD_LIMIT = 2_000;
+const STOCK_HISTORY_DAYS = 21;
+const STOCK_HISTORY_RECORD_LIMIT = 500;
 
 type StockSaleItem = {
   quantity?: number;

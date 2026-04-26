@@ -1,6 +1,5 @@
 import { connectDB, isMongoConnectionError } from "@/lib/db";
-import { sumSaleQuantity, toNumber } from "@/lib/live-ledgers";
-import { compareByLatestInput } from "@/lib/record-order";
+import { toNumber } from "@/lib/live-ledgers";
 import Cost from "@/models/Cost";
 import Customer from "@/models/Customer";
 import Sale from "@/models/Sale";
@@ -8,8 +7,6 @@ import Supplier from "@/models/Supplier";
 import Transaction from "@/models/Transaction";
 
 const KG_PER_MAUND = 40;
-const DASHBOARD_HISTORY_DAYS = 180;
-const DASHBOARD_HISTORY_RECORD_LIMIT = 3_000;
 
 type DashboardCustomerDoc = {
   _id: unknown;
@@ -24,32 +21,6 @@ type DashboardSupplierDoc = {
   name?: string;
   phone?: string;
   totalDue?: number;
-};
-
-type DashboardSaleItem = {
-  quantity?: number;
-};
-
-type DashboardSaleDoc = {
-  _id: unknown;
-  total?: number;
-  saltAmount?: number;
-  items?: DashboardSaleItem[];
-  createdAt?: string | Date;
-  customerId?: unknown;
-  paid?: number;
-  due?: number;
-};
-
-type DashboardTransactionDoc = {
-  _id: unknown;
-  amount?: number;
-  totalAmount?: number;
-  saltAmount?: number;
-  date?: string | Date;
-  type?: string;
-  customerId?: unknown;
-  supplierId?: unknown;
 };
 
 type DashboardSalesSummaryDoc = {
@@ -80,16 +51,6 @@ type DashboardSupplierSummaryDoc = {
   totalDue?: number;
 };
 
-export type DashboardTransactionItem = {
-  _id: string;
-  amount: number;
-  saltAmount: number;
-  date?: string | Date;
-  type?: string;
-  customerId?: string;
-  supplierId?: string;
-};
-
 export type DashboardPartyContact = {
   _id?: string;
   name?: string;
@@ -117,7 +78,6 @@ export type DashboardPageData = {
   stockData: DashboardStockSnapshot;
   customers: DashboardPartyContact[];
   suppliers: DashboardPartyContact[];
-  rawTransactions: DashboardTransactionItem[];
 };
 
 const emptyDashboardData: DashboardPageData = {
@@ -139,7 +99,6 @@ const emptyDashboardData: DashboardPageData = {
   },
   customers: [],
   suppliers: [],
-  rawTransactions: [],
 };
 
 export async function getDashboardPageData(): Promise<DashboardPageData> {
@@ -151,9 +110,6 @@ export async function getDashboardPageData(): Promise<DashboardPageData> {
 
     const tomorrowStart = new Date(todayStart);
     tomorrowStart.setDate(tomorrowStart.getDate() + 1);
-
-    const historyStart = new Date(todayStart);
-    historyStart.setDate(historyStart.getDate() - DASHBOARD_HISTORY_DAYS);
 
     const numericOrZero = (fieldPath: string) => ({ $toDouble: { $ifNull: [fieldPath, 0] } });
     const dateOrNull = (fieldPath: string) => ({
@@ -180,7 +136,7 @@ export async function getDashboardPageData(): Promise<DashboardPageData> {
       ],
     };
 
-    const [customerSummaryRows, supplierSummaryRows, salesSummaryRows, buySummaryRows, costSummaryRows, customers, suppliers, transactions, sales] =
+    const [customerSummaryRows, supplierSummaryRows, salesSummaryRows, buySummaryRows, costSummaryRows, customers, suppliers] =
       (await Promise.all([
         Customer.aggregate([
           {
@@ -292,16 +248,6 @@ export async function getDashboardPageData(): Promise<DashboardPageData> {
         ]),
         Customer.find().select("_id name phone").lean(),
         Supplier.find().select("_id name phone").lean(),
-        Transaction.find({ date: { $gte: historyStart } })
-          .select("_id amount totalAmount saltAmount date type customerId supplierId")
-          .sort({ date: -1 })
-          .limit(DASHBOARD_HISTORY_RECORD_LIMIT)
-          .lean(),
-        Sale.find({ createdAt: { $gte: historyStart } })
-          .select("_id total saltAmount items createdAt customerId")
-          .sort({ createdAt: -1 })
-          .limit(DASHBOARD_HISTORY_RECORD_LIMIT)
-          .lean(),
       ])) as [
         DashboardCustomerSummaryDoc[],
         DashboardSupplierSummaryDoc[],
@@ -310,8 +256,6 @@ export async function getDashboardPageData(): Promise<DashboardPageData> {
         DashboardCostsSummaryDoc[],
         DashboardCustomerDoc[],
         DashboardSupplierDoc[],
-        DashboardTransactionDoc[],
-        DashboardSaleDoc[],
       ];
 
     const salesSummary = salesSummaryRows[0] ?? {};
@@ -331,29 +275,6 @@ export async function getDashboardPageData(): Promise<DashboardPageData> {
     const todayCost = toNumber(costsSummary.todayCost);
     const customerDue = toNumber(customersSummary.totalDue);
     const supplierDue = toNumber(suppliersSummary.totalDue);
-
-    const normalizedSales: DashboardTransactionItem[] = sales.map((sale) => ({
-      _id: String(sale._id),
-      amount: toNumber(sale.total),
-      saltAmount: sumSaleQuantity(sale),
-      date: sale.createdAt,
-      type: "sale",
-      customerId: sale.customerId ? String(sale.customerId) : undefined,
-    }));
-
-    const normalizedTransactions: DashboardTransactionItem[] = transactions.map((transaction) => ({
-      _id: String(transaction._id),
-      amount: toNumber(transaction.amount),
-      saltAmount: toNumber(transaction.saltAmount),
-      date: transaction.date,
-      type: transaction.type,
-      customerId: transaction.customerId ? String(transaction.customerId) : undefined,
-      supplierId: transaction.supplierId ? String(transaction.supplierId) : undefined,
-    }));
-
-    const rawTransactions = [...normalizedTransactions, ...normalizedSales].sort((left, right) =>
-      compareByLatestInput({ id: left._id, date: left.date }, { id: right._id, date: right.date })
-    );
 
     const calculatedSoldKg = toNumber(salesSummary.totalSoldKg);
     const fallbackSoldKg = toNumber(customersSummary.totalSaltKg);
@@ -388,7 +309,6 @@ export async function getDashboardPageData(): Promise<DashboardPageData> {
         name: supplier.name ?? "",
         phone: supplier.phone ?? "",
       })),
-      rawTransactions,
     };
   } catch (error) {
     if (isMongoConnectionError(error)) {
