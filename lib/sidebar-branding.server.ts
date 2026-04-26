@@ -109,12 +109,17 @@ export async function getSharedSidebarBrandingSnapshot(): Promise<SidebarBrandin
   }
 
   try {
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
     const branding = await Promise.race<SidebarBrandingSnapshot>([
       loadSharedSidebarBrandingFromDb(),
       new Promise<SidebarBrandingSnapshot>((resolve) => {
-        setTimeout(() => resolve(emptySidebarBranding), SHARED_BRANDING_TIMEOUT_MS);
+        timeoutId = setTimeout(() => resolve(emptySidebarBranding), SHARED_BRANDING_TIMEOUT_MS);
       }),
     ]);
+
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
 
     setCachedSharedSidebarBranding(
       branding,

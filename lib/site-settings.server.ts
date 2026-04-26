@@ -80,12 +80,17 @@ export async function getSharedSiteSettingsSnapshot(): Promise<SiteSettingsSnaps
   }
 
   try {
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
     const settings = await Promise.race<SiteSettingsSnapshot>([
       loadSharedSiteSettingsFromDb(),
       new Promise<SiteSettingsSnapshot>((resolve) => {
-        setTimeout(() => resolve(emptySiteSettings), SHARED_SITE_SETTINGS_TIMEOUT_MS);
+        timeoutId = setTimeout(() => resolve(emptySiteSettings), SHARED_SITE_SETTINGS_TIMEOUT_MS);
       }),
     ]);
+
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
 
     setCachedSharedSiteSettings(
       settings,

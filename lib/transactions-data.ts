@@ -74,15 +74,35 @@ export async function getTransactionsFeed(): Promise<TransactionsFeedItem[]> {
   try {
     await connectDB();
 
-    const [transactions, sales, costs, customers] = (await Promise.all([
+    const [transactions, sales, costs] = (await Promise.all([
       Transaction.find()
+        .select("_id amount date type supplierId customerId")
+        .sort({ date: -1, _id: -1 })
         .populate("supplierId", "name")
         .populate("customerId", "name")
         .lean(),
-      Sale.find().populate("customerId", "name").lean(),
-      Cost.find().lean(),
-      Customer.find().select("_id name").lean(),
-    ])) as [TransactionsDoc[], SaleDoc[], CostDoc[], CustomerDoc[]];
+      Sale.find()
+        .select("_id total createdAt customerId")
+        .sort({ createdAt: -1, _id: -1 })
+        .lean(),
+      Cost.find()
+        .select("_id amount date createdAt personName")
+        .sort({ date: -1, createdAt: -1, _id: -1 })
+        .lean(),
+    ])) as [TransactionsDoc[], SaleDoc[], CostDoc[]];
+
+    const customerIds = Array.from(
+      new Set(
+        [
+          ...transactions.map((record) => getPopulatedId(record.customerId)).filter(Boolean),
+          ...sales.map((sale) => getPopulatedId(sale.customerId)).filter(Boolean),
+        ].map((id) => String(id))
+      )
+    );
+
+    const customers = (customerIds.length > 0
+      ? await Customer.find({ _id: { $in: customerIds } }).select("_id name").lean()
+      : []) as CustomerDoc[];
 
     const customerNameById = new Map(
       customers.map((customer) => [String(customer._id), typeof customer.name === "string" ? customer.name.trim() : ""])
