@@ -1,7 +1,9 @@
 import { connectDB, isMongoConnectionError } from "@/lib/db";
 import { requireAuth, validateSameOrigin } from "@/lib/auth";
+import AdminOtpRequest from "@/models/AdminOtpRequest";
 import Cost from "@/models/Cost";
 import Customer from "@/models/Customer";
+import PasswordResetOtpRequest from "@/models/PasswordResetOtpRequest";
 import Product from "@/models/Product";
 import Sale from "@/models/Sale";
 import Supplier from "@/models/Supplier";
@@ -21,7 +23,16 @@ export async function POST(request: Request) {
   try {
     await connectDB();
 
-    const [salesDeleted, transactionsDeleted, customersDeleted, suppliersDeleted, costsDeleted, productsDeleted] =
+    const [
+      salesDeleted,
+      transactionsDeleted,
+      customersDeleted,
+      suppliersDeleted,
+      costsDeleted,
+      productsDeleted,
+      adminOtpRequestsDeleted,
+      passwordResetOtpRequestsDeleted,
+    ] =
       await Promise.all([
         Sale.deleteMany({}),
         Transaction.deleteMany({}),
@@ -29,10 +40,12 @@ export async function POST(request: Request) {
         Supplier.deleteMany({}),
         Cost.deleteMany({}),
         Product.deleteMany({}),
+        AdminOtpRequest.deleteMany({}),
+        PasswordResetOtpRequest.deleteMany({}),
       ]);
 
     return Response.json({
-      message: "All business data removed successfully.",
+      message: "All resettable database data removed successfully.",
       deleted: {
         sales: salesDeleted.deletedCount,
         transactions: transactionsDeleted.deletedCount,
@@ -40,6 +53,8 @@ export async function POST(request: Request) {
         suppliers: suppliersDeleted.deletedCount,
         costs: costsDeleted.deletedCount,
         products: productsDeleted.deletedCount,
+        adminOtpRequests: adminOtpRequestsDeleted.deletedCount,
+        passwordResetOtpRequests: passwordResetOtpRequestsDeleted.deletedCount,
       },
     });
   } catch (error) {

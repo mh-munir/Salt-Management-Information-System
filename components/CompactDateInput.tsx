@@ -145,16 +145,38 @@ export default function CompactDateInput({
         <span className={`mb-2 block text-sm font-semibold text-slate-600 ${labelClassName}`.trim()}>
           {label}
         </span>
-        <input
-          id={inputId}
-          name={name}
-          type="date"
-          value={value}
-          onChange={handleNativeDateChange}
-          max={max}
-          required={required}
-          className={`${inputClassName} min-h-12 rounded-xl pr-4`.replace("mt-2", "").trim()}
-        />
+        <div className="relative">
+          <input
+            ref={nativeDateInputRef}
+            id={inputId}
+            name={name}
+            type="date"
+            value={value}
+            onChange={handleNativeDateChange}
+            onClick={openCalendar}
+            max={max}
+            required={required}
+            className={`${inputClassName} min-h-12 rounded-xl pr-12`.replace("mt-2", "").trim()}
+          />
+          <button
+            type="button"
+            onClick={openCalendar}
+            aria-label={`Open ${label.toLowerCase()} calendar`}
+            className="button-utility absolute right-3 top-1/2 inline-flex -translate-y-1/2 items-center justify-center rounded-lg p-1 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              className="h-5 w-5"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 2v4M16 2v4M3.5 9.5h17M5 5.5h14A1.5 1.5 0 0 1 20.5 7v12A1.5 1.5 0 0 1 19 20.5H5A1.5 1.5 0 0 1 3.5 19V7A1.5 1.5 0 0 1 5 5.5Z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 13h3v3H8z" />
+            </svg>
+          </button>
+        </div>
       </label>
     );
   }

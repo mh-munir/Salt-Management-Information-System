@@ -99,7 +99,7 @@ function SnapshotCard({
   const palette = statToneStyles[tone];
 
   return (
-    <div className={`relative overflow-hidden rounded-3xl border bg-white/90 p-5 shadow-sm ${palette.shell}`}>
+    <div className={`relative overflow-hidden rounded-lg border bg-white/90 p-5 shadow-sm ${palette.shell}`}>
       <div className={`pointer-events-none absolute inset-x-0 top-0 h-20 bg-linear-to-br ${palette.accent}`} />
       <div className="relative">
         <p className={`text-xs font-semibold uppercase tracking-[0.22em] ${palette.label}`}>{label}</p>
@@ -229,13 +229,13 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
 
   return (
     <div className="space-y-5">
-      <section className="relative overflow-hidden rounded-[32px] border border-slate-200/80 bg-linear-to-br from-indigo-50 via-white to-sky-50 p-5 shadow-sm sm:p-6 lg:p-8">
+      <section className="relative overflow-hidden">
         <div className="pointer-events-none absolute -right-8 -top-14 h-40 w-40 rounded-lg bg-indigo-200/50 blur-3xl" />
         <div className="pointer-events-none absolute left-8 top-10 h-28 w-28 rounded-lg bg-sky-200/40 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-16 left-1/3 h-44 w-44 rounded-lg bg-violet-200/40 blur-3xl" />
 
         <div className="relative grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.95fr)] xl:items-stretch">
-          <div className="rounded-[28px] border border-slate-200/80 bg-white/90 p-5 shadow-sm backdrop-blur sm:p-6">
+          <div className="rounded-lg border border-slate-200/80 bg-white/90 p-5 shadow-sm backdrop-blur sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <Link
                 href="/suppliers"
@@ -350,7 +350,7 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
         </div>
       </section>
 
-      <section className="rounded-[28px] border border-slate-200/80 bg-white/95 p-4 shadow-sm sm:p-6">
+      <section className="rounded-lg border border-slate-200/80 bg-white/95 p-4 shadow-sm sm:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Ledger timeline</p>
@@ -373,6 +373,7 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
               value={tableFilterDate}
               max={maxFilterDate}
               printLabel={translate(language, "print")}
+              printHref={`/print/suppliers/${id}${tableFilterDate ? `?date=${encodeURIComponent(tableFilterDate)}&language=${language}` : `?language=${language}`}`}
             />
           </div>
         </div>

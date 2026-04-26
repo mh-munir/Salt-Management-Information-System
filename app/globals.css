@@ -285,6 +285,12 @@ html.theme-dark .navbar-shell {
   border-color: rgba(71, 85, 105, 0.9) !important;
 }
 
+html.theme-dark .footer-shell {
+  background-color: var(--dashboard-card-bg) !important;
+  border-color: rgba(71, 85, 105, 0.9) !important;
+  backdrop-filter: none !important;
+}
+
 html.theme-dark button.light-navbar-button,
 html.theme-dark button.light-navbar-button:hover:not(:disabled) {
   background-color: var(--dashboard-card-bg) !important;

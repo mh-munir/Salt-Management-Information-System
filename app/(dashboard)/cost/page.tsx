@@ -426,7 +426,7 @@ export default function CostPage() {
                 value={historyFilterDate}
                 onChange={setHistoryFilterDate}
                 max={todayIso()}
-                inputClassName="dashboard-card-surface mt-2 w-full rounded-lg border border-slate-200 bg-white/80 px-4 py-2.5 text-base text-slate-900 outline-none ring-1 ring-slate-200/70 backdrop-blur-sm transition focus:border-sky-400 focus:bg-white dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-100 dark:ring-slate-800"
+                inputClassName="mt-2 w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-base text-slate-900 outline-none transition focus:border-sky-400 focus:bg-white"
               />
             </div>
             {historyFilterDate ? (

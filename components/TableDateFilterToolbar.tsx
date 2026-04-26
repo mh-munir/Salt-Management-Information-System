@@ -10,6 +10,7 @@ type TableDateFilterToolbarProps = {
   queryKey?: string;
   max?: string;
   printLabel?: string;
+  printHref?: string;
 };
 
 export default function TableDateFilterToolbar({
@@ -18,6 +19,7 @@ export default function TableDateFilterToolbar({
   queryKey = "date",
   max,
   printLabel,
+  printHref,
 }: TableDateFilterToolbarProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -36,6 +38,15 @@ export default function TableDateFilterToolbar({
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   };
 
+  const handlePrint = () => {
+    if (!printHref) {
+      window.print();
+      return;
+    }
+
+    window.open(printHref, "_blank", "noopener,noreferrer");
+  };
+
   return (
     <div className="print-hidden flex flex-wrap items-end gap-2">
       <div className="min-w-[15rem]">
@@ -52,15 +63,15 @@ export default function TableDateFilterToolbar({
         <button
           type="button"
           onClick={() => updateFilter("")}
-          className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
         >
           {translate(language, "cancel")}
         </button>
       ) : null}
       <button
         type="button"
-        onClick={() => window.print()}
-        className="inline-flex items-center justify-center rounded-lg bg-[#0f172a] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1e293b]"
+        onClick={handlePrint}
+        className="inline-flex items-center justify-center rounded-lg bg-[#0f172a] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#1e293b]"
       >
         {printLabel ?? translate(language, "print")}
       </button>

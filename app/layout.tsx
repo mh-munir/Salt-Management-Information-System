@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { DM_Sans, Noto_Sans_Bengali } from "next/font/google";
 import LanguageRootSync from "@/components/LanguageRootSync";
 import LazyToaster from "@/components/LazyToaster";
+import PrintTitleGuard from "@/components/PrintTitleGuard";
 import SiteFooter from "@/components/SiteFooter";
 import type { Language } from "@/lib/language";
 import { getSharedSiteSettingsSnapshot } from "@/lib/site-settings.server";
@@ -56,6 +57,7 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <body suppressHydrationWarning>
+        <PrintTitleGuard />
         <LanguageRootSync initialLanguage={initialLanguage} />
         {children}
         <LazyToaster />
