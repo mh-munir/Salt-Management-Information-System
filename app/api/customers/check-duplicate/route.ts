@@ -1,5 +1,6 @@
 import { connectDB, isMongoConnectionError } from "@/lib/db";
 import { requireAuth, validateSameOrigin } from "@/lib/auth";
+import { normalizeLocalizedDigits } from "@/lib/number-input";
 import Customer from "@/models/Customer";
 import Supplier from "@/models/Supplier";
 
@@ -33,7 +34,7 @@ export async function POST(req: Request) {
     }
 
     const name = toTrimmedString(data.name);
-    const phone = toTrimmedString(data.phone);
+    const phone = normalizeLocalizedDigits(toTrimmedString(data.phone));
 
     if (!name) {
       return new Response(JSON.stringify({ message: "Customer name is required." }), {

@@ -1,6 +1,7 @@
 import { connectDB, isMongoConnectionError } from "@/lib/db";
 import { requireAuth, validateSameOrigin } from "@/lib/auth";
 import { compareByLatestInput } from "@/lib/record-order";
+import { parseLocalizedNumber } from "@/lib/number-input";
 import Cost from "@/models/Cost";
 
 export const dynamic = "force-dynamic";
@@ -54,7 +55,7 @@ export async function POST(request: Request) {
 
   const personName = String(body.personName ?? "").trim();
   const purpose = String(body.purpose ?? "").trim();
-  const amount = Number(body.amount);
+  const amount = parseLocalizedNumber(body.amount);
   const date = String(body.date ?? "").trim();
 
   if (!personName) {

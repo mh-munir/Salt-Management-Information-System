@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { requireAuth, validateSameOrigin } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import { buildEditAuditFields } from "@/lib/edit-audit";
+import { parseLocalizedNumber } from "@/lib/number-input";
 import Supplier from "@/models/Supplier";
 import Transaction from "@/models/Transaction";
 
@@ -44,8 +45,8 @@ export async function PATCH(req: Request, context: RouteContext<"/api/suppliers/
   if (action === "edit-price") {
     const transactionId = String(body.transactionId ?? "").trim();
     const supplierName = String(body.supplierName ?? "").trim();
-    const saltAmount = Number(body.saltAmount);
-    const pricePerMaund = Number(body.pricePerMaund);
+    const saltAmount = parseLocalizedNumber(body.saltAmount);
+    const pricePerMaund = parseLocalizedNumber(body.pricePerMaund);
 
     if (!transactionId) {
       return new Response(JSON.stringify({ message: "Purchase record is required for editing price." }), {
@@ -155,7 +156,7 @@ export async function PATCH(req: Request, context: RouteContext<"/api/suppliers/
     );
   }
 
-  const paymentAmount = Number(body.paymentAmount);
+  const paymentAmount = parseLocalizedNumber(body.paymentAmount);
 
   if (Number.isNaN(paymentAmount) || paymentAmount <= 0) {
     return new Response(JSON.stringify({ message: "Payment amount must be a valid positive number." }), {

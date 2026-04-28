@@ -7,6 +7,7 @@ import FloatingInput from "@/components/FloatingInput";
 import LoadMoreTable from "@/components/LoadMoreTable";
 import { formatDisplayName, formatLocalizedDate, formatLocalizedNumber } from "@/lib/display-format";
 import { translate } from "@/lib/language";
+import { emitTransactionsUpdated } from "@/lib/live-updates";
 import { useLanguage } from "@/lib/useLanguage";
 
 type CostEntry = {
@@ -203,6 +204,7 @@ export default function CostPage() {
       setPurpose("");
       setDate(todayIso());
       setSuccessMessage(translate(language, "costSavedSuccessfully"));
+      emitTransactionsUpdated();
 
       localStorage.setItem("costUpdated", Date.now().toString());
 

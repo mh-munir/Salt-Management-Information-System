@@ -13,6 +13,8 @@ import FloatingSelect from "@/components/FloatingSelect";
 import { getBalanceSummary } from "@/lib/balance";
 import type { CustomerListItem } from "@/lib/customers-data";
 import { translate } from "@/lib/language";
+import { emitTransactionsUpdated } from "@/lib/live-updates";
+import { normalizeLocalizedDigits } from "@/lib/number-input";
 import { compareByLatestInput } from "@/lib/record-order";
 import { useLanguage } from "@/lib/useLanguage";
 import { formatDisplayName, formatLocalizedDate, formatLocalizedNumber } from "@/lib/display-format";
@@ -95,13 +97,6 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
-  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
-  const [duplicateWarningMessage, setDuplicateWarningMessage] = useState("");
-  const [pendingCustomerData, setPendingCustomerData] = useState<{
-    name: string;
-    phone: string;
-    address: string;
-  } | null>(null);
   const [saleCustomerName, setSaleCustomerName] = useState("");
   const [saleBagType, setSaleBagType] = useState<"" | "50" | "75">("");
   const [saleNumberOfBags, setSaleNumberOfBags] = useState("");
@@ -187,6 +182,7 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
 
     // Update local state
     refreshCustomers();
+    emitTransactionsUpdated();
 
     closePaymentPopup();
     toast.success("Payment Successful");
@@ -205,7 +201,7 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
   const totalAmount = deferredFilteredCustomers.reduce((sum, customer) => sum + (customer.totalSalesAmount ?? 0), 0);
   const firstCustomerId = customers[0]?._id;
 
-  const isValidPhone = (value: string) => /^\d{11}$/.test(value);
+  const isValidPhone = (value: string) => /^\d{11}$/.test(normalizeLocalizedDigits(value).trim());
 
   const parseJson = async (res: Response) => {
     if (!res.ok) return null;
@@ -321,7 +317,7 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
     setError("");
 
     const trimmedName = name.trim();
-    const trimmedPhone = phone.trim();
+    const trimmedPhone = normalizeLocalizedDigits(phone).trim();
     if (!trimmedName) {
       setError("Name is required.");
       setIsSubmitting(false);
@@ -341,38 +337,7 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
       return;
     }
 
-    // Check for duplicates first
     try {
-      const checkResponse = await fetch("/api/customers/check-duplicate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: trimmedName,
-          phone: trimmedPhone,
-        }),
-      });
-
-      if (checkResponse.status === 409) {
-        const checkData = await checkResponse.json();
-        setDuplicateWarningMessage(checkData.message);
-        setPendingCustomerData({
-          name: trimmedName,
-          phone: trimmedPhone,
-          address: trimmedAddress,
-        });
-        setShowDuplicateWarning(true);
-        setIsSubmitting(false);
-        return;
-      }
-
-      if (!checkResponse.ok) {
-        const checkData = await checkResponse.json().catch(() => null);
-        setError(checkData?.message || translate(language, "unableToAddCustomer"));
-        setIsSubmitting(false);
-        return;
-      }
-
-      // No duplicates, proceed with creation
       await createCustomer(trimmedName, trimmedPhone, trimmedAddress);
     } catch {
       setError(translate(language, "unableToAddCustomer"));
@@ -380,12 +345,7 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
     }
   };
 
-  const createCustomer = async (
-    customerName: string,
-    customerPhone: string,
-    customerAddress: string,
-    allowDuplicate = false
-  ) => {
+  const createCustomer = async (customerName: string, customerPhone: string, customerAddress: string) => {
     try {
       const response = await fetch("/api/customers", {
         method: "POST",
@@ -394,7 +354,6 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
           name: customerName,
           phone: customerPhone,
           address: customerAddress,
-          allowDuplicate,
         }),
       });
 
@@ -423,21 +382,6 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const confirmDuplicateCustomer = async () => {
-    if (pendingCustomerData) {
-      setShowDuplicateWarning(false);
-      setIsSubmitting(true);
-      await createCustomer(pendingCustomerData.name, pendingCustomerData.phone, pendingCustomerData.address, true);
-      setPendingCustomerData(null);
-    }
-  };
-
-  const cancelDuplicateCustomer = () => {
-    setShowDuplicateWarning(false);
-    setPendingCustomerData(null);
-    setIsSubmitting(false);
   };
 
   const openEditPopup = (customer: Customer) => {
@@ -513,6 +457,7 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
       }
 
       await refreshCustomers();
+      emitTransactionsUpdated();
       closeEditPopup();
     } catch {
       setEditError("Failed to update price.");
@@ -624,6 +569,7 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
     setSaleDue("");
 
     refreshCustomers();
+    emitTransactionsUpdated();
     toast.success("Sale Recorded Successfully");
   };
 
@@ -773,7 +719,7 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
                 ))}
               </datalist>
               <FloatingSelect
-                label="Bosta/Sack Type"
+                label={translate(language, "bostaSackType")}
                 name="saleBagType"
                 value={saleBagType}
                 onChange={event => {
@@ -785,15 +731,15 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
                 labelClassName="bg-slate-50 text-slate-500"
               >
                 <option value="" disabled></option>
-                <option value="50">50 kg per bag</option>
-                <option value="75">75 kg per bag</option>
+                <option value="50">{translate(language, "bagSize50")}</option>
+                <option value="75">{translate(language, "bagSize75")}</option>
               </FloatingSelect>
             <FloatingInput
               name="saleNumberOfBags"
               type="number"
               step="1"
               min="0"
-              label="Number of Bosta/Sack"
+              label={translate(language, "numberOfBostaSack")}
               value={saleNumberOfBags}
               onChange={(event) => {
                 const value = event.target.value;
@@ -1080,8 +1026,8 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
 
       {showEditPopup && editTarget ? (
         <ModalShell
-          title="Edit customer price"
-          description="Update the latest sale price for this customer."
+          title={translate(language, "editCustomerPriceTitle")}
+          description={translate(language, "editCustomerPriceDescription")}
           tone="sky"
           widthClassName="max-w-lg"
           onClose={closeEditPopup}
@@ -1098,7 +1044,7 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
               <FloatingInput
                 name="editCustomerName"
                 type="text"
-                label="Customer name"
+                label={translate(language, "customerNameLabel")}
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
                 required
@@ -1113,7 +1059,7 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
                 type="number"
                 step="0.01"
                 min="0"
-                label="Salt amount"
+                label={translate(language, "saltQuantityLabel")}
                 value={editSaltAmount}
                 onChange={(e) => setEditSaltAmount(e.target.value)}
                 required
@@ -1126,7 +1072,7 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
                 type="number"
                 step="1"
                 min="0"
-                label="New price per KG"
+                label={translate(language, "pricePerKg")}
                 value={editPrice}
                 onChange={(e) => setEditPrice(e.target.value)}
                 required
@@ -1155,47 +1101,12 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
                 disabled={isSavingEdit}
                 className="inline-flex items-center justify-center rounded-lg bg-[#348CD4] px-5 py-2.5 text-base font-semibold text-white transition hover:bg-[#2F7FC0] disabled:opacity-60"
               >
-                {isSavingEdit ? "Updating..." : "Update details"}
+                {isSavingEdit ? translate(language, "updating") : translate(language, "updateDetails")}
               </button>
             </div>
           </form>
         </ModalShell>
       ) : null}
-
-      {showDuplicateWarning && (
-        <ModalShell
-          title="Duplicate Entry Warning"
-          description="A customer or supplier with similar details already exists."
-          tone="amber"
-          widthClassName="max-w-md"
-          onClose={cancelDuplicateCustomer}
-        >
-          <div className="space-y-4">
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              <p className="font-medium">Warning: {duplicateWarningMessage}</p>
-              <p className="mt-2">Are you sure you want to add this customer anyway?</p>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
-              <button
-                type="button"
-                className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-5 py-2.5 text-base font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
-                onClick={cancelDuplicateCustomer}
-              >
-                {translate(language, "cancel")}
-              </button>
-              <button
-                type="button"
-                className="inline-flex items-center justify-center rounded-lg bg-amber-600 px-5 py-2.5 text-base font-semibold text-white transition hover:bg-amber-700"
-                onClick={confirmDuplicateCustomer}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? "Adding..." : "Add Anyway"}
-              </button>
-            </div>
-          </div>
-        </ModalShell>
-      )}
 
       <div className="print-list-shell overflow-x-auto rounded-lg bg-white p-4 shadow-sm">
         <div className="print-only border-b border-slate-200 px-4 py-4">

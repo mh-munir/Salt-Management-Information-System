@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { localizeDigitsForLanguage, normalizeNumberLikeString, parseLocalizedNumber } from "@/lib/number-input";
+import { useLanguage } from "@/lib/useLanguage";
 
 type Props = {
   customerId: string;
@@ -9,6 +11,7 @@ type Props = {
 
 const CustomerSaltActions = ({ customerId }: Props) => {
   const router = useRouter();
+  const { language } = useLanguage();
   const [mode, setMode] = useState<"sale" | "buy">("sale");
   const [saltAmount, setSaltAmount] = useState("");
   const [total, setTotal] = useState("");
@@ -18,8 +21,8 @@ const CustomerSaltActions = ({ customerId }: Props) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    const totalValue = Number(total) || 0;
-    const paidValue = Number(paid) || 0;
+    const totalValue = parseLocalizedNumber(total) || 0;
+    const paidValue = parseLocalizedNumber(paid) || 0;
     const dueValue = Math.max(0, totalValue - paidValue);
     setDue(dueValue.toFixed(2));
   }, [total, paid]);
@@ -28,10 +31,10 @@ const CustomerSaltActions = ({ customerId }: Props) => {
     event.preventDefault();
     setStatus(null);
 
-    const saltValue = Number(saltAmount);
-    const totalValue = Number(total);
-    const paidValue = Number(paid);
-    const dueValue = Number(due);
+    const saltValue = parseLocalizedNumber(saltAmount);
+    const totalValue = parseLocalizedNumber(total);
+    const paidValue = parseLocalizedNumber(paid);
+    const dueValue = parseLocalizedNumber(due);
 
     if (saltAmount.trim() === "" || Number.isNaN(saltValue) || saltValue < 0) {
       setStatus({ type: "error", message: "Salt amount must be a valid non-negative number." });
@@ -122,9 +125,10 @@ const CustomerSaltActions = ({ customerId }: Props) => {
             <span className="text-lg font-medium text-slate-700">Salt quantity (kg)</span>
             <input
               name="saltAmount"
-              value={saltAmount}
-              onChange={(event) => setSaltAmount(event.target.value)}
-              type="number"
+              value={localizeDigitsForLanguage(saltAmount, language)}
+              onChange={(event) => setSaltAmount(normalizeNumberLikeString(event.target.value))}
+              type="text"
+              inputMode="decimal"
               step="0.01"
               min="0"
               placeholder="0"
@@ -136,9 +140,10 @@ const CustomerSaltActions = ({ customerId }: Props) => {
             <span className="text-lg font-medium text-slate-700">Total amount (Tk)</span>
             <input
               name="totalAmount"
-              value={total}
-              onChange={(event) => setTotal(event.target.value)}
-              type="number"
+              value={localizeDigitsForLanguage(total, language)}
+              onChange={(event) => setTotal(normalizeNumberLikeString(event.target.value))}
+              type="text"
+              inputMode="decimal"
               step="0.01"
               min="0"
               placeholder="0"
@@ -152,9 +157,10 @@ const CustomerSaltActions = ({ customerId }: Props) => {
             <span className="text-lg font-medium text-slate-700">Paid amount (Tk)</span>
             <input
               name="paidAmount"
-              value={paid}
-              onChange={(event) => setPaid(event.target.value)}
-              type="number"
+              value={localizeDigitsForLanguage(paid, language)}
+              onChange={(event) => setPaid(normalizeNumberLikeString(event.target.value))}
+              type="text"
+              inputMode="decimal"
               step="0.01"
               min="0"
               placeholder="0"
@@ -166,8 +172,9 @@ const CustomerSaltActions = ({ customerId }: Props) => {
             <span className="text-lg font-medium text-slate-700">Due amount (Tk)</span>
             <input
               name="dueAmount"
-              value={due}
-              type="number"
+              value={localizeDigitsForLanguage(due, language)}
+              type="text"
+              inputMode="decimal"
               step="0.01"
               min="0"
               placeholder="0"

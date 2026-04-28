@@ -1,5 +1,6 @@
 import { connectDB } from "@/lib/db";
 import { requireAuth, validateSameOrigin } from "@/lib/auth";
+import { parseLocalizedNumber } from "@/lib/number-input";
 import Supplier from "@/models/Supplier";
 import Transaction from "@/models/Transaction";
 
@@ -19,9 +20,9 @@ export async function POST(req: Request) {
 
   const supplierId = (data.supplierId || "").toString().trim();
   const supplierName = (data.supplierName || "").toString().trim();
-  const saltAmount = Number(data.saltAmount);
-  const totalPrice = Number(data.totalPrice);
-  const paid = Number(data.paid);
+  const saltAmount = parseLocalizedNumber(data.saltAmount);
+  const totalPrice = parseLocalizedNumber(data.totalPrice);
+  const paid = parseLocalizedNumber(data.paid);
 
   if (!supplierId && !supplierName) {
     return new Response(JSON.stringify({ message: "Supplier name is required." }), {

@@ -513,7 +513,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
             title={translate(language, "totalPurchase")}
             value={`Tk ${formatFullCurrency(totalBuy)}`}
             trendPercent={`Tk ${formatWeight(averagePurchasePricePerMaund)}`}
-            trendDetail={`Average / ${translate(language, "maundUnit")}`}
+            trendDetail={translate(language, "averagePerMaund")}
             trendDirection="neutral"
             visual="ring"
             ringPercent={totalPurchaseRingPercent}
@@ -545,6 +545,8 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                 ? language === "bn"
                   ? `সরবরাহকারীদের কাছে অগ্রিম Tk ${formatFullCurrency(supplierBalance.absoluteAmount)}`
                   : `Advance already paid to suppliers Tk ${formatFullCurrency(supplierBalance.absoluteAmount)}`
+                : language === "bn"
+                ? `${translate(language, "supplierDueApproxDetail")}: ${formatWeight(supplierDueEquivalentMaund)} ${translate(language, "maundUnit")}`
                 : `Approx. ${formatWeight(supplierDueEquivalentMaund)} ${translate(language, "maundUnit")} due`
             }
             trendDirection="neutral"

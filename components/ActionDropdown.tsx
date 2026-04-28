@@ -2,36 +2,18 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { translate, type Language } from "@/lib/language";
 
 interface ActionDropdownProps {
   viewHref: string;
   onEdit?: () => void;
   onPrint: () => void;
   canEdit?: boolean;
-  language: string;
+  language: Language;
 }
 
 export default function ActionDropdown({ viewHref, onEdit, onPrint, canEdit = true, language }: ActionDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
-
-  const translate = (lang: string, key: string) => {
-    // Simple translation function - you might want to use your existing translation system
-    const translations: Record<string, Record<string, string>> = {
-      en: {
-        view: "View",
-        edit: "Edit",
-        print: "Print Invoice",
-        actions: "Actions"
-      },
-      bn: {
-        view: "দেখুন",
-        edit: "সম্পাদনা",
-        print: "ইনভয়েস প্রিন্ট",
-        actions: "ক্রিয়া"
-      }
-    };
-    return translations[lang]?.[key] || key;
-  };
 
   return (
     <div className="relative">
@@ -42,7 +24,7 @@ export default function ActionDropdown({ viewHref, onEdit, onPrint, canEdit = tr
       >
         {translate(language, "action")}
         <svg
-          className={`-mr-1 ml-2 h-5 w-5 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          className={`-mr-1 ml-2 h-5 w-5 transition-transform ${isOpen ? "rotate-180" : ""}`}
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 20 20"
           fill="currentColor"
@@ -57,17 +39,12 @@ export default function ActionDropdown({ viewHref, onEdit, onPrint, canEdit = tr
 
       {isOpen && (
         <>
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 z-10"
-            onClick={() => setIsOpen(false)}
-          />
+          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
 
-          {/* Dropdown menu */}
-          <div className="absolute left-0 right-0 z-20 top-100% text-center w-28 rounded-lg bg-white shadow-lg focus:outline-none overflow-hidden">
+          <div className="absolute left-0 right-0 z-20 top-100% w-28 overflow-hidden rounded-lg bg-white text-center shadow-lg focus:outline-none">
             <Link
               href={viewHref}
-              className="block px-4 py-2 border-b border-[#2F7FC0] text-sm bg-[#348CD4] text-white hover:bg-[#2F7FC0]"
+              className="block border-b border-[#2F7FC0] bg-[#348CD4] px-4 py-2 text-sm text-white hover:bg-[#2F7FC0]"
               onClick={() => setIsOpen(false)}
             >
               {translate(language, "view")}
@@ -80,7 +57,7 @@ export default function ActionDropdown({ viewHref, onEdit, onPrint, canEdit = tr
                   onEdit();
                   setIsOpen(false);
                 }}
-                className="block w-full border-b border-[#2F7FC0] px-4 py-2 text-sm bg-[#348CD4] text-white hover:bg-[#2F7FC0]"
+                className="block w-full border-b border-[#2F7FC0] bg-[#348CD4] px-4 py-2 text-sm text-white hover:bg-[#2F7FC0]"
               >
                 {translate(language, "edit")}
               </button>
@@ -92,7 +69,7 @@ export default function ActionDropdown({ viewHref, onEdit, onPrint, canEdit = tr
                 onPrint();
                 setIsOpen(false);
               }}
-              className="block px-4 py-2 w-full border-b border-[#2F7FC0] text-sm bg-[#348CD4] text-white hover:bg-[#2F7FC0]"
+              className="block w-full border-b border-[#2F7FC0] bg-[#348CD4] px-4 py-2 text-sm text-white hover:bg-[#2F7FC0]"
             >
               {translate(language, "print")}
             </button>

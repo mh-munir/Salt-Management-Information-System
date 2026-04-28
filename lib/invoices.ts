@@ -1,12 +1,14 @@
 import { cookies } from "next/headers";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/db";
+import { formatLocalizedNumber } from "@/lib/display-format";
 import { AUTH_COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
 import Customer from "@/models/Customer";
 import Sale from "@/models/Sale";
 import Supplier from "@/models/Supplier";
 import Transaction from "@/models/Transaction";
 import { summarizeCustomerLedger, summarizeSupplierLedger, sumSaleQuantity, toNumber } from "@/lib/live-ledgers";
+import { translate, type Language } from "@/lib/language";
 import { compareByLatestInput } from "@/lib/record-order";
 import { getSharedSidebarBrandingSnapshot } from "@/lib/sidebar-branding.server";
 
@@ -117,7 +119,7 @@ export async function getInvoiceBranding(): Promise<InvoiceBranding> {
   };
 }
 
-export async function getCustomerInvoiceData(id: string): Promise<CustomerInvoiceData | null> {
+export async function getCustomerInvoiceData(id: string, language: Language = "en"): Promise<CustomerInvoiceData | null> {
   if (!mongoose.isValidObjectId(id)) return null;
 
   await connectDB();
@@ -139,13 +141,19 @@ export async function getCustomerInvoiceData(id: string): Promise<CustomerInvoic
       id: String(sale._id ?? `sale-${index}`),
       date: toDate(sale.createdAt),
       type: "sale",
-      label: "Sale entry",
+      label: translate(language, "saleEntryLabel"),
       quantityKg,
       pricePerKg,
       totalAmount,
       paidAmount,
       dueAmount,
-      note: quantityKg > 0 ? `${quantityKg.toFixed(2)} kg delivered` : "Sale amount recorded",
+      note:
+        quantityKg > 0
+          ? `${formatLocalizedNumber(quantityKg, language, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })} ${translate(language, "kgDeliveredNote")}`
+          : translate(language, "saleAmountRecorded"),
     };
   });
 
@@ -153,13 +161,16 @@ export async function getCustomerInvoiceData(id: string): Promise<CustomerInvoic
     id: String(payment._id ?? `payment-${index}`),
     date: toDate(payment.date),
     type: "payment",
-    label: payment.type === "payment" ? "Payment received" : "Transaction",
+    label: payment.type === "payment" ? translate(language, "paymentReceived") : translate(language, "transactionLabel"),
     quantityKg: 0,
     pricePerKg: 0,
     totalAmount: 0,
     paidAmount: toNumber(payment.amount),
     dueAmount: 0,
-    note: payment.type === "payment" ? "Customer payment" : "Customer transaction",
+    note:
+      payment.type === "payment"
+        ? translate(language, "customerPaymentNote")
+        : translate(language, "customerTransactionNote"),
   }));
 
   const records = sortInvoiceRecordsByLatestInput([...saleRecords, ...paymentRecords]);
@@ -172,7 +183,7 @@ export async function getCustomerInvoiceData(id: string): Promise<CustomerInvoic
 
   return {
     id: String(customer._id),
-    name: customer.name?.toString() ?? "Customer",
+    name: customer.name?.toString() ?? translate(language, "customerInvoiceFallback"),
     phone: customer.phone?.toString() ?? "-",
     address: customer.address?.toString() ?? "-",
     invoiceNumber: `CUS-${String(customer._id).slice(-6).toUpperCase()}`,
@@ -187,7 +198,7 @@ export async function getCustomerInvoiceData(id: string): Promise<CustomerInvoic
   };
 }
 
-export async function getSupplierInvoiceData(id: string): Promise<SupplierInvoiceData | null> {
+export async function getSupplierInvoiceData(id: string, language: Language = "en"): Promise<SupplierInvoiceData | null> {
   if (!mongoose.isValidObjectId(id)) return null;
 
   await connectDB();
@@ -208,7 +219,10 @@ export async function getSupplierInvoiceData(id: string): Promise<SupplierInvoic
         id: String(transaction._id ?? `supplier-record-${index}`),
         date: toDate(transaction.date),
         type: transaction.type === "buy" || transaction.type === "supplier-buy" ? "purchase" : "payment",
-        label: transaction.type === "buy" || transaction.type === "supplier-buy" ? "Salt purchase" : "Supplier payment",
+        label:
+          transaction.type === "buy" || transaction.type === "supplier-buy"
+            ? translate(language, "saltPurchaseLabel")
+            : translate(language, "supplierPaymentLabel"),
         quantityMaund,
         pricePerMaund,
         totalAmount,
@@ -217,9 +231,9 @@ export async function getSupplierInvoiceData(id: string): Promise<SupplierInvoic
         note:
           transaction.type === "buy" || transaction.type === "supplier-buy"
             ? totalAmount > 0
-              ? "Purchase entry"
-              : "Legacy purchase entry"
-            : "Payment adjustment",
+              ? translate(language, "purchaseEntryNote")
+              : translate(language, "legacyPurchaseEntryNote")
+            : translate(language, "paymentAdjustmentNote"),
       };
     })
   );
@@ -232,7 +246,7 @@ export async function getSupplierInvoiceData(id: string): Promise<SupplierInvoic
 
   return {
     id: String(supplier._id),
-    name: supplier.name?.toString() ?? "Supplier",
+    name: supplier.name?.toString() ?? translate(language, "supplierInvoiceFallback"),
     phone: supplier.phone?.toString() ?? "-",
     address: supplier.address?.toString() ?? "-",
     invoiceNumber: `SUP-${String(supplier._id).slice(-6).toUpperCase()}`,

@@ -49,6 +49,8 @@ export default function StockClient({ initialData }: StockClientProps) {
   const { language } = useLanguage();
   const formatNumber = (value: number, options?: Intl.NumberFormatOptions) =>
     formatLocalizedNumber(value, language, options);
+  const kgUnitLabel = language === "bn" ? "কেজি" : "kg";
+  const maundUnitLabel = language === "bn" ? "মণ" : "maund";
   const [stock, setStock] = useState<StockData | null>({
     stockKg: initialData.stockKg,
     stockMounds: initialData.stockMounds,
@@ -177,7 +179,7 @@ export default function StockClient({ initialData }: StockClientProps) {
             disabled={refreshing}
             className="rounded-lg bg-[#348CD4] px-4 py-2 text-sm font-medium text-white hover:bg-[#2F7FC0] disabled:opacity-50"
           >
-            {refreshing ? "Refreshing..." : "Refresh Data"}
+            {refreshing ? translate(language, "refreshing") : translate(language, "refreshData")}
           </button>
         </div>
         <p className="mt-2 text-sm text-slate-500">
@@ -188,7 +190,7 @@ export default function StockClient({ initialData }: StockClientProps) {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card
           title={translate(language, "currentStock")}
-          value={`${formatNumber(availableStockMounds)} maund`}
+          value={`${formatNumber(availableStockMounds)} ${maundUnitLabel}`}
           trendPercent={`${analytics.netChangePercent.toFixed(2)}%`}
           trendDirection={analytics.netDelta >= 0 ? "up" : "down"}
           visual="sparkline"
@@ -198,7 +200,7 @@ export default function StockClient({ initialData }: StockClientProps) {
         />
         <Card
           title={translate(language, "purchaseStock")}
-          value={`${formatNumber(totalPurchaseStock)} maund`}
+          value={`${formatNumber(totalPurchaseStock)} ${maundUnitLabel}`}
           trendPercent={`${analytics.purchaseChangePercent.toFixed(2)}%`}
           trendDirection={analytics.purchaseDelta >= 0 ? "up" : "down"}
           visual="sparkline"
@@ -208,7 +210,7 @@ export default function StockClient({ initialData }: StockClientProps) {
         />
         <Card
           title={translate(language, "saleStock")}
-          value={`${formatNumber(totalSaleStockKg)} kg`}
+          value={`${formatNumber(totalSaleStockKg)} ${kgUnitLabel}`}
           trendPercent={`${analytics.saleChangePercent.toFixed(2)}%`}
           trendDirection={analytics.saleDelta >= 0 ? "up" : "down"}
           visual="sparkline"
@@ -220,7 +222,7 @@ export default function StockClient({ initialData }: StockClientProps) {
           title={translate(language, "stockCoverage")}
           value={`${stockCoverage.toFixed(1)}%`}
           trendPercent={`${stockCoverage.toFixed(1)}%`}
-          trendDetail={`${formatNumber(availableStockMounds)} / ${formatNumber(totalPurchaseStock)} maund`}
+          trendDetail={`${formatNumber(availableStockMounds)} / ${formatNumber(totalPurchaseStock)} ${maundUnitLabel}`}
           trendDirection={stockCoverage >= 50 ? "up" : "down"}
           visual="ring"
           ringPercent={clampPercent(stockCoverage)}
@@ -230,20 +232,24 @@ export default function StockClient({ initialData }: StockClientProps) {
       </div>
 
       <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">Stock Summary</h2>
+        <h2 className="text-lg font-semibold text-slate-900">{translate(language, "stockSummary")}</h2>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           <p className="rounded-lg bg-slate-50 px-4 py-3 text-lg text-slate-700">
-            Current stock: <span className="font-semibold">{formatNumber(availableStockMounds)} maund</span> (
-            {formatNumber(availableStockKg)} kg)
+            {translate(language, "currentStockSummary")}:{" "}
+            <span className="font-semibold">{formatNumber(availableStockMounds)} {maundUnitLabel}</span> (
+            {formatNumber(availableStockKg)} {kgUnitLabel})
           </p>
           <p className="rounded-lg bg-slate-50 px-4 py-3 text-lg text-slate-700">
-            Purchased from suppliers: <span className="font-semibold">{formatNumber(totalPurchaseStock)} maund</span>
+            {translate(language, "purchasedFromSuppliers")}:{" "}
+            <span className="font-semibold">{formatNumber(totalPurchaseStock)} {maundUnitLabel}</span>
           </p>
           <p className="rounded-lg bg-slate-50 px-4 py-3 text-lg text-slate-700">
-            Sold to customers: <span className="font-semibold">{formatNumber(totalSaleStockKg)} kg</span>
+            {translate(language, "soldToCustomers")}:{" "}
+            <span className="font-semibold">{formatNumber(totalSaleStockKg)} {kgUnitLabel}</span>
           </p>
           <p className="rounded-lg bg-slate-50 px-4 py-3 text-lg text-slate-700">
-            Conversion: <span className="font-semibold">1 maund = {formatNumber(conversionKgPerMound)} kg</span>
+            {translate(language, "conversionLabel")}:{" "}
+            <span className="font-semibold">1 {maundUnitLabel} = {formatNumber(conversionKgPerMound)} {kgUnitLabel}</span>
           </p>
         </div>
       </section>

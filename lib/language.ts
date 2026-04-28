@@ -201,6 +201,7 @@ export type TranslationKey =
   | "changeAdminPassword"
   | "saltQuantityLabel"
   | "saveSaleEntry"
+  | "savePurchaseEntry"
   | "paymentDateLabel"
   | "paidAmountLabel"
   | "somethingNeedsAttention"
@@ -257,7 +258,87 @@ export type TranslationKey =
   | "amount"
   | "saltPricePerKg"
   | "bagType"
-  | "trackCost";
+  | "trackCost"
+  | "edit"
+  | "stockSummary"
+  | "refreshData"
+  | "refreshing"
+  | "currentStockSummary"
+  | "purchasedFromSuppliers"
+  | "soldToCustomers"
+  | "conversionLabel"
+  | "averagePerMaund"
+  | "supplierDueApproxDetail"
+  | "invoiceTitle"
+  | "invoiceWorkspace"
+  | "invoiceWorkspaceDescription"
+  | "backToProfile"
+  | "invoiceTo"
+  | "invoiceNumberLabel"
+  | "invoiceDateLabel"
+  | "periodLabel"
+  | "noDatedRecords"
+  | "sku"
+  | "itemDescription"
+  | "unitPrice"
+  | "quantityLabel"
+  | "totalLabel"
+  | "saleInformation"
+  | "purchaseInformation"
+  | "recordCount"
+  | "totalKgLabel"
+  | "totalQuantityLabel"
+  | "salesCollection"
+  | "laterPayment"
+  | "purchaseValue"
+  | "subTotalLabel"
+  | "receivedLabel"
+  | "taxRate"
+  | "dueAmountBadge"
+  | "advanceAmountBadge"
+  | "settled"
+  | "thankYouBusiness"
+  | "customerSignature"
+  | "supplierSignature"
+  | "authorizedSignature"
+  | "customerInvoiceFallback"
+  | "supplierInvoiceFallback"
+  | "saleEntryLabel"
+  | "saleAmountRecorded"
+  | "kgDeliveredNote"
+  | "paymentReceived"
+  | "transactionLabel"
+  | "customerPaymentNote"
+  | "customerTransactionNote"
+  | "saltPurchaseLabel"
+  | "supplierPaymentLabel"
+  | "purchaseEntryNote"
+  | "legacyPurchaseEntryNote"
+  | "paymentAdjustmentNote"
+  | "printDateLabel"
+  | "saltKgShort"
+  | "saltMaundShort"
+  | "paidAmountShort"
+  | "noteLabel"
+  | "purchaseLabel"
+  | "perMaundPriceLabel"
+  | "saltSaleEntryNote"
+  | "customerPaymentEntryNote"
+  | "supplierPaymentEntryNote"
+  | "saltPurchaseEntryNote"
+  | "noCustomerRecordsFound"
+  | "noSupplierRecordsFound"
+  | "bostaSackType"
+  | "bagSize50"
+  | "bagSize75"
+  | "numberOfBostaSack"
+  | "editCustomerPriceTitle"
+  | "editCustomerPriceDescription"
+  | "editSupplierPriceTitle"
+  | "editSupplierPriceDescription"
+  | "updateDetails"
+  | "updating"
+  | "showMore";
 
 export const LANGUAGE_STORAGE_KEY = "salt-mill-language";
 
@@ -425,6 +506,7 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     saleRecordedSuccessfully: "Sale entry recorded successfully.",
     noCustomersFound: "No customers found.",
     view: "View",
+    edit: "Edit",
     print: "Print",
     printSupplierList: "Print Supplier List",
     printCustomerList: "Print Customer List",
@@ -455,6 +537,7 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     changeAdminPassword: "Change admin password",
     saltQuantityLabel: "Salt quantity (kg)",
     saveSaleEntry: "Save sale entry",
+    savePurchaseEntry: "Save purchase entry",
     paymentDateLabel: "Payment date",
     paidAmountLabel: "Paid amount (Tk)",
     somethingNeedsAttention: "Something needs your attention before this entry can be saved.",
@@ -511,6 +594,85 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     saltPricePerKg: "Salt Price/kg",
     bagType: "Bag Type",
     trackCost: "Track Cost",
+    stockSummary: "Stock Summary",
+    refreshData: "Refresh Data",
+    refreshing: "Refreshing...",
+    currentStockSummary: "Current stock",
+    purchasedFromSuppliers: "Purchased from suppliers",
+    soldToCustomers: "Sold to customers",
+    conversionLabel: "Conversion",
+    averagePerMaund: "Average / Maund",
+    supplierDueApproxDetail: "Approx. due",
+    invoiceTitle: "Invoice",
+    invoiceWorkspace: "Invoice Workspace",
+    invoiceWorkspaceDescription: "Review the statement layout, then print a clean copy for records.",
+    backToProfile: "Back to profile",
+    invoiceTo: "Invoice To",
+    invoiceNumberLabel: "Invoice Number",
+    invoiceDateLabel: "Invoice Date",
+    periodLabel: "Period",
+    noDatedRecords: "No dated records",
+    sku: "SKU",
+    itemDescription: "Item Description",
+    unitPrice: "Unit Price",
+    quantityLabel: "Quantity",
+    totalLabel: "Total",
+    saleInformation: "Sale Information",
+    purchaseInformation: "Purchase Information",
+    recordCount: "Record Count",
+    totalKgLabel: "Total Kg",
+    totalQuantityLabel: "Total Quantity",
+    salesCollection: "Sales Collection",
+    laterPayment: "Later Payment",
+    purchaseValue: "Purchase Value",
+    subTotalLabel: "Sub Total",
+    receivedLabel: "Received",
+    taxRate: "Tax Rate",
+    dueAmountBadge: "Due Amount",
+    advanceAmountBadge: "Advance Amount",
+    settled: "Settled",
+    thankYouBusiness: "Thank you for business!",
+    customerSignature: "Customer Signature",
+    supplierSignature: "Supplier Signature",
+    authorizedSignature: "Authorized Signature",
+    customerInvoiceFallback: "Customer",
+    supplierInvoiceFallback: "Supplier",
+    saleEntryLabel: "Sale entry",
+    saleAmountRecorded: "Sale amount recorded",
+    kgDeliveredNote: "kg delivered",
+    paymentReceived: "Payment received",
+    transactionLabel: "Transaction",
+    customerPaymentNote: "Customer payment",
+    customerTransactionNote: "Customer transaction",
+    saltPurchaseLabel: "Salt purchase",
+    supplierPaymentLabel: "Supplier payment",
+    purchaseEntryNote: "Purchase entry",
+    legacyPurchaseEntryNote: "Legacy purchase entry",
+    paymentAdjustmentNote: "Payment adjustment",
+    printDateLabel: "Print Date",
+    saltKgShort: "Salt (KG)",
+    saltMaundShort: "Salt (MAUND)",
+    paidAmountShort: "Paid amount",
+    noteLabel: "Note",
+    purchaseLabel: "Purchase",
+    perMaundPriceLabel: "Per maund Tk",
+    saltSaleEntryNote: "Salt sale entry",
+    customerPaymentEntryNote: "Customer payment entry",
+    supplierPaymentEntryNote: "Supplier payment entry",
+    saltPurchaseEntryNote: "Salt purchase entry",
+    noCustomerRecordsFound: "No records found for this customer.",
+    noSupplierRecordsFound: "No records found for this supplier.",
+    bostaSackType: "Bosta/Sack Type",
+    bagSize50: "50 kg per bag",
+    bagSize75: "75 kg per bag",
+    numberOfBostaSack: "Number of Bosta/Sack",
+    editCustomerPriceTitle: "Edit customer price",
+    editCustomerPriceDescription: "Update the latest sale price for this customer.",
+    editSupplierPriceTitle: "Edit supplier price",
+    editSupplierPriceDescription: "Update the latest purchase price for this supplier.",
+    updateDetails: "Update details",
+    updating: "Updating...",
+    showMore: "Show more",
   },
   bn: {
     dashboard: "ড্যাশবোর্ড",
@@ -579,7 +741,7 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     viewLatestCustomer: "সর্বশেষ গ্রাহক",
     action: "কর্ম",
     editedBy: "সম্পাদনা করেছেন",
-    notEditedYet: "এখনও সম্পাদনা করা হয়নি",
+    notEditedYet: "সম্পাদনা হয়নি",
     superAdminLabel: "সুপার অ্যাডমিন",
     totals: "মোট",
     noSuppliersFound: "কোনো সরবরাহকারী পাওয়া যায়নি।",
@@ -623,6 +785,7 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     unableToAddSupplier: "সরবরাহকারী যোগ করতে অসমর্থ।",
     noCustomersFound: "কোনো গ্রাহক পাওয়া যায়নি।",
     view: "দেখুন",
+    edit: "সম্পাদনা",
     print: "প্রিন্ট",
     printSupplierList: "প্রিন্ট সরবরাহকারী লিস্ট",
     printCustomerList: "প্রিন্ট গ্রাহক লিস্ট",
@@ -653,6 +816,7 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     changeAdminPassword: "অ্যাডমিন পাসওয়ার্ড পরিবর্তন করুন",
     saltQuantityLabel: "লবণের পরিমাণ (কেজি)",
     saveSaleEntry: "বিক্রয় এন্ট্রি সংরক্ষণ করুন",
+    savePurchaseEntry: "ক্রয় এন্ট্রি সংরক্ষণ করুন",
     paymentDateLabel: "পেমেন্ট তারিখ",
     paidAmountLabel: "পরিশোধিত পরিমাণ (টাকা)",
     somethingNeedsAttention: "এই এন্ট্রি সংরক্ষণ করার আগে আপনার মনোযোগের প্রয়োজন।",
@@ -761,6 +925,85 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     saltPricePerKg: "লবণ মূল্য/কেজি",
     bagType: "বস্তার ধরন",
     trackCost: "ট্র্যাক খরচ",
+    stockSummary: "স্টক সারসংক্ষেপ",
+    refreshData: "তথ্য রিফ্রেশ করুন",
+    refreshing: "রিফ্রেশ হচ্ছে...",
+    currentStockSummary: "বর্তমান স্টক",
+    purchasedFromSuppliers: "সরবরাহকারীদের থেকে ক্রয়",
+    soldToCustomers: "গ্রাহকদের কাছে বিক্রয়",
+    conversionLabel: "রূপান্তর",
+    averagePerMaund: "গড় / মণ",
+    supplierDueApproxDetail: "আনুমানিক বাকি",
+    invoiceTitle: "ইনভয়েস",
+    invoiceWorkspace: "ইনভয়েস ওয়ার্কস্পেস",
+    invoiceWorkspaceDescription: "স্টেটমেন্ট দেখে নিন, তারপর রেকর্ডের জন্য পরিষ্কার কপি প্রিন্ট করুন।",
+    backToProfile: "প্রোফাইলে ফিরুন",
+    invoiceTo: "ইনভয়েস গ্রহণকারী",
+    invoiceNumberLabel: "ইনভয়েস নম্বর",
+    invoiceDateLabel: "ইনভয়েস তারিখ",
+    periodLabel: "সময়সীমা",
+    noDatedRecords: "তারিখযুক্ত কোনো রেকর্ড নেই",
+    sku: "ক্রমিক",
+    itemDescription: "বিবরণ",
+    unitPrice: "একক মূল্য",
+    quantityLabel: "পরিমাণ",
+    totalLabel: "মোট",
+    saleInformation: "বিক্রয়ের তথ্য",
+    purchaseInformation: "ক্রয়ের তথ্য",
+    recordCount: "রেকর্ড সংখ্যা",
+    totalKgLabel: "মোট কেজি",
+    totalQuantityLabel: "মোট পরিমাণ",
+    salesCollection: "বিক্রয় আদায়",
+    laterPayment: "পরবর্তী পরিশোধ",
+    purchaseValue: "ক্রয় মূল্য",
+    subTotalLabel: "সাব টোটাল",
+    receivedLabel: "গৃহীত",
+    taxRate: "কর হার",
+    dueAmountBadge: "বাকি পরিমাণ",
+    advanceAmountBadge: "অগ্রিম পরিমাণ",
+    settled: "সমন্বয় সম্পন্ন",
+    thankYouBusiness: "আপনার ব্যবসার জন্য ধন্যবাদ!",
+    customerSignature: "গ্রাহকের স্বাক্ষর",
+    supplierSignature: "সরবরাহকারীর স্বাক্ষর",
+    authorizedSignature: "অনুমোদিত স্বাক্ষর",
+    customerInvoiceFallback: "গ্রাহক",
+    supplierInvoiceFallback: "সরবরাহকারী",
+    saleEntryLabel: "বিক্রয় এন্ট্রি",
+    saleAmountRecorded: "বিক্রয়ের পরিমাণ রেকর্ড করা হয়েছে",
+    kgDeliveredNote: "কেজি সরবরাহ",
+    paymentReceived: "পরিশোধ গ্রহণ",
+    transactionLabel: "লেনদেন",
+    customerPaymentNote: "গ্রাহকের পরিশোধ",
+    customerTransactionNote: "গ্রাহক লেনদেন",
+    saltPurchaseLabel: "লবণ ক্রয়",
+    supplierPaymentLabel: "সরবরাহকারী পরিশোধ",
+    purchaseEntryNote: "ক্রয় এন্ট্রি",
+    legacyPurchaseEntryNote: "পুরোনো ক্রয় এন্ট্রি",
+    paymentAdjustmentNote: "পরিশোধ সমন্বয়",
+    printDateLabel: "প্রিন্ট তারিখ",
+    saltKgShort: "লবণ (কেজি)",
+    saltMaundShort: "লবণ (মণ)",
+    paidAmountShort: "পরিশোধিত পরিমাণ",
+    noteLabel: "নোট",
+    purchaseLabel: "ক্রয়",
+    perMaundPriceLabel: "প্রতি মণ Tk",
+    saltSaleEntryNote: "লবণ বিক্রয় এন্ট্রি",
+    customerPaymentEntryNote: "গ্রাহক পরিশোধ এন্ট্রি",
+    supplierPaymentEntryNote: "সরবরাহকারী পরিশোধ এন্ট্রি",
+    saltPurchaseEntryNote: "লবণ ক্রয় এন্ট্রি",
+    noCustomerRecordsFound: "এই গ্রাহকের জন্য কোনো রেকর্ড পাওয়া যায়নি।",
+    noSupplierRecordsFound: "এই সরবরাহকারীর জন্য কোনো রেকর্ড পাওয়া যায়নি।",
+    bostaSackType: "বস্তা/স্যাকের ধরন",
+    bagSize50: "প্রতি বস্তা ৫০ কেজি",
+    bagSize75: "প্রতি বস্তা ৭৫ কেজি",
+    numberOfBostaSack: "বস্তা/স্যাকের সংখ্যা",
+    editCustomerPriceTitle: "গ্রাহকের মূল্য সম্পাদনা করুন",
+    editCustomerPriceDescription: "এই গ্রাহকের সর্বশেষ বিক্রয়মূল্য আপডেট করুন।",
+    editSupplierPriceTitle: "সরবরাহকারীর মূল্য সম্পাদনা করুন",
+    editSupplierPriceDescription: "এই সরবরাহকারীর সর্বশেষ ক্রয়মূল্য আপডেট করুন।",
+    updateDetails: "তথ্য আপডেট করুন",
+    updating: "আপডেট হচ্ছে...",
+    showMore: "আরও দেখুন",
   },
 };
 

@@ -140,10 +140,12 @@ export default async function CustomerTimelinePrintPage({
 
       <section className="mb-6 flex items-start justify-between gap-6 border-b border-slate-200 pb-5">
         <div className="space-y-2 text-sm text-slate-700">
-          <p className="text-2xl font-bold text-slate-900">{String(customer.name ?? "Customer")}</p>
+          <p className="text-2xl font-bold text-slate-900">
+            {String(customer.name ?? translate(language, "customerInvoiceFallback"))}
+          </p>
           <p>{String(customer.phone ?? "-")}</p>
           <p>
-            Print Date: {formatDate(new Date())}
+            {translate(language, "printDateLabel")}: {formatDate(new Date())}
           </p>
         </div>
 
@@ -165,7 +167,7 @@ export default async function CustomerTimelinePrintPage({
           <tr>
             <th className="border border-slate-200 px-4 py-3 text-sm font-medium">{translate(language, "dateLabel")}</th>
             <th className="border border-slate-200 px-4 py-3 text-sm font-medium">{translate(language, "typeLabel")}</th>
-            <th className="border border-slate-200 px-4 py-3 text-sm font-medium">Salt (KG)</th>
+            <th className="border border-slate-200 px-4 py-3 text-sm font-medium">{translate(language, "saltKgShort")}</th>
             <th className="border border-slate-200 px-4 py-3 text-sm font-medium">{translate(language, "hockExtendedSack")}</th>
             <th className="border border-slate-200 px-4 py-3 text-sm font-medium">{translate(language, "trackExpenses")}</th>
             <th className="border border-slate-200 px-4 py-3 text-sm font-medium">{translate(language, "paidAmount")}</th>
@@ -195,7 +197,9 @@ export default async function CustomerTimelinePrintPage({
                       : `Tk ${formatAmount(recordBalanceSummary.absoluteAmount)}`}
                   </td>
                   <td className="border border-slate-200 px-4 py-3">
-                    {record.type === "sale" ? "Salt sale entry" : "Customer payment entry"}
+                    {record.type === "sale"
+                      ? translate(language, "saltSaleEntryNote")
+                      : translate(language, "customerPaymentEntryNote")}
                   </td>
                 </tr>
               );
@@ -203,12 +207,12 @@ export default async function CustomerTimelinePrintPage({
           ) : (
             <tr>
               <td colSpan={8} className="border border-slate-200 px-4 py-8 text-center text-slate-500">
-                No records found for this customer.
+                {translate(language, "noCustomerRecordsFound")}
               </td>
             </tr>
           )}
           <tr className="bg-slate-100 font-semibold">
-            <td className="border border-slate-200 px-4 py-3">Totals</td>
+            <td className="border border-slate-200 px-4 py-3">{translate(language, "totals")}</td>
             <td className="border border-slate-200 px-4 py-3">-</td>
             <td className="border border-slate-200 px-4 py-3">{formatAmount(filteredSaltDelivered)}</td>
             <td className="border border-slate-200 px-4 py-3">Tk {formatAmount(filteredHockExtendedSack)}</td>

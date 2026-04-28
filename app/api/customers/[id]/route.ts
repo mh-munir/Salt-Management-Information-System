@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { requireAuth, validateSameOrigin } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import { buildEditAuditFields } from "@/lib/edit-audit";
+import { parseLocalizedNumber } from "@/lib/number-input";
 import Customer from "@/models/Customer";
 import Sale from "@/models/Sale";
 import Transaction from "@/models/Transaction";
@@ -70,8 +71,8 @@ export async function PATCH(req: Request, context: RouteContext<"/api/customers/
   } = body;
   const validActions = ["sale", "buy", "payment", "edit-price"];
   const editCustomerName = String(body.customerName ?? "").trim();
-  const nextSaltAmount = Number(saltAmount);
-  const nextPricePerKg = Number(pricePerKg);
+  const nextSaltAmount = parseLocalizedNumber(saltAmount);
+  const nextPricePerKg = parseLocalizedNumber(pricePerKg);
 
   if (!validActions.includes(action)) {
     return new Response(JSON.stringify({ message: "Action must be sale, buy, payment, or edit-price." }), {
@@ -88,7 +89,7 @@ export async function PATCH(req: Request, context: RouteContext<"/api/customers/
   let trackExpensesValue = 0;
 
   if (action === "payment") {
-    const paymentValue = Number(paymentAmount);
+    const paymentValue = parseLocalizedNumber(paymentAmount);
     if (Number.isNaN(paymentValue) || paymentValue <= 0) {
       return new Response(JSON.stringify({ message: "Payment amount must be a valid positive number." }), {
         status: 400,
@@ -130,12 +131,12 @@ export async function PATCH(req: Request, context: RouteContext<"/api/customers/
       });
     }
   } else {
-    saltValue = Number(saltAmount);
-    totalValue = Number(total);
-    paidValue = Number(paid);
-    dueValue = Number(due);
-    hockExtendedSackValue = Number(hockExtendedSack ?? 0);
-    trackExpensesValue = Number(trackExpenses ?? 0);
+    saltValue = parseLocalizedNumber(saltAmount);
+    totalValue = parseLocalizedNumber(total);
+    paidValue = parseLocalizedNumber(paid);
+    dueValue = parseLocalizedNumber(due);
+    hockExtendedSackValue = hockExtendedSack == null ? 0 : parseLocalizedNumber(hockExtendedSack);
+    trackExpensesValue = trackExpenses == null ? 0 : parseLocalizedNumber(trackExpenses);
 
     if (Number.isNaN(saltValue) || saltValue < 0) {
       return new Response(JSON.stringify({ message: "Salt amount must be a valid non-negative number." }), {
@@ -264,15 +265,15 @@ export async function PATCH(req: Request, context: RouteContext<"/api/customers/
       }
     );
   } else if (action === "payment") {
-    const paymentValue = Number(paymentAmount);
+    const paymentValue = parseLocalizedNumber(paymentAmount);
     updateFields = {
       totalDue: -paymentValue, // reduce due
       totalPaid: paymentValue, // increase paid
     };
   } else {
-    const saltValue = Number(saltAmount);
-    const totalValue = Number(total);
-    const paidValue = Number(paid);
+    const saltValue = parseLocalizedNumber(saltAmount);
+    const totalValue = parseLocalizedNumber(total);
+    const paidValue = parseLocalizedNumber(paid);
     const dueValue = totalValue - paidValue;
 
     if (action === "sale") {
@@ -304,13 +305,13 @@ export async function PATCH(req: Request, context: RouteContext<"/api/customers/
   }
 
   if (action === "sale") {
-    const saltValue = Number(saltAmount);
-    const totalValue = Number(total);
-    const paidValue = Number(paid);
+    const saltValue = parseLocalizedNumber(saltAmount);
+    const totalValue = parseLocalizedNumber(total);
+    const paidValue = parseLocalizedNumber(paid);
     const dueValue = totalValue - paidValue;
-    const hockExtendedSackValue = Number(hockExtendedSack ?? 0);
-    const trackExpensesValue = Number(trackExpenses ?? 0);
-    const numberOfBagsValue = Number(numberOfBags ?? 0);
+    const hockExtendedSackValue = hockExtendedSack == null ? 0 : parseLocalizedNumber(hockExtendedSack);
+    const trackExpensesValue = trackExpenses == null ? 0 : parseLocalizedNumber(trackExpenses);
+    const numberOfBagsValue = numberOfBags == null ? 0 : parseLocalizedNumber(numberOfBags, { allowDecimal: false });
     const bagTypeValue = String(bagType ?? "50");
 
     await Sale.create({
@@ -328,7 +329,7 @@ export async function PATCH(req: Request, context: RouteContext<"/api/customers/
     await Transaction.create({
       customerId: id,
       type: "payment",
-      amount: Number(paymentAmount),
+      amount: parseLocalizedNumber(paymentAmount),
       date: new Date(date),
     });
   }

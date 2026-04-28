@@ -2,6 +2,7 @@ import { connectDB, isMongoConnectionError } from "@/lib/db";
 import { requireAuth, validateSameOrigin } from "@/lib/auth";
 import { DASHBOARD_API_CACHE_CONTROL } from "@/lib/cache-control";
 import { getCustomersPageData } from "@/lib/customers-data";
+import { normalizeLocalizedDigits } from "@/lib/number-input";
 import Customer from "@/models/Customer";
 import Supplier from "@/models/Supplier";
 
@@ -44,10 +45,8 @@ export async function POST(req: Request) {
     }
 
     const name = toTrimmedString(data.name);
-    const phone = toTrimmedString(data.phone);
+    const phone = normalizeLocalizedDigits(toTrimmedString(data.phone));
     const address = toTrimmedString(data.address);
-    const allowDuplicate = data.allowDuplicate === true;
-
     if (!name) {
       return new Response(JSON.stringify({ message: "Customer name is required." }), {
         status: 400,
@@ -74,42 +73,40 @@ export async function POST(req: Request) {
 
     await connectDB();
 
-    if (!allowDuplicate) {
-      const safeNamePattern = new RegExp(`^${escapeRegex(name)}$`, "i");
+    const safeNamePattern = new RegExp(`^${escapeRegex(name)}$`, "i");
 
-      // Check customer and supplier duplicates concurrently for faster response.
-      const [existingCustomer, existingSupplier] = await Promise.all([
-        Customer.findOne({ $or: [{ name: { $regex: safeNamePattern } }, { phone }] })
-          .select("name phone")
-          .lean(),
-        Supplier.findOne({ $or: [{ name: { $regex: safeNamePattern } }, { phone }] })
-          .select("name phone")
-          .lean(),
-      ]);
+    // Check customer and supplier duplicates concurrently for faster response.
+    const [existingCustomer, existingSupplier] = await Promise.all([
+      Customer.findOne({ $or: [{ name: { $regex: safeNamePattern } }, { phone }] })
+        .select("name phone")
+        .lean(),
+      Supplier.findOne({ $or: [{ name: { $regex: safeNamePattern } }, { phone }] })
+        .select("name phone")
+        .lean(),
+    ]);
 
-      if (existingCustomer) {
-        const existingName = String(existingCustomer.name ?? "").toLowerCase();
-        const message =
-          existingName === name.toLowerCase()
-            ? "A customer with this name already exists."
-            : "A customer with this phone number already exists.";
-        return new Response(JSON.stringify({ message }), {
-          status: 409,
-          headers: jsonHeaders,
-        });
-      }
+    if (existingCustomer) {
+      const existingName = String(existingCustomer.name ?? "").toLowerCase();
+      const message =
+        existingName === name.toLowerCase()
+          ? "A customer with this name already exists."
+          : "A customer with this phone number already exists.";
+      return new Response(JSON.stringify({ message }), {
+        status: 409,
+        headers: jsonHeaders,
+      });
+    }
 
-      if (existingSupplier) {
-        const existingName = String(existingSupplier.name ?? "").toLowerCase();
-        const message =
-          existingName === name.toLowerCase()
-            ? "A supplier with this name already exists."
-            : "A supplier with this phone number already exists.";
-        return new Response(JSON.stringify({ message }), {
-          status: 409,
-          headers: jsonHeaders,
-        });
-      }
+    if (existingSupplier) {
+      const existingName = String(existingSupplier.name ?? "").toLowerCase();
+      const message =
+        existingName === name.toLowerCase()
+          ? "A supplier with this name already exists."
+          : "A supplier with this phone number already exists.";
+      return new Response(JSON.stringify({ message }), {
+        status: 409,
+        headers: jsonHeaders,
+      });
     }
 
     const customer = await Customer.create({

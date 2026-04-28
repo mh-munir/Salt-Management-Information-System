@@ -95,10 +95,12 @@ export default async function SupplierTimelinePrintPage({
 
       <section className="mb-6 flex items-start justify-between gap-6 border-b border-slate-200 pb-5">
         <div className="space-y-2 text-sm text-slate-700">
-          <p className="text-2xl font-bold text-slate-900">{String(supplier.name ?? "Supplier")}</p>
+          <p className="text-2xl font-bold text-slate-900">
+            {String(supplier.name ?? translate(language, "supplierInvoiceFallback"))}
+          </p>
           <p>{String(supplier.phone ?? "-")}</p>
           <p>
-            Print Date: {formatDate(new Date())}
+            {translate(language, "printDateLabel")}: {formatDate(new Date())}
           </p>
         </div>
 
@@ -118,12 +120,12 @@ export default async function SupplierTimelinePrintPage({
       <table className="w-full border-collapse text-left text-sm text-slate-800">
         <thead className="bg-slate-50 text-slate-600">
           <tr>
-            <th className="border border-slate-200 px-4 py-3 text-sm font-medium">Date</th>
-            <th className="border border-slate-200 px-4 py-3 text-sm font-medium">Type</th>
-            <th className="border border-slate-200 px-4 py-3 text-sm font-medium">Salt (MAUND)</th>
-            <th className="border border-slate-200 px-4 py-3 text-sm font-medium">Paid amount</th>
+            <th className="border border-slate-200 px-4 py-3 text-sm font-medium">{translate(language, "dateLabel")}</th>
+            <th className="border border-slate-200 px-4 py-3 text-sm font-medium">{translate(language, "typeLabel")}</th>
+            <th className="border border-slate-200 px-4 py-3 text-sm font-medium">{translate(language, "saltMaundShort")}</th>
+            <th className="border border-slate-200 px-4 py-3 text-sm font-medium">{translate(language, "paidAmountShort")}</th>
             <th className="border border-slate-200 px-4 py-3 text-sm font-medium">{translate(language, "dueOrAdvance")}</th>
-            <th className="border border-slate-200 px-4 py-3 text-sm font-medium">Note</th>
+            <th className="border border-slate-200 px-4 py-3 text-sm font-medium">{translate(language, "noteLabel")}</th>
           </tr>
         </thead>
         <tbody>
@@ -140,11 +142,15 @@ export default async function SupplierTimelinePrintPage({
               return (
                 <tr key={String(record._id ?? record.date?.toString())} className={index % 2 === 0 ? "bg-white" : "bg-slate-50/50"}>
                   <td className="border border-slate-200 px-4 py-3">{formatDate(record.date)}</td>
-                  <td className="border border-slate-200 px-4 py-3">{isPurchase ? "Purchase" : "Payment"}</td>
+                  <td className="border border-slate-200 px-4 py-3">
+                    {isPurchase ? translate(language, "purchaseLabel") : translate(language, "payment")}
+                  </td>
                   <td className="border border-slate-200 px-4 py-3">
                     <div>{formatAmount(saltMaund)}</div>
                     <div className="text-xs text-slate-500">
-                      {isPurchase && perMaundPrice > 0 ? `Per maund Tk ${formatAmount(perMaundPrice)}` : "-"}
+                      {isPurchase && perMaundPrice > 0
+                        ? `${translate(language, "perMaundPriceLabel")} ${formatAmount(perMaundPrice)}`
+                        : "-"}
                     </div>
                   </td>
                   <td className="border border-slate-200 px-4 py-3">Tk {formatAmount(Number(record.amount ?? 0))}</td>
@@ -154,7 +160,9 @@ export default async function SupplierTimelinePrintPage({
                       : `Tk ${formatAmount(recordBalanceSummary.absoluteAmount)}`}
                   </td>
                   <td className="border border-slate-200 px-4 py-3">
-                    {isPurchase ? "Salt purchase entry" : "Supplier payment entry"}
+                    {isPurchase
+                      ? translate(language, "saltPurchaseEntryNote")
+                      : translate(language, "supplierPaymentEntryNote")}
                   </td>
                 </tr>
               );
@@ -162,17 +170,19 @@ export default async function SupplierTimelinePrintPage({
           ) : (
             <tr>
               <td colSpan={6} className="border border-slate-200 px-4 py-8 text-center text-slate-500">
-                No records found for this supplier.
+                {translate(language, "noSupplierRecordsFound")}
               </td>
             </tr>
           )}
           <tr className="bg-slate-100 font-semibold">
-            <td className="border border-slate-200 px-4 py-3">Totals</td>
+            <td className="border border-slate-200 px-4 py-3">{translate(language, "totals")}</td>
             <td className="border border-slate-200 px-4 py-3">-</td>
             <td className="border border-slate-200 px-4 py-3">
               <div>{formatAmount(filteredTotalSaltMoved)}</div>
               <div className="text-xs font-medium text-slate-500">
-                {filteredAveragePurchasePerMaund > 0 ? `Per maund Tk ${formatAmount(filteredAveragePurchasePerMaund)}` : "-"}
+                {filteredAveragePurchasePerMaund > 0
+                  ? `${translate(language, "perMaundPriceLabel")} ${formatAmount(filteredAveragePurchasePerMaund)}`
+                  : "-"}
               </div>
             </td>
             <td className="border border-slate-200 px-4 py-3">Tk {formatAmount(filteredTotalPaid)}</td>

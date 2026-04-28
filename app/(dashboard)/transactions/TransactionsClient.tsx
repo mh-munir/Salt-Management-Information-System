@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import CompactDateInput from "@/components/CompactDateInput";
 import LoadMoreTable from "@/components/LoadMoreTable";
 import { formatLocalizedDate, formatLocalizedNumber } from "@/lib/display-format";
 import { translate } from "@/lib/language";
+import { LIVE_UPDATES_CHANNEL, TRANSACTIONS_UPDATED_EVENT, TRANSACTIONS_UPDATED_STORAGE_KEY } from "@/lib/live-updates";
 import type { TransactionsFeedItem, TransactionsFeedPage } from "@/lib/transactions-data";
 import { useLanguage } from "@/lib/useLanguage";
 
@@ -46,6 +47,22 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
   const [customerFilterDate, setCustomerFilterDate] = useState(defaultFilterDate);
   const data = items;
 
+  const refreshTransactions = useCallback(async () => {
+    const loadedWindow = Math.max(limit, page * limit);
+
+    try {
+      const response = await fetch(`/api/transactions?page=1&limit=${loadedWindow}`, { cache: "no-store" });
+      if (!response.ok) return;
+
+      const latest = (await response.json()) as TransactionsFeedPage;
+      setItems(Array.isArray(latest.items) ? latest.items : []);
+      setPage(Math.max(1, Math.ceil(loadedWindow / limit)));
+      setHasMore(Boolean(latest.hasMore));
+    } catch {
+      // Keep currently rendered items when refresh fails.
+    }
+  }, [limit, page]);
+
   useEffect(() => {
     const handleBeforePrint = () => {
       originalTitleRef.current = document.title;
@@ -70,6 +87,51 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
       }
     };
   }, []);
+
+  useEffect(() => {
+    const handleWindowFocus = () => {
+      void refreshTransactions();
+    };
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        void refreshTransactions();
+      }
+    };
+
+    const handleTransactionsUpdated = () => {
+      void refreshTransactions();
+    };
+
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === TRANSACTIONS_UPDATED_STORAGE_KEY) {
+        void refreshTransactions();
+      }
+    };
+
+    let broadcastChannel: BroadcastChannel | null = null;
+    if (typeof BroadcastChannel !== "undefined") {
+      broadcastChannel = new BroadcastChannel(LIVE_UPDATES_CHANNEL);
+      broadcastChannel.onmessage = (event) => {
+        if (event.data?.type === TRANSACTIONS_UPDATED_EVENT) {
+          void refreshTransactions();
+        }
+      };
+    }
+
+    window.addEventListener("focus", handleWindowFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener(TRANSACTIONS_UPDATED_EVENT, handleTransactionsUpdated);
+    window.addEventListener("storage", handleStorageChange);
+
+    return () => {
+      window.removeEventListener("focus", handleWindowFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener(TRANSACTIONS_UPDATED_EVENT, handleTransactionsUpdated);
+      window.removeEventListener("storage", handleStorageChange);
+      broadcastChannel?.close();
+    };
+  }, [refreshTransactions]);
 
   const getPaidTypeLabel = (type?: string) => {
     if (!type) return "-";

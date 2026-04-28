@@ -11,6 +11,8 @@ import CompactDateInput from "@/components/CompactDateInput";
 import FloatingInput from "@/components/FloatingInput";
 import { getBalanceSummary } from "@/lib/balance";
 import { translate } from "@/lib/language";
+import { emitTransactionsUpdated } from "@/lib/live-updates";
+import { normalizeLocalizedDigits } from "@/lib/number-input";
 import { compareByLatestInput } from "@/lib/record-order";
 import type { SupplierListItem } from "@/lib/suppliers-data";
 import { useLanguage } from "@/lib/useLanguage";
@@ -57,7 +59,7 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
   const getEditedByText = (item: Pick<Supplier, "editedByName" | "editedByRole">) => {
     const name = item.editedByName?.trim();
     const role = item.editedByRole?.trim();
-    if (!name && !role) return "Not edited yet";
+    if (!name && !role) return translate(language, "notEditedYet");
 
     const roleLabel = getEditorRoleLabel(role);
     if (!name) return roleLabel;
@@ -91,17 +93,10 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
         const [address, setAddress] = useState("");
         const [isSubmitting, setIsSubmitting] = useState(false);
         const [error, setError] = useState("");
-        const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
-        const [duplicateWarningMessage, setDuplicateWarningMessage] = useState("");
-        const [pendingSupplierData, setPendingSupplierData] = useState<{
-          name: string;
-          phone: string;
-          address: string;
-        } | null>(null);
 
         // Helper: phone validation
         function isValidPhone(phone: string) {
-          return /^\d{11}$/.test(phone);
+          return /^\d{11}$/.test(normalizeLocalizedDigits(phone).trim());
         }
 
         // Helper: calculate total price
@@ -165,6 +160,7 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
 
           const updatedSupplier = await response.json();
           refreshSuppliers();
+          emitTransactionsUpdated();
 
           // optionally keep the selected supplier updated in UI
           setPaymentSupplierId(updatedSupplier._id);
@@ -311,6 +307,7 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
         setBuyStatus({ type: "success", message: translate(language, "purchaseRecordedSuccessfully") });
         // Refresh supplier list
         refreshSuppliers();
+        emitTransactionsUpdated();
         setSupplierName("");
         setBuySaltQuantity("");
         setBuyPricePerMaund("");
@@ -330,7 +327,7 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
     setError("");
 
     const trimmedName = name.trim();
-    const trimmedPhone = phone.trim();
+    const trimmedPhone = normalizeLocalizedDigits(phone).trim();
     if (!trimmedName) {
       setError("Name is required.");
       setIsSubmitting(false);
@@ -350,31 +347,7 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
       return;
     }
 
-    // Check for duplicates first
     try {
-      const checkResponse = await fetch("/api/suppliers/check-duplicate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: trimmedName,
-          phone: trimmedPhone,
-        }),
-      });
-
-      if (checkResponse.status === 409) {
-        const checkData = await checkResponse.json();
-        setDuplicateWarningMessage(checkData.message);
-        setPendingSupplierData({
-          name: trimmedName,
-          phone: trimmedPhone,
-          address: trimmedAddress,
-        });
-        setShowDuplicateWarning(true);
-        setIsSubmitting(false);
-        return;
-      }
-
-      // No duplicates, proceed with creation
       await createSupplier(trimmedName, trimmedPhone, trimmedAddress);
     } catch {
       setError(translate(language, "unableToAddSupplier"));
@@ -419,21 +392,6 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const confirmDuplicateSupplier = async () => {
-    if (pendingSupplierData) {
-      setShowDuplicateWarning(false);
-      setIsSubmitting(true);
-      await createSupplier(pendingSupplierData.name, pendingSupplierData.phone, pendingSupplierData.address);
-      setPendingSupplierData(null);
-    }
-  };
-
-  const cancelDuplicateSupplier = () => {
-    setShowDuplicateWarning(false);
-    setPendingSupplierData(null);
-    setIsSubmitting(false);
   };
 
   const openEditPopup = (supplier: Supplier) => {
@@ -509,6 +467,7 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
       }
 
       await refreshSuppliers();
+      emitTransactionsUpdated();
       closeEditPopup();
     } catch {
       setEditError("Failed to update price.");
@@ -740,7 +699,7 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
               type="submit"
               className="inline-flex w-full items-center justify-center rounded-lg bg-[#348CD4] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#2F7FC0] sm:w-auto"
             >
-              Save purchase entry
+              {translate(language, "savePurchaseEntry")}
             </button>
             {buyStatus ? (
               <p className={`text-sm ${buyStatus.type === "success" ? "text-emerald-600" : "text-rose-600"}`}>
@@ -914,8 +873,8 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
 
       {showEditPopup && editTarget ? (
         <ModalShell
-          title="Edit supplier price"
-          description="Update the latest purchase price for this supplier."
+          title={translate(language, "editSupplierPriceTitle")}
+          description={translate(language, "editSupplierPriceDescription")}
           tone="sky"
           widthClassName="max-w-lg"
           onClose={closeEditPopup}
@@ -932,7 +891,7 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
               <FloatingInput
                 name="editSupplierName"
                 type="text"
-                label="Supplier name"
+                label={translate(language, "supplierNameLabel")}
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
                 required
@@ -947,7 +906,7 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
                 type="number"
                 step="0.01"
                 min="0"
-                label="Salt amount"
+                label={translate(language, "saltQuantityLabel")}
                 value={editSaltAmount}
                 onChange={(e) => setEditSaltAmount(e.target.value)}
                 required
@@ -960,7 +919,7 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
                 type="number"
                 step="1"
                 min="0"
-                label="New price per Maund"
+                label={translate(language, "pricePerMaund")}
                 value={editPrice}
                 onChange={(e) => setEditPrice(e.target.value)}
                 required
@@ -989,47 +948,12 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
                 disabled={isSavingEdit}
                 className="inline-flex items-center justify-center rounded-lg bg-[#348CD4] px-5 py-2.5 text-base font-semibold text-white transition hover:bg-[#2F7FC0] disabled:opacity-60"
               >
-                {isSavingEdit ? "Updating..." : "Update details"}
+                {isSavingEdit ? translate(language, "updating") : translate(language, "updateDetails")}
               </button>
             </div>
           </form>
         </ModalShell>
       ) : null}
-
-      {showDuplicateWarning && (
-        <ModalShell
-          title="Duplicate Entry Warning"
-          description="A supplier or customer with similar details already exists."
-          tone="amber"
-          widthClassName="max-w-md"
-          onClose={cancelDuplicateSupplier}
-        >
-          <div className="space-y-4">
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              <p className="font-medium">Warning: {duplicateWarningMessage}</p>
-              <p className="mt-2">Are you sure you want to add this supplier anyway?</p>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
-              <button
-                type="button"
-                className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-5 py-2.5 text-base font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
-                onClick={cancelDuplicateSupplier}
-              >
-                {translate(language, "cancel")}
-              </button>
-              <button
-                type="button"
-                className="inline-flex items-center justify-center rounded-lg bg-amber-600 px-5 py-2.5 text-base font-semibold text-white transition hover:bg-amber-700"
-                onClick={confirmDuplicateSupplier}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? "Adding..." : "Add Anyway"}
-              </button>
-            </div>
-          </div>
-        </ModalShell>
-      )}
 
       <div className="print-list-shell overflow-x-auto rounded-lg bg-white p-4 shadow-sm">
         <div className="print-only border-b border-slate-200 px-4 py-4">

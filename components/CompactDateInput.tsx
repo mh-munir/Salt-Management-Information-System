@@ -1,6 +1,8 @@
 "use client";
 
 import { ChangeEvent, useEffect, useId, useRef, useState } from "react";
+import { localizeDigitsForLanguage, normalizeLocalizedDigits } from "@/lib/number-input";
+import { useLanguage } from "@/lib/useLanguage";
 
 type CompactDateInputProps = {
   name: string;
@@ -16,7 +18,7 @@ type CompactDateInputProps = {
 const pad = (value: number) => String(value).padStart(2, "0");
 
 const formatCompactDate = (rawValue: string) => {
-  const digits = rawValue.replace(/\D/g, "").slice(0, 8);
+  const digits = normalizeLocalizedDigits(rawValue).replace(/\D/g, "").slice(0, 8);
 
   if (digits.length <= 2) return digits;
   if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
@@ -32,7 +34,7 @@ const isoToCompactDate = (value: string) => {
 };
 
 const compactToIsoDate = (value: string) => {
-  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value.trim());
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(normalizeLocalizedDigits(value).trim());
   if (!match) return "";
 
   const [, dayText, monthText, yearText] = match;
@@ -64,26 +66,14 @@ export default function CompactDateInput({
   inputClassName = "",
   labelClassName = "",
 }: CompactDateInputProps) {
+  const { language } = useLanguage();
   const inputId = useId();
   const nativeDateInputRef = useRef<HTMLInputElement>(null);
   const [displayValue, setDisplayValue] = useState(() => isoToCompactDate(value));
-  const [isMobileLayout, setIsMobileLayout] = useState(false);
 
   useEffect(() => {
     setDisplayValue(isoToCompactDate(value));
   }, [value]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const mediaQuery = window.matchMedia("(max-width: 767.98px), (pointer: coarse)");
-    const syncLayout = () => setIsMobileLayout(mediaQuery.matches);
-
-    syncLayout();
-    mediaQuery.addEventListener("change", syncLayout);
-
-    return () => mediaQuery.removeEventListener("change", syncLayout);
-  }, []);
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const formattedValue = formatCompactDate(event.target.value);
@@ -139,48 +129,6 @@ export default function CompactDateInput({
     nativeInput.click();
   };
 
-  if (isMobileLayout) {
-    return (
-      <label className="block">
-        <span className={`mb-2 block text-sm font-semibold text-slate-600 ${labelClassName}`.trim()}>
-          {label}
-        </span>
-        <div className="relative">
-          <input
-            ref={nativeDateInputRef}
-            id={inputId}
-            name={name}
-            type="date"
-            value={value}
-            onChange={handleNativeDateChange}
-            onClick={openCalendar}
-            max={max}
-            required={required}
-            className={`${inputClassName} min-h-12 rounded-xl pr-12`.replace("mt-2", "").trim()}
-          />
-          <button
-            type="button"
-            onClick={openCalendar}
-            aria-label={`Open ${label.toLowerCase()} calendar`}
-            className="button-utility absolute right-3 top-1/2 inline-flex -translate-y-1/2 items-center justify-center rounded-lg p-1 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              className="h-5 w-5"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8 2v4M16 2v4M3.5 9.5h17M5 5.5h14A1.5 1.5 0 0 1 20.5 7v12A1.5 1.5 0 0 1 19 20.5H5A1.5 1.5 0 0 1 3.5 19V7A1.5 1.5 0 0 1 5 5.5Z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8 13h3v3H8z" />
-            </svg>
-          </button>
-        </div>
-      </label>
-    );
-  }
-
   return (
     <label className="floating-field block">
       <div className="relative">
@@ -192,13 +140,13 @@ export default function CompactDateInput({
           autoComplete="off"
           placeholder=" "
           className={`floating-field__input ${inputClassName.replace("mt-2", "").trim()} pr-12`}
-          value={displayValue}
+          value={localizeDigitsForLanguage(displayValue, language)}
           onChange={handleChange}
           onBlur={handleBlur}
           onClick={openCalendar}
           maxLength={10}
-          pattern="\d{2}/\d{2}/\d{4}"
-          title="Use dd/mm/yyyy format"
+          pattern="(?:\d|[০-৯]){2}/(?:\d|[০-৯]){2}/(?:\d|[০-৯]){4}"
+          title={language === "bn" ? "দিন/মাস/বছর ফরম্যাট ব্যবহার করুন" : "Use dd/mm/yyyy format"}
           required={required}
         />
         <input
