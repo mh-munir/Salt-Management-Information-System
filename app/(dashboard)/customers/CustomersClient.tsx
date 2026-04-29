@@ -98,7 +98,7 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [saleCustomerName, setSaleCustomerName] = useState("");
-  const [saleBagType, setSaleBagType] = useState<"" | "50" | "75">("");
+  const [saleBagType, setSaleBagType] = useState<"" | "70" | "65" | "60" | "55" | "50" | "45" | "40" | "35" | "30" | "25" | "20">("");
   const [saleNumberOfBags, setSaleNumberOfBags] = useState("");
   const [saleTotalKg, setSaleTotalKg] = useState("");
   const [salePricePerKg, setSalePricePerKg] = useState("");
@@ -225,12 +225,12 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
         }
       });
 
-  const calculateTotalKg = (bags: string, bagType: "" | "50" | "75") => {
+  const calculateTotalKg = (bags: string, bagType: "" | "70" | "65" | "60" | "55" | "50" | "45" | "40" | "35" | "30" | "25" | "20") => {
     const bagsValue = Number(bags);
     if (bags.trim() === "" || Number.isNaN(bagsValue) || bagsValue < 0 || bagType === "") {
       return "";
     }
-    const weightPerBag = bagType === "50" ? 50 : 75;
+    const weightPerBag = Number(bagType);
     return (bagsValue * weightPerBag).toFixed(2);
   };
 
@@ -283,7 +283,7 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
 
   const updateTotalKgAndAmounts = (
     bags: string,
-    bagType: "" | "50" | "75",
+    bagType: "" | "70" | "65" | "60" | "55" | "50" | "45" | "40" | "35" | "30" | "25" | "20",
     price: string,
     hockExtendedSack: string,
     trackExpenses: string,
@@ -539,7 +539,7 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
         action: "sale",
         saltAmount: quantity,
         numberOfBags: parseInt(saleNumberOfBags) || 0,
-        bagType: saleBagType as "50" | "75",
+        bagType: saleBagType as "70" | "65" | "60" | "55" | "50" | "45" | "40" | "35" | "30" | "25" | "20",
         hockExtendedSack: hockExtendedSackValue,
         trackExpenses: trackExpensesValue,
         total,
@@ -723,7 +723,7 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
                 name="saleBagType"
                 value={saleBagType}
                 onChange={event => {
-                  const value = event.target.value as "" | "50" | "75";
+                  const value = event.target.value as "" | "70" | "65" | "60" | "55" | "50" | "45" | "40" | "35" | "30" | "25" | "20";
                   setSaleBagType(value);
                   updateTotalKgAndAmounts(saleNumberOfBags, value, salePricePerKg, saleHockExtendedSack, saleTrackExpenses, salePaid);
                 }}
@@ -731,8 +731,17 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
                 labelClassName="bg-slate-50 text-slate-500"
               >
                 <option value="" disabled></option>
-                <option value="50">{translate(language, "bagSize50")}</option>
-                <option value="75">{translate(language, "bagSize75")}</option>
+                <option value="70">70 kg</option>
+                <option value="65">65 kg</option>
+                <option value="60">60 kg</option>
+                <option value="55">55 kg</option>
+                <option value="50">50 kg</option>
+                <option value="45">45 kg</option>
+                <option value="40">40 kg</option>
+                <option value="35">35 kg</option>
+                <option value="30">30 kg</option>
+                <option value="25">25 kg</option>
+                <option value="20">20 kg</option>
               </FloatingSelect>
             <FloatingInput
               name="saleNumberOfBags"
