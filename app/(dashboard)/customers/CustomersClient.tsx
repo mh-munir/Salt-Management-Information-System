@@ -731,17 +731,17 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
                 labelClassName="bg-slate-50 text-slate-500"
               >
                 <option value="" disabled></option>
-                <option value="70">70 kg</option>
-                <option value="65">65 kg</option>
-                <option value="60">60 kg</option>
-                <option value="55">55 kg</option>
-                <option value="50">50 kg</option>
-                <option value="45">45 kg</option>
-                <option value="40">40 kg</option>
-                <option value="35">35 kg</option>
-                <option value="30">30 kg</option>
-                <option value="25">25 kg</option>
-                <option value="20">20 kg</option>
+                <option value="70">{translate(language, "bagSize70")}</option>
+                <option value="65">{translate(language, "bagSize65")}</option>
+                <option value="60">{translate(language, "bagSize60")}</option>
+                <option value="55">{translate(language, "bagSize55")}</option>
+                <option value="50">{translate(language, "bagSize50")}</option>
+                <option value="45">{translate(language, "bagSize45")}</option>
+                <option value="40">{translate(language, "bagSize40")}</option>
+                <option value="35">{translate(language, "bagSize35")}</option>
+                <option value="30">{translate(language, "bagSize30")}</option>
+                <option value="25">{translate(language, "bagSize25")}</option>
+                <option value="20">{translate(language, "bagSize20")}</option>
               </FloatingSelect>
             <FloatingInput
               name="saleNumberOfBags"
