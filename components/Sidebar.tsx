@@ -304,7 +304,7 @@ export default function Sidebar({
                 <PlainImage
                   src={sidebarLogoUrl}
                   alt="Sidebar logo"
-                  className="h-auto w-28 rounded-2xl object-contain sm:w-32"
+                  className="h-auto w-28 object-contain sm:w-32"
                 />
               ) : (
                 <div
