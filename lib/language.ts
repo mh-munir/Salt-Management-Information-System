@@ -111,13 +111,6 @@ export type TranslationKey =
   | "saveButton"
   | "addingEllipsis"
   | "cancelAction"
-  | "newSupplier"
-  | "newCustomer"
-  | "nameLabel"
-  | "phoneLabelShort"
-  | "addressLabel"
-  | "supplierNameLabel"
-  | "customerNameLabel"
   | "pricePerMaund"
   | "pricePerKg"
   | "hockExtendedSack"
@@ -131,8 +124,6 @@ export type TranslationKey =
   | "paymentNow"
   | "recordSupplierPayment"
   | "recordCustomerPayment"
-  | "selectSupplier"
-  | "selectCustomer"
   | "paymentAmount"
   | "paymentDate"
   | "savePayment"
@@ -454,6 +445,7 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     selectSupplier: "Select supplier",
     selectCustomer: "Select customer",
     saveImage: "Save image",
+    // ...existing code...
     saveBranding: "Save branding",
     topNavbarImage: "Top Navbar Image",
     uploadFromDevice: "Or upload from device",
@@ -673,7 +665,17 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     noCustomerRecordsFound: "No records found for this customer.",
     noSupplierRecordsFound: "No records found for this supplier.",
     bostaSackType: "Bosta/Sack Type",
+    bagSize70: "70 kg per bag",
+    bagSize65: "65 kg per bag",
+    bagSize60: "60 kg per bag",
+    bagSize55: "55 kg per bag",
     bagSize50: "50 kg per bag",
+    bagSize45: "45 kg per bag",
+    bagSize40: "40 kg per bag",
+    bagSize35: "35 kg per bag",
+    bagSize30: "30 kg per bag",
+    bagSize25: "25 kg per bag",
+    bagSize20: "20 kg per bag",
     bagSize75: "75 kg per bag",
     numberOfBostaSack: "Number of Bosta/Sack",
     editCustomerPriceTitle: "Edit customer price",
@@ -1015,6 +1017,7 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     bagSize30: "প্রতি বস্তা ৩০ কেজি",
     bagSize25: "প্রতি বস্তা ২৫ কেজি",
     bagSize20: "প্রতি বস্তা ২০ কেজি",
+    bagSize75: "প্রতি বস্তা ৭৫ কেজি",
     numberOfBostaSack: "বস্তা/স্যাকের সংখ্যা",
     editCustomerPriceTitle: "গ্রাহকের মূল্য সম্পাদনা করুন",
     editCustomerPriceDescription: "এই গ্রাহকের সর্বশেষ বিক্রয়মূল্য আপডেট করুন।",
