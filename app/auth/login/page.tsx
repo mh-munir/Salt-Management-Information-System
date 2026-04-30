@@ -1,6 +1,6 @@
-"use client";
+// "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useSidebarBranding } from "@/lib/useSidebarBranding";
@@ -19,6 +19,16 @@ export default function LoginPage() {
   const sidebarHeading = branding.sidebarHeading;
   const sidebarSubheading = branding.sidebarSubheading;
   const { language } = useLanguage();
+
+  // Load saved credentials if remember is checked
+  useEffect(() => {
+    if (remember) {
+      const savedEmail = localStorage.getItem("savedEmail");
+      const savedPassword = localStorage.getItem("savedPassword");
+      if (savedEmail) setEmail(savedEmail);
+      if (savedPassword) setPassword(savedPassword);
+    }
+  }, [remember]);
 
   const login = async () => {
     setLoading(true);

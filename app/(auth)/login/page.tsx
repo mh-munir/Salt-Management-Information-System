@@ -1,7 +1,8 @@
+
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import FloatingInput from "@/components/FloatingInput";
 import PlainImage from "@/components/PlainImage";
@@ -19,6 +20,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { language } = useLanguage();
@@ -57,6 +59,39 @@ export default function LoginPage() {
     event.preventDefault();
     await login();
   };
+
+  // Load saved credentials if remember is checked
+  useEffect(() => {
+    if (remember) {
+      const savedEmail = localStorage.getItem("savedEmail");
+      const savedPassword = localStorage.getItem("savedPassword");
+      if (savedEmail) setEmail(savedEmail);
+      if (savedPassword) setPassword(savedPassword);
+    }
+    // eslint-disable-next-line
+  }, []);
+
+  useEffect(() => {
+    if (remember) {
+      localStorage.setItem("savedEmail", email);
+      localStorage.setItem("savedPassword", password);
+    }
+  }, [email, password, remember]);
+
+  // Load saved credentials if remember is checked
+  useEffect(() => {
+    if (remember) {
+      const savedEmail = localStorage.getItem("savedEmail");
+      if (savedEmail) setEmail(savedEmail);
+    }
+    // eslint-disable-next-line
+  }, []);
+
+  useEffect(() => {
+    if (remember) {
+      localStorage.setItem("savedEmail", email);
+    }
+  }, [email, remember]);
 
   return (
     <main className="auth-shell relative min-h-screen overflow-hidden bg-[#F0F1F7] px-4 py-8">
@@ -103,21 +138,39 @@ export default function LoginPage() {
               inputClassName="w-full rounded-lg border border-slate-200 bg-white px-3 text-lg text-slate-800 outline-none transition focus:border-blue-500"
               labelClassName="bg-white text-slate-500"
             />
-
-            <FloatingInput
-              id="login-password"
-              name="password"
-              type="password"
-              label={translate(language, "password")}
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              autoComplete="current-password"
-              required
-              inputClassName="w-full rounded-lg border border-slate-200 bg-white px-3 text-lg text-slate-800 outline-none transition focus:border-blue-500"
-              labelClassName="bg-white text-slate-500"
-            />
-
-            <div className="flex items-center justify-between gap-3">
+            <div className="relative">
+              <FloatingInput
+                id="login-password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                label={translate(language, "password")}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                autoComplete="current-password"
+                required
+                inputClassName="w-full rounded-lg border border-slate-200 bg-white px-3 text-lg text-slate-800 outline-none transition focus:border-blue-500 pr-10"
+                labelClassName="bg-white text-slate-500"
+              />
+              <button
+                type="button"
+                tabIndex={-1}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700 focus:outline-none"
+              >
+                {showPassword ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-5 w-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 3l18 18M15.75 15.75A6 6 0 018.25 8.25m7.5 7.5A6 6 0 008.25 8.25m7.5 7.5c-1.5 1.5-4.5 3-7.5 3s-6-1.5-7.5-3c1.5-1.5 4.5-3 7.5-3s6 1.5 7.5 3z" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-5 w-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12C3.75 7.5 7.5 4.5 12 4.5s8.25 3 9.75 7.5c-1.5 4.5-5.25 7.5-9.75 7.5S3.75 16.5 2.25 12z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+                  </svg>
+                )}
+              </button>
+            </div>
+            <div className="flex items-center gap-3">
               <label className="flex items-center gap-2 text-lg text-slate-600">
                 <input
                   name="remember"
@@ -128,13 +181,8 @@ export default function LoginPage() {
                 />
                 {translate(language, "keepMeSignedIn")}
               </label>
-              <Link href="/forgot-password" className="text-sm font-medium text-slate-400 hover:text-slate-600">
-                {translate(language, "forgotPassword")}
-              </Link>
             </div>
-
             {error ? <p className="text-sm text-rose-600">{error}</p> : null}
-
             <button
               type="submit"
               disabled={loading}
