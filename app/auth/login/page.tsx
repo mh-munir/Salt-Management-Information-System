@@ -14,6 +14,7 @@ export default function LoginPage() {
   const [remember, setRemember] = useState(true);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const branding = useSidebarBranding();
   const sidebarHeading = branding.sidebarHeading;
   const sidebarSubheading = branding.sidebarSubheading;
@@ -92,19 +93,32 @@ export default function LoginPage() {
               />
             </div>
 
-            <div>
+            <div className="relative">
               <label htmlFor="login-password" className="mb-1.5 block text-sm font-medium text-slate-700">{translate(language, "password")}</label>
               <input
                 id="login-password"
                 name="password"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 placeholder={translate(language, "passwordPlaceholder")}
                 autoComplete="current-password"
                 required
-                className="w-full rounded-md border border-slate-200 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-blue-500"
+                className="w-full rounded-md border border-slate-200 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-blue-500 pr-10"
               />
+              <button
+                type="button"
+                tabIndex={-1}
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-2 top-9 transform -translate-y-1/2 text-slate-500 hover:text-slate-700 focus:outline-none"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-5.523 0-10-4.477-10-10 0-1.657.403-3.22 1.125-4.575m1.875-2.25A9.956 9.956 0 0112 3c5.523 0 10 4.477 10 10 0 1.657-.403 3.22-1.125 4.575m-1.875 2.25A9.956 9.956 0 0112 21c-1.657 0-3.22-.403-4.575-1.125m-2.25-1.875A9.956 9.956 0 013 12c0-1.657.403-3.22 1.125-4.575m2.25-2.25A9.956 9.956 0 0112 3c1.657 0 3.22.403 4.575 1.125m2.25 1.875A9.956 9.956 0 0121 12c0 1.657-.403 3.22-1.125 4.575m-2.25 2.25A9.956 9.956 0 0112 21c-1.657 0-3.22-.403-4.575-1.125" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-5.523 0-10-4.477-10-10 0-1.657.403-3.22 1.125-4.575m1.875-2.25A9.956 9.956 0 0112 3c5.523 0 10 4.477 10 10 0 1.657-.403 3.22-1.125 4.575m-1.875 2.25A9.956 9.956 0 0112 21c-1.657 0-3.22-.403-4.575-1.125m-2.25-1.875A9.956 9.956 0 013 12c0-1.657.403-3.22 1.125-4.575m2.25-2.25A9.956 9.956 0 0112 3c1.657 0 3.22.403 4.575 1.125m2.25 1.875A9.956 9.956 0 0121 12c0 1.657-.403 3.22-1.125 4.575m-2.25 2.25A9.956 9.956 0 0112 21c-1.657 0-3.22-.403-4.575-1.125" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4l16 16" /></svg>
+                )}
+              </button>
             </div>
 
             <div className="flex items-center justify-between gap-3">
