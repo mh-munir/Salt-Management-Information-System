@@ -54,6 +54,7 @@ export default function FloatingInput({
         }
         onChange={handleChange}
         placeholder=" "
+        autoComplete="off"
         className={`floating-field__input ${inputClassName}`.trim()}
       />
       <span className={`floating-field__label ${labelClassName}`.trim()}>{label}</span>

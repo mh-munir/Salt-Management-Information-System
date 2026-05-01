@@ -3,6 +3,7 @@ import { summarizeSupplierLedger } from "@/lib/live-ledgers";
 import { compareByLatestInput, getInputTimestamp } from "@/lib/record-order";
 import Supplier from "@/models/Supplier";
 import Transaction from "@/models/Transaction";
+import { cache } from "react";
 
 type SupplierDoc = {
   _id: unknown;
@@ -46,7 +47,7 @@ export type SupplierListItem = {
   editedAt?: string | null;
 };
 
-export async function getSuppliersPageData(): Promise<SupplierListItem[]> {
+export const getSuppliersPageData = cache(async (): Promise<SupplierListItem[]> => {
   try {
     await connectDB();
 
@@ -134,4 +135,4 @@ export async function getSuppliersPageData(): Promise<SupplierListItem[]> {
 
     throw error;
   }
-}
+});

@@ -4,6 +4,18 @@ import { STATIC_ASSET_CACHE_CONTROL } from "./lib/cache-control";
 const nextConfig: NextConfig = {
   reactCompiler: true,
   poweredByHeader: false,
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "**",
+      },
+      {
+        protocol: "http",
+        hostname: "**",
+      },
+    ],
+  },
   async redirects() {
     return [
       {

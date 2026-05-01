@@ -4,8 +4,8 @@
   border-radius: 0.5rem;
   border: 1px solid #e2e8f0;
   width: 100%;
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: var(--form-control-font-size);
+  font-weight: 500;
   color: #1e293b;
   outline: none;
 }
@@ -20,6 +20,10 @@
   color-scheme: light;
   --light-text-strong: #1f2937;
   --light-text-primary: #374151;
+  --form-control-font-size: 1rem;
+  --form-control-line-height: 1.5rem;
+  --form-label-font-size: 1rem;
+  --form-label-line-height: 1.375rem;
 }
 
 html {
@@ -61,6 +65,18 @@ table,
 table :is(th, td, th *, td *) {
   font-size: 1rem !important;
   line-height: 1.5rem !important;
+}
+
+label,
+input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]),
+select,
+textarea {
+  font-size: var(--form-control-font-size) !important;
+  line-height: var(--form-control-line-height) !important;
+}
+
+label {
+  line-height: var(--form-label-line-height) !important;
 }
 
 .print-only {
@@ -127,12 +143,6 @@ input[type="number"] {
 
 html.theme-light .profile-avatar {
   border-color: #94a3b8 !important;
-}
-img.profile-avatar {
-  width: 40px !important;
-  height: 40px !important;
-  object-fit: cover !important;
-  object-position: top center !important;
 }
 
 html.theme-light .sidebar-shell {
@@ -554,13 +564,13 @@ html.theme-dark .to-sky-50 {
   max-width: calc(100% - 1.5rem);
   overflow: hidden;
   padding-inline: 0.35rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  line-height: 1.1;
+  font-size: var(--form-label-font-size);
+  font-weight: 500;
+  line-height: var(--form-label-line-height);
   white-space: nowrap;
   text-overflow: ellipsis;
   pointer-events: none;
-  top: 16px;
+  top: 14px;
   transform: scale(1);
   transform-origin: left center;
   transition:
@@ -572,8 +582,8 @@ html.theme-dark .to-sky-50 {
 
 .floating-field:focus-within .floating-field__label,
   .floating-field__input:not(:placeholder-shown) ~ .floating-field__label {
-  top: -7px;
-  transform: scale(0.95);
+  top: -10px;
+  transform: scale(0.82);
 }
 
 .floating-field:focus-within .floating-field__label {

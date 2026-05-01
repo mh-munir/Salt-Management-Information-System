@@ -5,6 +5,7 @@ import Customer from "@/models/Customer";
 import Sale from "@/models/Sale";
 import Supplier from "@/models/Supplier";
 import Transaction from "@/models/Transaction";
+import { cache } from "react";
 
 const KG_PER_MAUND = 40;
 
@@ -101,7 +102,7 @@ const emptyDashboardData: DashboardPageData = {
   suppliers: [],
 };
 
-export async function getDashboardPageData(): Promise<DashboardPageData> {
+export const getDashboardPageData = cache(async (): Promise<DashboardPageData> => {
   try {
     await connectDB();
 
@@ -317,4 +318,4 @@ export async function getDashboardPageData(): Promise<DashboardPageData> {
 
     throw error;
   }
-}
+});

@@ -4,6 +4,7 @@ import { compareByLatestInput, getInputTimestamp } from "@/lib/record-order";
 import Customer from "@/models/Customer";
 import Sale from "@/models/Sale";
 import Transaction from "@/models/Transaction";
+import { cache } from "react";
 
 type CustomerDoc = {
   _id: unknown;
@@ -75,7 +76,7 @@ const resolveSaleAdjustments = (sale?: { hockExtendedSack?: unknown; trackExpens
   trackExpenses: Number(sale?.trackExpenses ?? 0),
 });
 
-export async function getCustomersPageData(): Promise<CustomerListItem[]> {
+export const getCustomersPageData = cache(async (): Promise<CustomerListItem[]> => {
   try {
     await connectDB();
 
@@ -195,4 +196,4 @@ export async function getCustomersPageData(): Promise<CustomerListItem[]> {
 
     throw error;
   }
-}
+});

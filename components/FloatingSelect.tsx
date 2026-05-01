@@ -25,6 +25,7 @@ export default function FloatingSelect({
         {...props}
         value={value}
         className={`floating-field__input ${selectClassName}`}
+        autoComplete="off"
         onFocus={e => { setIsFocused(true); props.onFocus?.(e); }}
         onBlur={e => { setIsFocused(false); props.onBlur?.(e); }}
       >

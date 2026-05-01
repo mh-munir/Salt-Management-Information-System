@@ -1,6 +1,6 @@
 ﻿"use client";
 import Link from "next/link";
-import { startTransition, useCallback, useEffect, useMemo, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Card from "@/components/Card";
 import { getBalanceSummary } from "@/lib/balance";
 import type { DashboardPageData } from "@/lib/dashboard-data";
@@ -9,12 +9,6 @@ import { useLanguage } from "@/lib/useLanguage";
 import { translate } from "@/lib/language";
 
 const KG_PER_MAUND = 40;
-
-type PartyContact = {
-  _id?: string;
-  name?: string;
-  phone?: string;
-};
 
 type ProfitChartSegment = {
   color: string;
@@ -61,24 +55,24 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
       maximumFractionDigits: 2,
     }).format(amount);
 
-  const [totalSales, setTotalSales] = useState<number>(initialData.totalSales);
-  const [todaySales, setTodaySales] = useState<number>(initialData.todaySales);
-  const [todaySalesSaltKg, setTodaySalesSaltKg] = useState<number>(initialData.todaySalesSaltKg);
-  const [todayBuy, setTodayBuy] = useState<number>(initialData.todayBuy);
-  const [todayBuySaltMaund, setTodayBuySaltMaund] = useState<number>(initialData.todayBuySaltMaund);
-  const [todayCost, setTodayCost] = useState<number>(initialData.todayCost);
-  const [totalCost, setTotalCost] = useState<number>(initialData.totalCost);
-  const [totalBuy, setTotalBuy] = useState<number>(initialData.totalBuy);
-  const [totalSaltBuy, setTotalSaltBuy] = useState<number>(initialData.totalSaltBuy);
-  const [customerDue, setCustomerDue] = useState<number>(initialData.customerDue);
-  const [supplierDue, setSupplierDue] = useState<number>(initialData.supplierDue);
-  const [stockData, setStockData] = useState<{
-    stockMounds: number;
-    stockKg: number;
-    totalBought: number;
-  }>(initialData.stockData);
-  const [customers, setCustomers] = useState<PartyContact[]>(initialData.customers);
-  const [suppliers, setSuppliers] = useState<PartyContact[]>(initialData.suppliers);
+  const [dashboardData, setDashboardData] = useState<DashboardPageData>(initialData);
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const {
+    totalSales,
+    todaySales,
+    todaySalesSaltKg,
+    todayBuy,
+    todayBuySaltMaund,
+    todayCost,
+    totalCost,
+    totalBuy,
+    totalSaltBuy,
+    customerDue,
+    supplierDue,
+    stockData,
+    customers,
+    suppliers,
+  } = dashboardData;
 
   const dailyTransactionSection = useMemo(
     () => ({
@@ -356,49 +350,59 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
         if (!isActive) return;
 
         startTransition(() => {
-          setTotalSales(data.totalSales ?? 0);
-          setTodaySales(data.todaySales ?? 0);
-          setTodaySalesSaltKg(data.todaySalesSaltKg ?? 0);
-          setTodayBuy(data.todayBuy ?? 0);
-          setTodayBuySaltMaund(data.todayBuySaltMaund ?? 0);
-          setTodayCost(data.todayCost ?? 0);
-          setTotalCost(data.totalCost ?? 0);
-          setTotalBuy(data.totalBuy ?? 0);
-          setTotalSaltBuy(data.totalSaltBuy ?? 0);
-          setCustomerDue(data.customerDue ?? 0);
-          setSupplierDue(data.supplierDue ?? 0);
-          setStockData(
-            data.stockData ?? {
+          setDashboardData({
+            totalSales: data.totalSales ?? 0,
+            todaySales: data.todaySales ?? 0,
+            todaySalesSaltKg: data.todaySalesSaltKg ?? 0,
+            todayBuy: data.todayBuy ?? 0,
+            todayBuySaltMaund: data.todayBuySaltMaund ?? 0,
+            todayCost: data.todayCost ?? 0,
+            totalCost: data.totalCost ?? 0,
+            totalBuy: data.totalBuy ?? 0,
+            totalSaltBuy: data.totalSaltBuy ?? 0,
+            customerDue: data.customerDue ?? 0,
+            supplierDue: data.supplierDue ?? 0,
+            stockData: data.stockData ?? {
               stockMounds: 0,
               stockKg: 0,
               totalBought: 0,
-            }
-          );
-          setCustomers(Array.isArray(data.customers) ? data.customers : []);
-          setSuppliers(Array.isArray(data.suppliers) ? data.suppliers : []);
+            },
+            customers: Array.isArray(data.customers) ? data.customers : [],
+            suppliers: Array.isArray(data.suppliers) ? data.suppliers : [],
+          });
         });
       } catch {
         // Keep the server-rendered snapshot when refresh fails.
       }
     };
 
+    const scheduleRefresh = () => {
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+      }
+
+      refreshTimerRef.current = setTimeout(() => {
+        void refreshDashboardData();
+      }, 160);
+    };
+
     const handleWindowFocus = () => {
-      void refreshDashboardData();
+      scheduleRefresh();
     };
 
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        void refreshDashboardData();
+        scheduleRefresh();
       }
     };
 
     const handleCostAdded = () => {
-      void refreshDashboardData();
+      scheduleRefresh();
     };
 
     const handleStorageChange = (event: StorageEvent) => {
       if (event.key === 'costUpdated') {
-        void refreshDashboardData();
+        scheduleRefresh();
       }
     };
 
@@ -408,7 +412,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
       broadcastChannel = new BroadcastChannel('dashboard-updates');
       broadcastChannel.onmessage = (event) => {
         if (event.data.type === 'costAdded') {
-          void refreshDashboardData();
+          scheduleRefresh();
         }
       };
     }
@@ -420,6 +424,9 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
 
     return () => {
       isActive = false;
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+      }
       window.removeEventListener("focus", handleWindowFocus);
       window.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("costAdded", handleCostAdded);
@@ -745,6 +752,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                           {entry.href ? (
                             <Link
                               href={entry.href}
+                              prefetch
                               className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-50"
                             >
                               {translate(language, "view")}

@@ -1,9 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import PlainImage from "@/components/PlainImage";
+import { fetchAppShellSnapshot } from "@/lib/app-shell-client";
 import ThemeToggle from "@/components/ThemeToggle";
 import { translate, type Language } from "@/lib/language";
 import { useLanguage } from "@/lib/useLanguage";
@@ -65,16 +66,7 @@ export default function Navbar({ initialLanguage, initialProfile }: NavbarProps)
 
   const loadProfile = useCallback(async () => {
     try {
-      const res = await fetch("/api/settings/profile", { cache: "no-store" });
-
-      if (res.status === 401) {
-        router.push("/login");
-        return;
-      }
-
-      if (!res.ok) return;
-
-      const data = await res.json();
+      const data = await fetchAppShellSnapshot({ force: true });
       const nextProfile: ProfileInfo = {
         name: String(data?.name ?? ""),
         email: String(data?.email ?? ""),
@@ -84,8 +76,10 @@ export default function Navbar({ initialLanguage, initialProfile }: NavbarProps)
 
       setAvatarUrl(nextProfile.avatarUrl);
       setProfile(nextProfile);
-    } catch {
-      // Swallow network errors and keep current avatar state.
+    } catch (error) {
+      if (typeof error === "object" && error !== null && "status" in error && error.status === 401) {
+        router.push("/login");
+      }
     }
   }, [router]);
 
@@ -242,10 +236,15 @@ export default function Navbar({ initialLanguage, initialProfile }: NavbarProps)
             onClick={() => setMenuOpen((open) => !open)}
             className="profile-trigger-button light-navbar-button flex h-10 min-w-10 shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-1.5 transition hover:bg-slate-50 sm:px-2"
           >
-            <PlainImage
+            <Image
               src={avatarUrl || DEFAULT_AVATAR}
               alt="Admin avatar"
+              width={36}
+              height={36}
+              sizes="36px"
+              unoptimized={(avatarUrl || DEFAULT_AVATAR).startsWith("data:")}
               className="profile-avatar h-8 w-8 rounded-full border border-slate-200 object-cover object-top sm:h-9 sm:w-9"
+              style={{ height: "auto", width: "auto" }}
             />
             <div className="hidden min-w-0 text-left md:block">
               <p className="max-w-24 truncate text-sm font-medium leading-tight text-sky-700 sm:max-w-30">

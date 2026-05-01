@@ -29,6 +29,20 @@ const sortCustomersByLatestInput = (items: Customer[]) =>
     )
   );
 
+const applyCustomerPayment = (items: Customer[], customerId: string, paymentAmount: number) =>
+  sortCustomersByLatestInput(
+    items.map((customer) =>
+      customer._id !== customerId
+        ? customer
+        : {
+            ...customer,
+            totalDue: (customer.totalDue ?? 0) - paymentAmount,
+            totalPaid: (customer.totalPaid ?? 0) + paymentAmount,
+            lastActivityAt: Date.now(),
+          }
+    )
+  );
+
 const getLocalDateInputValue = () => {
   const now = new Date();
   const offsetMs = now.getTimezoneOffset() * 60_000;
@@ -98,7 +112,7 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [saleCustomerName, setSaleCustomerName] = useState("");
-  const [saleBagType, setSaleBagType] = useState<"" | "70" | "65" | "60" | "55" | "50" | "45" | "40" | "35" | "30" | "25" | "20">("");
+  const [saleBagType, setSaleBagType] = useState<string>("");
   const [saleNumberOfBags, setSaleNumberOfBags] = useState("");
   const [saleTotalKg, setSaleTotalKg] = useState("");
   const [salePricePerKg, setSalePricePerKg] = useState("");
@@ -180,8 +194,7 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
       return;
     }
 
-    // Update local state
-    refreshCustomers();
+    setCustomers((current) => applyCustomerPayment(current, paymentCustomerId, amount));
     emitTransactionsUpdated();
 
     closePaymentPopup();
@@ -225,12 +238,12 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
         }
       });
 
-  const calculateTotalKg = (bags: string, bagType: "" | "70" | "65" | "60" | "55" | "50" | "45" | "40" | "35" | "30" | "25" | "20") => {
+  const calculateTotalKg = (bags: string, bagType: string) => {
     const bagsValue = Number(bags);
-    if (bags.trim() === "" || Number.isNaN(bagsValue) || bagsValue < 0 || bagType === "") {
+    const weightPerBag = Number(bagType);
+    if (bags.trim() === "" || Number.isNaN(bagsValue) || bagsValue < 0 || bagType.trim() === "" || Number.isNaN(weightPerBag)) {
       return "";
     }
-    const weightPerBag = Number(bagType);
     return (bagsValue * weightPerBag).toFixed(2);
   };
 
@@ -283,7 +296,7 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
 
   const updateTotalKgAndAmounts = (
     bags: string,
-    bagType: "" | "70" | "65" | "60" | "55" | "50" | "45" | "40" | "35" | "30" | "25" | "20",
+    bagType: string,
     price: string,
     hockExtendedSack: string,
     trackExpenses: string,
@@ -481,10 +494,10 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
       return;
     }
 
-    if (saleBagType === "") {
+    if (saleBagType.trim() === "") {
       setSaleStatus({
         type: "error",
-        message: language === "bn" ? "ব্যাগ টাইপ নির্বাচন করুন।" : "Please select a bag type.",
+        message: language === "bn" ? "ব্যাগ টাইপ দিন।" : "Please enter a bag type.",
       });
       return;
     }
@@ -539,7 +552,7 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
         action: "sale",
         saltAmount: quantity,
         numberOfBags: parseInt(saleNumberOfBags) || 0,
-        bagType: saleBagType as "70" | "65" | "60" | "55" | "50" | "45" | "40" | "35" | "30" | "25" | "20",
+        bagType: saleBagType,
         hockExtendedSack: hockExtendedSackValue,
         trackExpenses: trackExpensesValue,
         total,
@@ -718,31 +731,18 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
                   <option key={customer._id} value={customer.name || ""} />
                 ))}
               </datalist>
-              <FloatingSelect
+              <FloatingInput
                 label={translate(language, "bostaSackType")}
                 name="saleBagType"
                 value={saleBagType}
                 onChange={event => {
-                  const value = event.target.value as "" | "70" | "65" | "60" | "55" | "50" | "45" | "40" | "35" | "30" | "25" | "20";
+                  const value = event.target.value;
                   setSaleBagType(value);
                   updateTotalKgAndAmounts(saleNumberOfBags, value, salePricePerKg, saleHockExtendedSack, saleTrackExpenses, salePaid);
                 }}
-                selectClassName="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white"
+                inputClassName="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white"
                 labelClassName="bg-slate-50 text-slate-500"
-              >
-                <option value="" disabled></option>
-                <option value="70">{translate(language, "bagSize70")}</option>
-                <option value="65">{translate(language, "bagSize65")}</option>
-                <option value="60">{translate(language, "bagSize60")}</option>
-                <option value="55">{translate(language, "bagSize55")}</option>
-                <option value="50">{translate(language, "bagSize50")}</option>
-                <option value="45">{translate(language, "bagSize45")}</option>
-                <option value="40">{translate(language, "bagSize40")}</option>
-                <option value="35">{translate(language, "bagSize35")}</option>
-                <option value="30">{translate(language, "bagSize30")}</option>
-                <option value="25">{translate(language, "bagSize25")}</option>
-                <option value="20">{translate(language, "bagSize20")}</option>
-              </FloatingSelect>
+              />
             <FloatingInput
               name="saleNumberOfBags"
               type="number"

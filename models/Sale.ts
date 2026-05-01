@@ -4,7 +4,7 @@ const SaleSchema = new mongoose.Schema({
   customerId: String,
   saltAmount: Number,
   numberOfBags: { type: Number, default: 0 },
-  bagType: { type: String, enum: ["70", "65", "60", "55", "50", "45", "40", "35", "30", "25", "20"], default: "50" },
+  bagType: { type: String, default: "50" },
   hockExtendedSack: { type: Number, default: 0 },
   trackExpenses: { type: Number, default: 0 },
   items: [

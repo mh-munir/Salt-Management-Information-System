@@ -1,9 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import PlainImage from "@/components/PlainImage";
+import { fetchAppShellSnapshot } from "@/lib/app-shell-client";
 import {
   DEFAULT_BRAND_LOGO_URL,
   DEFAULT_BRAND_HEADING,
@@ -183,17 +184,14 @@ export default function Sidebar({
 
   const loadBranding = useCallback(async () => {
     try {
-      const res = await fetch("/api/settings/profile", { cache: "no-store" });
-      if (!res.ok) return;
-
-      const data: SidebarBrandingResponse = await res.json();
+      const data = (await fetchAppShellSnapshot({ force: true })) as SidebarBrandingResponse;
       const branding = normalizeSidebarBranding(data);
       setSidebarLogoUrl(branding.sidebarLogoUrl);
       setSidebarHeading(branding.sidebarHeading);
       setSidebarSubheading(branding.sidebarSubheading);
       saveStoredSidebarBranding(branding);
     } catch {
-      // Keep default branding if the request fails.
+      // Keep current branding if the request fails.
     }
   }, []);
 
@@ -301,10 +299,15 @@ export default function Sidebar({
           <div className="flex flex-col items-center space-y-1">
             <div className="mb-2 flex flex-col items-center gap-3">
               {sidebarLogoUrl ? (
-                <PlainImage
+                <Image
                   src={sidebarLogoUrl}
                   alt="Sidebar logo"
+                  width={128}
+                  height={64}
+                  sizes="128px"
+                  unoptimized={sidebarLogoUrl.startsWith("data:")}
                   className="h-auto w-28 object-contain sm:w-32"
+                  style={{ height: "auto" }}
                 />
               ) : (
                 <div
@@ -380,6 +383,7 @@ export default function Sidebar({
                   <Link
                     key={item.href}
                     href={item.href}
+                    prefetch
                     onClick={() => setMobileOpen(false)}
                     className={`group relative flex items-center gap-3 overflow-hidden rounded-[1.45rem] px-3 py-3 text-[0.96rem] font-medium transition-all duration-300 sm:px-3.5 sm:py-3.5 lg:px-3.5 lg:py-3 ${
                       isDarkTheme

@@ -28,6 +28,20 @@ const sortSuppliersByLatestInput = (items: Supplier[]) =>
     )
   );
 
+const applySupplierPayment = (items: Supplier[], supplierId: string, paymentAmount: number) =>
+  sortSuppliersByLatestInput(
+    items.map((supplier) =>
+      supplier._id !== supplierId
+        ? supplier
+        : {
+            ...supplier,
+            totalDue: (supplier.totalDue ?? 0) - paymentAmount,
+            totalPaid: (supplier.totalPaid ?? 0) + paymentAmount,
+            lastActivityAt: Date.now(),
+          }
+    )
+  );
+
 const getLocalDateInputValue = () => {
   const now = new Date();
   const offsetMs = now.getTimezoneOffset() * 60_000;
@@ -159,7 +173,7 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
           }
 
           const updatedSupplier = await response.json();
-          refreshSuppliers();
+          setSuppliers((current) => applySupplierPayment(current, paymentSupplierId, amount));
           emitTransactionsUpdated();
 
           // optionally keep the selected supplier updated in UI
