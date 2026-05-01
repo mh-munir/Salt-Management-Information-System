@@ -243,7 +243,7 @@ export default function Navbar({ initialLanguage, initialProfile }: NavbarProps)
               height={36}
               sizes="36px"
               unoptimized={(avatarUrl || DEFAULT_AVATAR).startsWith("data:")}
-              className="profile-avatar h-8 w-8 rounded-full border border-slate-200 object-cover object-top sm:h-9 sm:w-9"
+              className="rounded-full border border-slate-200 object-cover object-top sm:h-9 sm:w-9"
             />
             <div className="hidden min-w-0 text-left md:block">
               <p className="max-w-24 truncate text-sm font-medium leading-tight text-sky-700 sm:max-w-30">
