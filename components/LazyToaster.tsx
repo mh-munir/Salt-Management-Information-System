@@ -18,7 +18,7 @@ export default function LazyToaster() {
         right: 16,
       }}
       toastOptions={{
-        duration: 10000,
+        duration: 500,
         style: {
           background: "linear-gradient(135deg, #348CD4, #2F7FC0)",
           color: "#f8fafc",
@@ -32,7 +32,7 @@ export default function LazyToaster() {
           maxWidth: "min(92vw, 30rem)",
         },
         success: {
-          duration: 10000,
+          duration: 500,
           iconTheme: {
             primary: "#ffffff",
             secondary: "#348CD4",
@@ -43,7 +43,7 @@ export default function LazyToaster() {
           },
         },
         error: {
-          duration: 10000,
+          duration: 500,
           iconTheme: {
             primary: "#ffffff",
             secondary: "#348CD4",
@@ -54,7 +54,7 @@ export default function LazyToaster() {
           },
         },
         loading: {
-          duration: 10000,
+          duration: 500,
           iconTheme: {
             primary: "#ffffff",
             secondary: "#348CD4",

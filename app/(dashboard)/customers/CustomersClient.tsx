@@ -239,8 +239,10 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
       });
 
   const calculateTotalKg = (bags: string, bagType: string) => {
-    const bagsValue = Number(bags);
-    const weightPerBag = Number(bagType);
+    // Support Bangla digits
+    const { normalizeLocalizedDigits } = require("@/lib/number-input");
+    const bagsValue = Number(normalizeLocalizedDigits(bags));
+    const weightPerBag = Number(normalizeLocalizedDigits(bagType));
     if (bags.trim() === "" || Number.isNaN(bagsValue) || bagsValue < 0 || bagType.trim() === "" || Number.isNaN(weightPerBag)) {
       return "";
     }
@@ -248,8 +250,10 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
   };
 
   const calculateTotalPrice = (quantity: string, price: string) => {
-    const quantityValue = Number(quantity);
-    const priceValue = Number(price);
+    // Support Bangla digits
+    const { normalizeLocalizedDigits } = require("@/lib/number-input");
+    const quantityValue = Number(normalizeLocalizedDigits(quantity));
+    const priceValue = Number(normalizeLocalizedDigits(price));
 
     if (
       quantity.trim() === "" ||
@@ -269,11 +273,13 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
     hockExtendedSack: string,
     trackExpenses: string
   ) => {
+    // Support Bangla digits
+    const { normalizeLocalizedDigits } = require("@/lib/number-input");
     const baseTotal = calculateTotalPrice(quantity, price);
     if (baseTotal === "") return "";
 
-    const hockValue = hockExtendedSack.trim() === "" ? 0 : Number(hockExtendedSack);
-    const trackValue = trackExpenses.trim() === "" ? 0 : Number(trackExpenses);
+    const hockValue = hockExtendedSack.trim() === "" ? 0 : Number(normalizeLocalizedDigits(hockExtendedSack));
+    const trackValue = trackExpenses.trim() === "" ? 0 : Number(normalizeLocalizedDigits(trackExpenses));
 
     if (Number.isNaN(hockValue) || Number.isNaN(trackValue)) {
       return "";
@@ -734,14 +740,21 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
               <FloatingInput
                 label={translate(language, "bostaSackType")}
                 name="saleBagType"
-                value={saleBagType}
+                value={language === "bn" ? require("@/lib/number-input").localizeDigitsForLanguage(saleBagType, "bn") : saleBagType}
                 onChange={event => {
-                  const value = event.target.value;
+                  // Accept only digits (Bangla or English)
+                  let value = event.target.value.replace(/[^\d০-৯]/g, "");
+                  // Always store as normalized (English) digits
+                  value = require("@/lib/number-input").normalizeLocalizedDigits(value);
                   setSaleBagType(value);
                   updateTotalKgAndAmounts(saleNumberOfBags, value, salePricePerKg, saleHockExtendedSack, saleTrackExpenses, salePaid);
                 }}
                 inputClassName="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white"
                 labelClassName="bg-slate-50 text-slate-500"
+                inputMode="numeric"
+                pattern={language === "bn" ? "[০-৯]+" : "[0-9]+"}
+                maxLength={3}
+                // Show Bangla digits in Bangla mode, English otherwise
               />
             <FloatingInput
               name="saleNumberOfBags"
