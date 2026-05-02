@@ -239,11 +239,10 @@ export default function Navbar({ initialLanguage, initialProfile }: NavbarProps)
             <Image
               src={avatarUrl || DEFAULT_AVATAR}
               alt="Admin avatar"
-              width={36}
-              height={36}
-              sizes="36px"
+              width={32}
+              height={32}
               unoptimized={(avatarUrl || DEFAULT_AVATAR).startsWith("data:")}
-              className="rounded-full border border-slate-200 object-cover object-top sm:h-9 sm:w-9"
+              className="rounded-full border w-8 h-8 border-slate-200 object-cover object-top"
             />
             <div className="hidden min-w-0 text-left md:block">
               <p className="max-w-24 truncate text-sm font-medium leading-tight text-sky-700 sm:max-w-30">
