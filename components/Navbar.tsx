@@ -236,14 +236,16 @@ export default function Navbar({ initialLanguage, initialProfile }: NavbarProps)
             onClick={() => setMenuOpen((open) => !open)}
             className="profile-trigger-button light-navbar-button flex h-10 min-w-10 shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-1.5 transition hover:bg-slate-50 sm:px-2"
           >
-            <Image
-              src={avatarUrl || DEFAULT_AVATAR}
-              alt="Admin avatar"
-              width={32}
-              height={32}
-              unoptimized={(avatarUrl || DEFAULT_AVATAR).startsWith("data:")}
-              className="rounded-full border w-8 h-8 border-slate-200 object-cover object-top"
-            />
+            <div className="w-8 h-8 rounded-full border-slate-200 overflow-hidden">
+                <Image
+                src={avatarUrl || DEFAULT_AVATAR}
+                alt="Admin avatar"
+                width={32}
+                height={32}
+                unoptimized={(avatarUrl || DEFAULT_AVATAR).startsWith("data:")}
+                className="rounded-full border w-full h-full object-cover object-top"
+              />
+            </div>
             <div className="hidden min-w-0 text-left md:block">
               <p className="max-w-24 truncate text-sm font-medium leading-tight text-sky-700 sm:max-w-30">
                 {profileName}
