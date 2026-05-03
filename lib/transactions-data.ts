@@ -69,6 +69,7 @@ export type TransactionsFeedItem = {
   supplierName?: string;
   customerName?: string;
   personName?: string;
+  __sourceCollection?: string;
 };
 
 type TransactionsFeedOptions = PaginationParams;
@@ -88,90 +89,128 @@ export async function getTransactionsFeed(
     const page = Math.max(DEFAULT_PAGE, Number(options.page ?? DEFAULT_PAGE));
     const limit = Math.max(1, Number(options.limit ?? DEFAULT_LIMIT));
     const offset = (page - 1) * limit;
-    const fetchWindow = Math.min(page * limit, MAX_FETCH_WINDOW);
 
-    const [transactionCount, saleCount, costCount, transactions, sales, costs] = (await Promise.all([
+    // Get raw counts in parallel (used for total/hasMore)
+    const [transactionCount, saleCount, costCount] = (await Promise.all([
       Transaction.countDocuments(),
       Sale.countDocuments(),
       Cost.countDocuments(),
-      Transaction.find()
-        .select("_id amount date type supplierId customerId")
-        .sort({ date: -1, _id: -1 })
-        .limit(fetchWindow)
-        .populate("supplierId", "name")
-        .populate("customerId", "name")
-        .lean(),
-      Sale.find()
-        .select("_id total createdAt customerId")
-        .sort({ createdAt: -1, _id: -1 })
-        .limit(fetchWindow)
-        .lean(),
-      Cost.find()
-        .select("_id amount date createdAt personName")
-        .sort({ date: -1, createdAt: -1, _id: -1 })
-        .limit(fetchWindow)
-        .lean(),
-    ])) as [number, number, number, TransactionsDoc[], SaleDoc[], CostDoc[]];
-
-    const customerIds = Array.from(
-      new Set(
-        [
-          ...transactions.map((record) => getPopulatedId(record.customerId)).filter(Boolean),
-          ...sales.map((sale) => getPopulatedId(sale.customerId)).filter(Boolean),
-        ].map((id) => String(id))
-      )
-    );
-
-    const customers = (customerIds.length > 0
-      ? await Customer.find({ _id: { $in: customerIds } }).select("_id name").lean()
-      : []) as CustomerDoc[];
-
-    const customerNameById = new Map(
-      customers.map((customer) => [String(customer._id), typeof customer.name === "string" ? customer.name.trim() : ""])
-    );
-
-    const normalizedTransactions = transactions.map((record) => ({
-      _id: String(record._id),
-      amount: Number(record.amount ?? 0),
-      date: record.date,
-      type: record.type,
-      supplierId: getPopulatedId(record.supplierId),
-      customerId: getPopulatedId(record.customerId),
-      supplierName: getPopulatedName(record.supplierId),
-      customerName:
-        getPopulatedName(record.customerId) ??
-        (getPopulatedId(record.customerId) ? customerNameById.get(String(getPopulatedId(record.customerId))) : undefined),
-    }));
-
-    const normalizedSales = sales.map((sale) => ({
-      _id: String(sale._id),
-      amount: Number(sale.total ?? 0),
-      date: sale.createdAt,
-      type: "sale",
-      customerId: getPopulatedId(sale.customerId),
-      supplierId: undefined,
-      customerName:
-        getPopulatedName(sale.customerId) ??
-        (getPopulatedId(sale.customerId) ? customerNameById.get(String(getPopulatedId(sale.customerId))) : undefined),
-    }));
-
-    const normalizedCosts = costs.map((cost) => ({
-      _id: String(cost._id),
-      amount: Number(cost.amount ?? 0),
-      date: cost.date ?? cost.createdAt,
-      type: "cost",
-      supplierId: undefined,
-      customerId: undefined,
-      personName: typeof cost.personName === "string" ? cost.personName.trim() : "",
-    }));
-
-    const items = [...normalizedTransactions, ...normalizedSales, ...normalizedCosts]
-      .sort((left, right) =>
-      compareByLatestInput({ id: left._id, date: left.date }, { id: right._id, date: right.date })
-      )
-      .slice(offset, offset + limit);
+    ])) as [number, number, number];
 
     const total = transactionCount + saleCount + costCount;
+
+    // Use a single aggregation with $unionWith so MongoDB can sort/limit server-side
+    // This avoids fetching large windows into application memory and merging in JS.
+    const aggPipeline: any[] = [
+      // Start with transactions projection
+      {
+        $project: {
+          _id: "$_id",
+          amount: "$amount",
+          date: "$date",
+          type: "$type",
+          supplierId: "$supplierId",
+          customerId: "$customerId",
+          personName: { $literal: null },
+          __sourceCollection: { $literal: "transaction" },
+        },
+      },
+      // Union with sales
+      {
+        $unionWith: {
+          coll: Sale.collection.name,
+          pipeline: [
+            {
+              $project: {
+                _id: "$_id",
+                amount: "$total",
+                date: "$createdAt",
+                type: { $literal: "sale" },
+                supplierId: { $literal: null },
+                customerId: "$customerId",
+                personName: { $literal: null },
+                __sourceCollection: { $literal: "sale" },
+              },
+            },
+          ],
+        },
+      },
+      // Union with costs
+      {
+        $unionWith: {
+          coll: Cost.collection.name,
+          pipeline: [
+            {
+              $project: {
+                _id: "$_id",
+                amount: "$amount",
+                date: { $ifNull: ["$date", "$createdAt"] },
+                type: { $literal: "cost" },
+                supplierId: { $literal: null },
+                customerId: { $literal: null },
+                personName: "$personName",
+                __sourceCollection: { $literal: "cost" },
+              },
+            },
+          ],
+        },
+      },
+      // Lookup customer and supplier names where applicable
+      {
+        $lookup: {
+          from: Customer.collection.name,
+          localField: "customerId",
+          foreignField: "_id",
+          as: "__customer",
+        },
+      },
+      {
+        $lookup: {
+          from: "suppliers",
+          localField: "supplierId",
+          foreignField: "_id",
+          as: "__supplier",
+        },
+      },
+      {
+        $addFields: {
+          __customer: { $arrayElemAt: ["$__customer", 0] },
+          __supplier: { $arrayElemAt: ["$__supplier", 0] },
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          amount: 1,
+          date: 1,
+          type: 1,
+          supplierId: { $cond: [{ $ifNull: ["$__supplier._id", false] }, "$__supplier._id", "$supplierId"] },
+          customerId: { $cond: [{ $ifNull: ["$__customer._id", false] }, "$__customer._id", "$customerId"] },
+          supplierName: "$__supplier.name",
+          customerName: "$__customer.name",
+          personName: 1,
+          __sourceCollection: 1,
+        },
+      },
+      { $sort: { date: -1, _id: -1 } },
+      { $skip: offset },
+      { $limit: limit },
+    ];
+
+    const aggResults = (await Transaction.aggregate(aggPipeline).allowDiskUse(true).exec()) as Array<any>;
+
+    const items: TransactionsFeedItem[] = aggResults.map((r) => ({
+      _id: String(r._id),
+      amount: Number(r.amount ?? 0),
+      date: r.date,
+      type: r.type,
+      supplierId: r.supplierId ? String(r.supplierId) : undefined,
+      customerId: r.customerId ? String(r.customerId) : undefined,
+      supplierName: typeof r.supplierName === "string" ? r.supplierName : undefined,
+      customerName: typeof r.customerName === "string" ? r.customerName : undefined,
+      personName: typeof r.personName === "string" ? r.personName : undefined,
+      __sourceCollection: r.__sourceCollection,
+    }));
 
     return {
       items,

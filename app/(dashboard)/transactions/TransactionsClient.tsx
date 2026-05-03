@@ -63,36 +63,50 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
     let cancelled = false;
     if (!initialData.hasMore) return;
 
+    // Track loaded IDs to prevent duplicates
+    const loadedPaidIds = new Set(paidItems.map((t) => `${t.__sourceCollection}_${t._id}`));
+    const loadedCustomerIds = new Set(customerItems.map((t) => `${t.__sourceCollection}_${t._id}`));
+
     (async () => {
       try {
         let page = initialData.page + 1;
         while (!cancelled) {
-          // debug: indicate background prefetch starting
-          // eslint-disable-next-line no-console
-          console.debug(`transactions: prefetch page ${page}`);
           const resp = await fetch(`/api/transactions?page=${page}&limit=${limit}`, { cache: "no-store" });
           if (!resp.ok) break;
           const data = (await resp.json()) as TransactionsFeedPage;
-          const morePaid = Array.isArray(data.items) ? data.items.filter((t) => t.supplierId || t.type === "cost") : [];
-          const moreCustomer = Array.isArray(data.items) ? data.items.filter((t) => t.customerId) : [];
-          if (morePaid.length) {
-            // eslint-disable-next-line no-console
-            console.debug(`transactions: appending ${morePaid.length} paid items from page ${page}`);
-            setPaidItems((cur) => [...cur, ...morePaid]);
-          }
-          if (moreCustomer.length) {
-            // eslint-disable-next-line no-console
-            console.debug(`transactions: appending ${moreCustomer.length} customer items from page ${page}`);
-            setCustomerItems((cur) => [...cur, ...moreCustomer]);
+          const morePaid = Array.isArray(data.items)
+            ? data.items
+                .filter((t) => t.supplierId || t.type === "cost")
+                .filter((t) => {
+                  const key = `${t.__sourceCollection}_${t._id}`;
+                  if (loadedPaidIds.has(key)) return false;
+                  loadedPaidIds.add(key);
+                  return true;
+                })
+            : [];
+          const moreCustomer = Array.isArray(data.items)
+            ? data.items
+                .filter((t) => t.customerId)
+                .filter((t) => {
+                  const key = `${t.__sourceCollection}_${t._id}`;
+                  if (loadedCustomerIds.has(key)) return false;
+                  loadedCustomerIds.add(key);
+                  return true;
+                })
+            : [];
+          if (morePaid.length || moreCustomer.length) {
+            // Batch update both states together to reduce re-renders
+            setPaidItems((cur) => (morePaid.length ? [...cur, ...morePaid] : cur));
+            setCustomerItems((cur) => (moreCustomer.length ? [...cur, ...moreCustomer] : cur));
           }
           if (!data.hasMore) {
-            // eslint-disable-next-line no-console
-            console.debug(`transactions: reached end at page ${page}`);
             setPaidHasMore(false);
             setCustomerHasMore(false);
             break;
           }
           page += 1;
+          // Add small delay between requests to prevent overwhelming the server
+          await new Promise((resolve) => setTimeout(resolve, 50));
         }
       } catch (e) {
         // ignore
@@ -261,15 +275,25 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
     window.print();
   };
 
+  // Memoize date key calculation to avoid recomputing for every filter operation
+  const filterDateKey = useMemo(() => paidFilterDate, [paidFilterDate]);
+  const customerFilterDateKey = useMemo(() => customerFilterDate, [customerFilterDate]);
+
   const paidTransactions = useMemo(() => {
-    return paidFilterDate ? paidItems.filter((item) => getDateKey(item.date) === paidFilterDate) : paidItems;
-  }, [paidItems, paidFilterDate]);
+    if (!filterDateKey) return paidItems;
+    return paidItems.filter((item) => getDateKey(item.date) === filterDateKey);
+  }, [paidItems, filterDateKey]);
 
   const customerTransactions = useMemo(() => {
-    return customerFilterDate ? customerItems.filter((item) => getDateKey(item.date) === customerFilterDate) : customerItems;
-  }, [customerItems, customerFilterDate]);
+    if (!customerFilterDateKey) return customerItems;
+    return customerItems.filter((item) => getDateKey(item.date) === customerFilterDateKey);
+  }, [customerItems, customerFilterDateKey]);
   const deferredPaidTransactions = useDeferredValue(paidTransactions);
   const deferredCustomerTransactions = useDeferredValue(customerTransactions);
+
+  // Memoize the split logic to avoid recalculating
+  const paidCount = useMemo(() => paidTransactions.length, [paidTransactions]);
+  const customerCount = useMemo(() => customerTransactions.length, [customerTransactions]);
 
   const paidTotalAmount = useMemo(
     () => deferredPaidTransactions.reduce((sum, transaction) => sum + toSafeAmount(transaction.amount), 0),
@@ -283,7 +307,7 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
   const paidTransactionRows = useMemo(
     () =>
       deferredPaidTransactions.map((t, index) => (
-        <tr key={t._id} className={`border-b border-slate-100 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}>
+        <tr key={`paid_${t.__sourceCollection}_${t._id}_${index}`} className={`border-b border-slate-100 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}>
           <td className="px-4 py-4 text-sm text-slate-800">{formatLocalizedDate(t.date, language)}</td>
           <td className="px-4 py-4 text-sm text-slate-800">{t.supplierName || t.personName || "-"}</td>
           <td className="px-4 py-4 text-sm text-slate-600">{getPaidTypeLabel(t.type)}</td>
@@ -305,13 +329,13 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
           </td>
         </tr>
       )),
-    [deferredPaidTransactions, language, limit]
+    [deferredPaidTransactions, language]
   );
 
   const customerTransactionRows = useMemo(
     () =>
       deferredCustomerTransactions.map((t, index) => (
-        <tr key={t._id} className={`border-b border-slate-100 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}>
+        <tr key={`customer_${t.__sourceCollection}_${t._id}_${index}`} className={`border-b border-slate-100 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}>
           <td className="px-4 py-4 text-sm text-slate-800">{formatLocalizedDate(t.date, language)}</td>
           <td className="px-4 py-4 text-sm text-slate-800">{t.customerName || "-"}</td>
           <td className="px-4 py-4 text-sm text-slate-600">{t.type}</td>
@@ -329,7 +353,7 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
           </td>
         </tr>
       )),
-    [deferredCustomerTransactions, language, limit]
+    [deferredCustomerTransactions, language]
   );
 
   return (
@@ -350,7 +374,7 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
             <div>
               <h2 className="text-xl font-semibold text-slate-900">{translate(language, "paidTransactions")}</h2>
               <span className="mt-2 inline-flex rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700">
-                {formatLocalizedNumber(paidTransactions.length, language, { maximumFractionDigits: 0 })} {translate(language, "entries")}
+                {formatLocalizedNumber(paidCount, language, { maximumFractionDigits: 0 })} {translate(language, "entries")}
               </span>
             </div>
             <div className="print-hidden flex flex-wrap items-end gap-2">
@@ -398,7 +422,7 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
                 colSpan={5}
                 initialCount={DEFAULT_VISIBLE}
                 loadMoreLabel="Show more"
-                hasMoreOverride={paidShowAll ? false : (paidHasMore || paidItems.length > DEFAULT_VISIBLE)}
+                hasMoreOverride={paidShowAll ? false : (paidHasMore ? true : undefined)}
                 isLoadingMore={paidIsLoadingMore}
                 onLoadMore={loadMorePaid}
                 emptyState={
@@ -429,7 +453,7 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
             <div>
               <h2 className="text-xl font-semibold text-slate-900">{translate(language, "customerTransactions")}</h2>
               <span className="mt-2 inline-flex rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700">
-                {formatLocalizedNumber(customerTransactions.length, language, { maximumFractionDigits: 0 })} {translate(language, "entries")}
+                {formatLocalizedNumber(customerCount, language, { maximumFractionDigits: 0 })} {translate(language, "entries")}
               </span>
             </div>
             <div className="print-hidden flex flex-wrap items-end gap-2">
@@ -477,7 +501,7 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
                 colSpan={5}
                 initialCount={DEFAULT_VISIBLE}
                 loadMoreLabel="Show more"
-                hasMoreOverride={customerHasMore || customerItems.length > DEFAULT_VISIBLE}
+                hasMoreOverride={customerHasMore ? true : undefined}
                 isLoadingMore={customerIsLoadingMore}
                 onLoadMore={loadMoreCustomer}
                 emptyState={
