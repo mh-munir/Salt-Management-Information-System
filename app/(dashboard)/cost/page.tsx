@@ -91,7 +91,14 @@ export default function CostPage() {
         .then(parseJson)
         .then((data) => {
           startTransition(() => {
-            setCosts(Array.isArray(data) ? data : []);
+            const sortedData = Array.isArray(data) 
+              ? [...data].sort((a, b) => {
+                  const dateA = new Date(a.date || a.createdAt || 0).getTime();
+                  const dateB = new Date(b.date || b.createdAt || 0).getTime();
+                  return dateB - dateA; // Most recent first
+                })
+              : [];
+            setCosts(sortedData);
           });
         }),
     []
