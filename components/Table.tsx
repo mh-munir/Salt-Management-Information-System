@@ -7,4 +7,4 @@ type Props = {
   data: TableRow[];
 };
 
-export default export default function Table({ columns, data }: Props) {
+export default function Table({ columns, data }: Props) {
