@@ -22,12 +22,14 @@ export const compareByLatestInput = (
   left: { id?: string | null; date?: RecordDateValue },
   right: { id?: string | null; date?: RecordDateValue }
 ) => {
+  // Prioritize date (lastActivityAt) comparison over ObjectID
+  const dateDelta = getDateTimestamp(right.date) - getDateTimestamp(left.date);
+  if (dateDelta !== 0) return dateDelta;
+
+  // Fall back to ObjectID timestamp if dates are equal
   const inputTimeDelta =
     getInputTimestamp(right.id, right.date) - getInputTimestamp(left.id, left.date);
   if (inputTimeDelta !== 0) return inputTimeDelta;
-
-  const dateDelta = getDateTimestamp(right.date) - getDateTimestamp(left.date);
-  if (dateDelta !== 0) return dateDelta;
 
   return (right.id ?? "").localeCompare(left.id ?? "");
 };
