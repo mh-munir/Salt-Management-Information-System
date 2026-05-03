@@ -184,6 +184,19 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
       : 0;
   const filteredEndingBalance = getBalanceSummary(filteredEndingBalanceValue);
 
+  // Calculate total due and total advance for filtered records
+  const filteredTotalDue = filteredRecords.reduce((sum, record) => {
+    const recordBalance = runningBalanceById.get(String(record._id ?? "")) ?? 0;
+    const balanceSummary = getBalanceSummary(recordBalance);
+    return balanceSummary.isAdvance ? sum : sum + balanceSummary.absoluteAmount;
+  }, 0);
+  
+  const filteredTotalAdvance = filteredRecords.reduce((sum, record) => {
+    const recordBalance = runningBalanceById.get(String(record._id ?? "")) ?? 0;
+    const balanceSummary = getBalanceSummary(recordBalance);
+    return balanceSummary.isAdvance ? sum + balanceSummary.absoluteAmount : sum;
+  }, 0);
+
   const recordRows = filteredRecords.map((record, index) => {
     const isPurchase = record.type === "buy" || record.type === "supplier-buy";
     const saltMaund = Number(record.saltAmount ?? 0);
@@ -415,10 +428,13 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
                     </div>
                   </td>
                   <td className="px-4 py-4 text-sm">Tk {formatAmount(filteredTotalPaid)}</td>
-                  <td className={`px-4 py-4 text-sm ${filteredEndingBalance.isAdvance ? "text-sky-600" : "text-rose-600"}`}>
-                    {filteredEndingBalance.isAdvance
-                      ? `${translate(language, "advanceBalance")} Tk ${formatAmount(filteredEndingBalance.absoluteAmount)}`
-                      : `Tk ${formatAmount(filteredEndingBalance.absoluteAmount)}`}
+                  <td className="px-4 py-4 text-sm">
+                    <div className={filteredTotalDue > 0 ? "text-rose-600 font-semibold" : "text-slate-400"}>
+                      {filteredTotalDue > 0 ? `Due: Tk ${formatAmount(filteredTotalDue)}` : "Due: -"}
+                    </div>
+                    <div className={filteredTotalAdvance > 0 ? "text-sky-600 font-semibold" : "text-slate-400"}>
+                      {filteredTotalAdvance > 0 ? `Advance: Tk ${formatAmount(filteredTotalAdvance)}` : "Advance: -"}
+                    </div>
                   </td>
                   <td className="px-4 py-4 text-sm">-</td>
                 </tr>

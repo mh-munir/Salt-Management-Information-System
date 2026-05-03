@@ -9,7 +9,7 @@ import LoadMoreTable from "@/components/LoadMoreTable";
 import ModalShell from "@/components/ModalShell";
 import CompactDateInput from "@/components/CompactDateInput";
 import FloatingInput from "@/components/FloatingInput";
-import { getBalanceSummary } from "@/lib/balance";
+import { getAggregateBalanceSummary, getBalanceSummary } from "@/lib/balance";
 import { translate } from "@/lib/language";
 import { emitTransactionsUpdated } from "@/lib/live-updates";
 import { normalizeLocalizedDigits } from "@/lib/number-input";
@@ -97,6 +97,26 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
     }
 
     return `Tk ${formatAmount(balance.absoluteAmount)}`;
+  };
+  const formatTotalBalanceStatus = (dueAmount: number, advanceAmount: number) => {
+    if (dueAmount <= 0 && advanceAmount <= 0) return "0";
+
+    const parts: string[] = [];
+
+    if (dueAmount > 0) {
+      parts.push(`${language === "bn" ? "মোট বকেয়া" : "Total Due"} Tk ${formatAmount(dueAmount)}`);
+    }
+
+    if (advanceAmount > 0) {
+      parts.push(`${language === "bn" ? "মোট অগ্রিম" : "Total Advance"} Tk ${formatAmount(advanceAmount)}`);
+    }
+
+    return parts.join(" | ");
+  };
+  const getTotalBalanceClassName = (dueAmount: number, advanceAmount: number) => {
+    if (dueAmount > 0 && advanceAmount > 0) return "text-amber-600";
+    if (advanceAmount > 0) return "text-sky-600";
+    return "text-rose-600";
   };
   const getBalanceClassName = (value: number) =>
     getBalanceSummary(value).isAdvance ? "text-sky-600" : "text-rose-600";
@@ -246,7 +266,9 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
   );
   const deferredFilteredSuppliers = useDeferredValue(filteredSuppliers);
   const totalSalt = deferredFilteredSuppliers.reduce((sum, supplier) => sum + (supplier.saltAmount ?? 0), 0);
-  const totalDue = deferredFilteredSuppliers.reduce((sum, supplier) => sum + (supplier.totalDue ?? 0), 0);
+  const totalBalance = getAggregateBalanceSummary(
+    deferredFilteredSuppliers.map((supplier) => supplier.totalDue ?? 0)
+  );
   const totalPaid = deferredFilteredSuppliers.reduce((sum, supplier) => sum + (supplier.totalPaid ?? 0), 0);
   const totalAmount = deferredFilteredSuppliers.reduce(
     (sum, supplier) => sum + (supplier.totalPurchaseAmount ?? (supplier.totalPaid ?? 0) + (supplier.totalDue ?? 0)),
@@ -1005,7 +1027,9 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
                   <td className="print-table-hidden px-4 py-4 text-center">{formatAmount(totalSalt)}</td>
                   <td className="px-4 py-4 text-center">Tk {formatAmount(totalAmount)}</td>
                   <td className="px-4 py-4 text-center">Tk {formatAmount(totalPaid)}</td>
-                  <td className={`px-4 py-4 text-center ${getBalanceClassName(totalDue)}`}>{formatTableBalanceStatus(totalDue)}</td>
+                  <td className={`px-4 py-4 text-center ${getTotalBalanceClassName(totalBalance.dueAmount, totalBalance.advanceAmount)}`}>
+                    {formatTotalBalanceStatus(totalBalance.dueAmount, totalBalance.advanceAmount)}
+                  </td>
                   <td className="print-table-hidden px-4 py-4 text-center"></td>
                   <td className="print-table-hidden px-4 py-4 text-center"></td>
                   <td className="print-table-hidden px-4 py-4 text-center"></td>

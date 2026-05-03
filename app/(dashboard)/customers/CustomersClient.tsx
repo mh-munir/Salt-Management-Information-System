@@ -10,7 +10,7 @@ import ModalShell from "@/components/ModalShell";
 import CompactDateInput from "@/components/CompactDateInput";
 import FloatingInput from "@/components/FloatingInput";
 import FloatingSelect from "@/components/FloatingSelect";
-import { getBalanceSummary } from "@/lib/balance";
+import { getAggregateBalanceSummary, getBalanceSummary } from "@/lib/balance";
 import type { CustomerListItem } from "@/lib/customers-data";
 import { translate } from "@/lib/language";
 import { emitTransactionsUpdated } from "@/lib/live-updates";
@@ -125,6 +125,26 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
       : `Tk ${formatAmount(balance.absoluteAmount)}`;
     return { text, className, status };
   }, [formatAmount, language]);
+  const getTotalBalanceInfo = useCallback((dueAmount: number, advanceAmount: number) => {
+    if (dueAmount <= 0 && advanceAmount <= 0) {
+      return { className: "text-slate-800", status: "0" };
+    }
+
+    const parts: string[] = [];
+    if (dueAmount > 0) {
+      parts.push(`${language === "bn" ? "মোট বকেয়া" : "Total Due"} Tk ${formatAmount(dueAmount)}`);
+    }
+    if (advanceAmount > 0) {
+      parts.push(`${language === "bn" ? "মোট অগ্রিম" : "Total Advance"} Tk ${formatAmount(advanceAmount)}`);
+    }
+
+    const className = dueAmount > 0 && advanceAmount > 0 ? "text-amber-600" : advanceAmount > 0 ? "text-sky-600" : "text-rose-600";
+
+    return {
+      className,
+      status: parts.join(" | "),
+    };
+  }, [formatAmount, language]);
   const [customers, setCustomers] = useState<Customer[]>(() =>
     sortCustomersByLatestInput(initialData.map((customer) => ({ ...customer, totalPaid: customer.totalPaid ?? 0 })))
   );
@@ -232,10 +252,13 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
   const totalSalt = deferredFilteredCustomers.reduce((sum, customer) => sum + (customer.saltAmount ?? 0), 0);
   const totalHockExtendedSack = deferredFilteredCustomers.reduce((sum, customer) => sum + (customer.totalHockExtendedSack ?? 0), 0);
   const totalTrackExpenses = deferredFilteredCustomers.reduce((sum, customer) => sum + (customer.totalTrackExpenses ?? 0), 0);
-  const totalDue = deferredFilteredCustomers.reduce((sum, customer) => sum + (customer.totalDue ?? 0), 0);
+  const totalBalance = getAggregateBalanceSummary(
+    deferredFilteredCustomers.map((customer) => customer.totalDue ?? 0)
+  );
   const totalPaid = deferredFilteredCustomers.reduce((sum, customer) => sum + (customer.totalPaid ?? 0), 0);
   const totalAmount = deferredFilteredCustomers.reduce((sum, customer) => sum + (customer.totalSalesAmount ?? 0), 0);
   const firstCustomerId = customers[0]?._id;
+  const totalBalanceInfo = getTotalBalanceInfo(totalBalance.dueAmount, totalBalance.advanceAmount);
 
   const isValidPhone = useCallback((value: string) => /^\d{11}$/.test(normalizeLocalizedDigits(value).trim()), []);
 
@@ -1148,7 +1171,7 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
               <td className="print-table-hidden px-4 py-4 text-center">Tk {formatAmount(totalHockExtendedSack)}</td>
               <td className="print-table-hidden px-4 py-4 text-center">Tk {formatAmount(totalTrackExpenses)}</td>
               <td className="px-4 py-4 text-center">Tk {formatAmount(totalPaid)}</td>
-              <td className={`px-4 py-4 text-center ${getBalanceInfo(totalDue).className}`}>{getBalanceInfo(totalDue).status}</td>
+              <td className={`px-4 py-4 text-center ${totalBalanceInfo.className}`}>{totalBalanceInfo.status}</td>
               <td className="print-table-hidden px-4 py-4 text-center"></td>
               <td className="print-table-hidden px-4 py-4 text-center"></td>
             </tr>

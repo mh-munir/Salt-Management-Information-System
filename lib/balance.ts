@@ -24,3 +24,17 @@ export function getBalanceSummary(value: number): BalanceSummary {
     isSettled: signedAmount === 0,
   };
 }
+
+export function getAggregateBalanceSummary(values: number[]) {
+  return values.reduce(
+    (totals, value) => {
+      const balance = getBalanceSummary(value);
+
+      totals.dueAmount += balance.dueAmount;
+      totals.advanceAmount += balance.advanceAmount;
+
+      return totals;
+    },
+    { dueAmount: 0, advanceAmount: 0 }
+  );
+}
