@@ -76,7 +76,7 @@ type TransactionsFeedOptions = PaginationParams;
 export type TransactionsFeedPage = PaginatedResponse<TransactionsFeedItem>;
 
 const DEFAULT_PAGE = 1;
-const DEFAULT_LIMIT = 50;
+const DEFAULT_LIMIT = 10;
 const MAX_FETCH_WINDOW = 500;
 
 export async function getTransactionsFeed(

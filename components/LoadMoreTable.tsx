@@ -40,12 +40,11 @@ export default function LoadMoreTable({
             <button
               type="button"
               onClick={() => {
+                // Reveal all rows immediately in the UI, and also trigger server load if provided
+                setVisibleCount(rows.length);
                 if (onLoadMore) {
                   void onLoadMore();
-                  return;
                 }
-
-                setVisibleCount((current) => Math.min(rows.length, current + initialCount));
               }}
               disabled={isLoadingMore}
               className="inline-flex items-center justify-center rounded-lg border border-sky-500 bg-[#348CD4] px-6 py-3 text-sm lg:text-md font-semibold text-white shadow-sm transition hover:bg-[#2F7FC0] focus:outline-none"

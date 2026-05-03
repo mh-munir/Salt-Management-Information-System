@@ -37,31 +37,106 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
   const { language } = useLanguage();
   const originalTitleRef = useRef("");
   const defaultFilterDate = "";
-  const [items, setItems] = useState<TransactionsFeedItem[]>(initialData.items);
-  const [page, setPage] = useState(initialData.page);
+  // Separate state for paid and customer transactions
+  const [paidItems, setPaidItems] = useState<TransactionsFeedItem[]>(
+    initialData.items.filter((t) => t.supplierId || t.type === "cost")
+  );
+  const [customerItems, setCustomerItems] = useState<TransactionsFeedItem[]>(
+    initialData.items.filter((t) => t.customerId)
+  );
+  const [paidPage, setPaidPage] = useState(initialData.page);
+  const [customerPage, setCustomerPage] = useState(initialData.page);
   const [limit] = useState(initialData.limit);
-  const [hasMore, setHasMore] = useState(initialData.hasMore);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const DEFAULT_VISIBLE = 10;
+  // Paginate paid transactions (show first `limit` rows, allow "Show more")
+  const paidShowAll = false;
+  const [paidHasMore, setPaidHasMore] = useState(initialData.hasMore);
+  const [customerHasMore, setCustomerHasMore] = useState(initialData.hasMore);
+  const [paidIsLoadingMore, setPaidIsLoadingMore] = useState(false);
+  const [customerIsLoadingMore, setCustomerIsLoadingMore] = useState(false);
   const [printTarget, setPrintTarget] = useState<"paid" | "customer" | null>(null);
   const [paidFilterDate, setPaidFilterDate] = useState(defaultFilterDate);
   const [customerFilterDate, setCustomerFilterDate] = useState(defaultFilterDate);
-  const data = items;
 
-  const refreshTransactions = useCallback(async () => {
-    const loadedWindow = Math.max(limit, page * limit);
+  // Background: load all remaining pages so tables can show full history
+  useEffect(() => {
+    let cancelled = false;
+    if (!initialData.hasMore) return;
 
+    (async () => {
+      try {
+        let page = initialData.page + 1;
+        while (!cancelled) {
+          // debug: indicate background prefetch starting
+          // eslint-disable-next-line no-console
+          console.debug(`transactions: prefetch page ${page}`);
+          const resp = await fetch(`/api/transactions?page=${page}&limit=${limit}`, { cache: "no-store" });
+          if (!resp.ok) break;
+          const data = (await resp.json()) as TransactionsFeedPage;
+          const morePaid = Array.isArray(data.items) ? data.items.filter((t) => t.supplierId || t.type === "cost") : [];
+          const moreCustomer = Array.isArray(data.items) ? data.items.filter((t) => t.customerId) : [];
+          if (morePaid.length) {
+            // eslint-disable-next-line no-console
+            console.debug(`transactions: appending ${morePaid.length} paid items from page ${page}`);
+            setPaidItems((cur) => [...cur, ...morePaid]);
+          }
+          if (moreCustomer.length) {
+            // eslint-disable-next-line no-console
+            console.debug(`transactions: appending ${moreCustomer.length} customer items from page ${page}`);
+            setCustomerItems((cur) => [...cur, ...moreCustomer]);
+          }
+          if (!data.hasMore) {
+            // eslint-disable-next-line no-console
+            console.debug(`transactions: reached end at page ${page}`);
+            setPaidHasMore(false);
+            setCustomerHasMore(false);
+            break;
+          }
+          page += 1;
+        }
+      } catch (e) {
+        // ignore
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialData.hasMore, initialData.page, limit]);
+
+  // Refresh handlers for paid and customer transactions
+  const refreshPaidTransactions = useCallback(async () => {
+    try {
+      const url = paidShowAll ? `/api/transactions?page=1&limit=100` : `/api/transactions?page=1&limit=${Math.max(limit, paidPage * limit)}`;
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) return;
+      const latest = (await response.json()) as TransactionsFeedPage;
+      const paidData = Array.isArray(latest.items) ? latest.items.filter((t) => t.supplierId || t.type === "cost") : [];
+      setPaidItems(paidData);
+      if (paidShowAll) {
+        setPaidPage(1);
+        setPaidHasMore(false);
+      } else {
+        const loadedWindow = Math.max(limit, paidPage * limit);
+        setPaidPage(Math.max(1, Math.ceil(loadedWindow / limit)));
+        setPaidHasMore(Boolean(latest.hasMore));
+      }
+    } catch {}
+  }, [limit, paidPage]);
+
+  const refreshCustomerTransactions = useCallback(async () => {
+    const loadedWindow = Math.max(limit, customerPage * limit);
     try {
       const response = await fetch(`/api/transactions?page=1&limit=${loadedWindow}`, { cache: "no-store" });
       if (!response.ok) return;
-
       const latest = (await response.json()) as TransactionsFeedPage;
-      setItems(Array.isArray(latest.items) ? latest.items : []);
-      setPage(Math.max(1, Math.ceil(loadedWindow / limit)));
-      setHasMore(Boolean(latest.hasMore));
-    } catch {
-      // Keep currently rendered items when refresh fails.
-    }
-  }, [limit, page]);
+      const customerData = Array.isArray(latest.items) ? latest.items.filter((t) => t.customerId) : [];
+      setCustomerItems(customerData);
+      setCustomerPage(Math.max(1, Math.ceil(loadedWindow / limit)));
+      setCustomerHasMore(Boolean(latest.hasMore));
+    } catch {}
+  }, [limit, customerPage]);
+
 
   useEffect(() => {
     const handleBeforePrint = () => {
@@ -88,42 +163,42 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
     };
   }, []);
 
+  // The effect for refreshing on focus, visibility, etc. should now use the new refreshPaidTransactions and refreshCustomerTransactions
   useEffect(() => {
     const handleWindowFocus = () => {
-      void refreshTransactions();
+      void refreshPaidTransactions();
+      void refreshCustomerTransactions();
     };
-
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        void refreshTransactions();
+        void refreshPaidTransactions();
+        void refreshCustomerTransactions();
       }
     };
-
     const handleTransactionsUpdated = () => {
-      void refreshTransactions();
+      void refreshPaidTransactions();
+      void refreshCustomerTransactions();
     };
-
     const handleStorageChange = (event: StorageEvent) => {
       if (event.key === TRANSACTIONS_UPDATED_STORAGE_KEY) {
-        void refreshTransactions();
+        void refreshPaidTransactions();
+        void refreshCustomerTransactions();
       }
     };
-
     let broadcastChannel: BroadcastChannel | null = null;
     if (typeof BroadcastChannel !== "undefined") {
       broadcastChannel = new BroadcastChannel(LIVE_UPDATES_CHANNEL);
       broadcastChannel.onmessage = (event) => {
         if (event.data?.type === TRANSACTIONS_UPDATED_EVENT) {
-          void refreshTransactions();
+          void refreshPaidTransactions();
+          void refreshCustomerTransactions();
         }
       };
     }
-
     window.addEventListener("focus", handleWindowFocus);
     document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener(TRANSACTIONS_UPDATED_EVENT, handleTransactionsUpdated);
     window.addEventListener("storage", handleStorageChange);
-
     return () => {
       window.removeEventListener("focus", handleWindowFocus);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
@@ -131,7 +206,7 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
       window.removeEventListener("storage", handleStorageChange);
       broadcastChannel?.close();
     };
-  }, [refreshTransactions]);
+  }, [refreshPaidTransactions, refreshCustomerTransactions]);
 
   const getPaidTypeLabel = (type?: string) => {
     if (!type) return "-";
@@ -144,21 +219,38 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
     return Number.isFinite(parsed) ? parsed : 0;
   };
 
-  const loadNextPage = async () => {
-    if (isLoadingMore || !hasMore) return;
-
-    setIsLoadingMore(true);
-
+  // Separate load more handlers
+  const loadMorePaid = async () => {
+    // When showing all paid transactions, do not load more
+    if (paidShowAll) return;
+    if (paidIsLoadingMore || !paidHasMore) return;
+    setPaidIsLoadingMore(true);
     try {
-      const response = await fetch(`/api/transactions?page=${page + 1}&limit=${limit}`, { cache: "no-store" });
+      const response = await fetch(`/api/transactions?page=${paidPage + 1}&limit=${limit}`, { cache: "no-store" });
       if (!response.ok) return;
-
       const nextPage = (await response.json()) as TransactionsFeedPage;
-      setItems((current) => [...current, ...(Array.isArray(nextPage.items) ? nextPage.items : [])]);
-      setPage(nextPage.page ?? page + 1);
-      setHasMore(Boolean(nextPage.hasMore));
+      const newPaid = Array.isArray(nextPage.items) ? nextPage.items.filter((t) => t.supplierId || t.type === "cost") : [];
+      setPaidItems((current) => [...current, ...newPaid]);
+      setPaidPage(nextPage.page ?? paidPage + 1);
+      setPaidHasMore(Boolean(nextPage.hasMore));
     } finally {
-      setIsLoadingMore(false);
+      setPaidIsLoadingMore(false);
+    }
+  };
+
+  const loadMoreCustomer = async () => {
+    if (customerIsLoadingMore || !customerHasMore) return;
+    setCustomerIsLoadingMore(true);
+    try {
+      const response = await fetch(`/api/transactions?page=${customerPage + 1}&limit=${limit}`, { cache: "no-store" });
+      if (!response.ok) return;
+      const nextPage = (await response.json()) as TransactionsFeedPage;
+      const newCustomer = Array.isArray(nextPage.items) ? nextPage.items.filter((t) => t.customerId) : [];
+      setCustomerItems((current) => [...current, ...newCustomer]);
+      setCustomerPage(nextPage.page ?? customerPage + 1);
+      setCustomerHasMore(Boolean(nextPage.hasMore));
+    } finally {
+      setCustomerIsLoadingMore(false);
     }
   };
 
@@ -170,16 +262,12 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
   };
 
   const paidTransactions = useMemo(() => {
-    const paidData = data.filter((t) => t.supplierId || t.type === "cost");
-    return paidFilterDate ? paidData.filter((item) => getDateKey(item.date) === paidFilterDate) : paidData;
-  }, [data, paidFilterDate]);
+    return paidFilterDate ? paidItems.filter((item) => getDateKey(item.date) === paidFilterDate) : paidItems;
+  }, [paidItems, paidFilterDate]);
 
   const customerTransactions = useMemo(() => {
-    const customerData = data.filter((t) => t.customerId);
-    return customerFilterDate
-      ? customerData.filter((item) => getDateKey(item.date) === customerFilterDate)
-      : customerData;
-  }, [data, customerFilterDate]);
+    return customerFilterDate ? customerItems.filter((item) => getDateKey(item.date) === customerFilterDate) : customerItems;
+  }, [customerItems, customerFilterDate]);
   const deferredPaidTransactions = useDeferredValue(paidTransactions);
   const deferredCustomerTransactions = useDeferredValue(customerTransactions);
 
@@ -217,7 +305,7 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
           </td>
         </tr>
       )),
-    [deferredPaidTransactions, language]
+    [deferredPaidTransactions, language, limit]
   );
 
   const customerTransactionRows = useMemo(
@@ -241,7 +329,7 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
           </td>
         </tr>
       )),
-    [deferredCustomerTransactions, language]
+    [deferredCustomerTransactions, language, limit]
   );
 
   return (
@@ -308,10 +396,11 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
               <LoadMoreTable
                 rows={paidTransactionRows}
                 colSpan={5}
+                initialCount={DEFAULT_VISIBLE}
                 loadMoreLabel="Show more"
-                hasMoreOverride={hasMore}
-                isLoadingMore={isLoadingMore}
-                onLoadMore={loadNextPage}
+                hasMoreOverride={paidShowAll ? false : (paidHasMore || paidItems.length > DEFAULT_VISIBLE)}
+                isLoadingMore={paidIsLoadingMore}
+                onLoadMore={loadMorePaid}
                 emptyState={
                   <tr>
                     <td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-500">
@@ -386,10 +475,11 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
               <LoadMoreTable
                 rows={customerTransactionRows}
                 colSpan={5}
+                initialCount={DEFAULT_VISIBLE}
                 loadMoreLabel="Show more"
-                hasMoreOverride={hasMore}
-                isLoadingMore={isLoadingMore}
-                onLoadMore={loadNextPage}
+                hasMoreOverride={customerHasMore || customerItems.length > DEFAULT_VISIBLE}
+                isLoadingMore={customerIsLoadingMore}
+                onLoadMore={loadMoreCustomer}
                 emptyState={
                   <tr>
                     <td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-500">
