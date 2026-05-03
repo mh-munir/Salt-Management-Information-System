@@ -44,11 +44,16 @@ export default async function SupplierTimelinePrintPage({
     });
 
   const tableFilterDate = typeof query.date === "string" ? query.date : "";
-  const [supplier, branding] = await Promise.all([Supplier.findById(id).lean(), getInvoiceBranding()]);
+  // Fetch supplier, branding, and transactions in parallel for better performance
+  const [supplier, branding, recordsRaw] = await Promise.all([
+    Supplier.findById(id).lean(),
+    getInvoiceBranding(),
+    Transaction.find({ supplierId: id }).lean(),
+  ]);
 
   if (!supplier) notFound();
 
-  const records = (await Transaction.find({ supplierId: id }).lean()).sort((left, right) =>
+  const records = recordsRaw.sort((left, right) =>
     compareByLatestInput(
       { id: String(left._id ?? ""), date: left.date },
       { id: String(right._id ?? ""), date: right.date }

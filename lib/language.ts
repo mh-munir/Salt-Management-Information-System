@@ -110,6 +110,7 @@ export type TranslationKey =
   | "manageAdmin"
   | "saveButton"
   | "addingEllipsis"
+  | "savingEllipsis"
   | "cancelAction"
   | "pricePerMaund"
   | "pricePerKg"
@@ -456,6 +457,7 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     manageAdmin: "Manage admin accounts, top navbar image, and sidebar branding.",
     saveButton: "Save",
     addingEllipsis: "Adding...",
+    savingEllipsis: "Saving...",
     cancelAction: "Cancel",
     up: "Up",
     down: "Down",
@@ -881,6 +883,7 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     manageAdmin: "অ্যাডমিন অ্যাকাউন্ট, টপ ন্যাভবার ইমেজ, এবং সাইডবার ব্র্যান্ডিং পরিচালনা করুন।",
     saveButton: "সেভ",
     addingEllipsis: "যোগ করা হচ্ছে…",
+    savingEllipsis: "সেভ করা হচ্ছে…",
     cancelAction: "বাতিল",
     up: "উপ",
     down: "ডাউন",

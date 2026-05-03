@@ -26,5 +26,9 @@ const SaleSchema = new mongoose.Schema({
 
 SaleSchema.index({ customerId: 1, createdAt: -1 });
 SaleSchema.index({ createdAt: -1 });
+// Add simple index for single-field customerId lookups (profile pages, print)
+SaleSchema.index({ customerId: 1 });
+// Add index for date range queries in dashboard aggregations
+SaleSchema.index({ createdAt: 1 });
 
 export default mongoose.models.Sale || mongoose.model("Sale", SaleSchema);

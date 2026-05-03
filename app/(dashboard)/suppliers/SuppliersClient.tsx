@@ -213,6 +213,7 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
     const [suppliers, setSuppliers] = useState<Supplier[]>(() =>
       sortSuppliersByLatestInput(initialData.map((supplier) => ({ ...supplier, totalPaid: supplier.totalPaid ?? 0 })))
     );
+  const [isPurchaseRefreshing, setIsPurchaseRefreshing] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [supplierName, setSupplierName] = useState("");
   const [buySaltQuantity, setBuySaltQuantity] = useState("");
@@ -248,6 +249,9 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
         if (Array.isArray(data)) {
           setSuppliers(sortSuppliersByLatestInput(data.map((s: Supplier) => ({ ...s, totalPaid: s.totalPaid ?? 0 }))));
         }
+      })
+      .finally(() => {
+        setIsPurchaseRefreshing(false);
       });
 
   useEffect(() => {
@@ -342,6 +346,7 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
         }
         setBuyStatus({ type: "success", message: translate(language, "purchaseRecordedSuccessfully") });
         // Refresh supplier list
+        setIsPurchaseRefreshing(true);
         refreshSuppliers();
         emitTransactionsUpdated();
         setSupplierName("");
@@ -733,9 +738,10 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <button
               type="submit"
-              className="inline-flex w-full items-center justify-center rounded-lg bg-[#348CD4] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#2F7FC0] sm:w-auto"
+              disabled={isPurchaseRefreshing}
+              className="inline-flex w-full items-center justify-center rounded-lg bg-[#348CD4] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#2F7FC0] disabled:opacity-50 disabled:cursor-not-allowed sm:w-auto"
             >
-              {translate(language, "savePurchaseEntry")}
+              {isPurchaseRefreshing ? translate(language, "savingEllipsis") : translate(language, "savePurchaseEntry")}
             </button>
             {buyStatus ? (
               <p className={`text-sm ${buyStatus.type === "success" ? "text-emerald-600" : "text-rose-600"}`}>

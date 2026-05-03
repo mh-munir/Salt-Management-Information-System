@@ -148,6 +148,7 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
   const [customers, setCustomers] = useState<Customer[]>(() =>
     sortCustomersByLatestInput(initialData.map((customer) => ({ ...customer, totalPaid: customer.totalPaid ?? 0 })))
   );
+  const [isSaleRefreshing, setIsSaleRefreshing] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
@@ -268,23 +269,23 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
     return text ? JSON.parse(text) : null;
   }, []);
 
-  const refreshCustomers = useCallback(() =>
-    fetch("/api/customers", { cache: "no-store" })
-      .then(parseJson)
-      .then((data) => {
-        if (Array.isArray(data)) {
-          setCustomers(
-            sortCustomersByLatestInput(
-              data.map((customer: Customer) => ({
-                ...customer,
-                totalPaid: customer.totalPaid ?? 0,
-              }))
-            )
-          );
-        }
-      }),
-    [parseJson]
-  );
+  const refreshCustomers = useCallback(async () => {
+    try {
+      const data = await fetch("/api/customers", { cache: "no-store" }).then(parseJson);
+      if (Array.isArray(data)) {
+        setCustomers(
+          sortCustomersByLatestInput(
+            data.map((customer: Customer) => ({
+              ...customer,
+              totalPaid: customer.totalPaid ?? 0,
+            }))
+          )
+        );
+      }
+    } finally {
+      setIsSaleRefreshing(false);
+    }
+  }, [parseJson]);
 
   const updateSaleAmounts = (
     totalKg: string,
@@ -585,7 +586,8 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
     setSalePaid("");
     setSaleDue("");
 
-    refreshCustomers();
+    setIsSaleRefreshing(true);
+    await refreshCustomers();
     emitTransactionsUpdated();
     toast.success("Sale Recorded Successfully");
   };
@@ -867,9 +869,10 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <button
               type="submit"
-              className="inline-flex w-full items-center justify-center rounded-lg bg-[#348CD4] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#2F7FC0] sm:w-auto"
+              disabled={isSaleRefreshing}
+              className="inline-flex w-full items-center justify-center rounded-lg bg-[#348CD4] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#2F7FC0] disabled:opacity-50 disabled:cursor-not-allowed sm:w-auto"
             >
-              {translate(language, "saveSaleEntry")}
+              {isSaleRefreshing ? translate(language, "savingEllipsis") : translate(language, "saveSaleEntry")}
             </button>
             {saleStatus ? (
               <p className={`text-sm ${saleStatus.type === "success" ? "text-emerald-600" : "text-rose-600"}`}>

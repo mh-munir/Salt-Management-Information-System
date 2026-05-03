@@ -133,31 +133,32 @@ export const getCustomersPageData = cache(async (): Promise<CustomerListItem[]> 
           totalPaid: customer.totalPaid,
         });
         const lastActivityAt = Math.max(latestActivityByCustomer.get(id) ?? 0, getInputTimestamp(id));
-        const latestSale = customerSales.reduce<SaleDoc | null>((latest, current) => {
-          if (!latest) return current;
-
-          return compareByLatestInput(
-            { id: String(current._id ?? ""), date: current.createdAt },
-            { id: String(latest._id ?? ""), date: latest.createdAt }
-          ) < 0
-            ? current
-            : latest;
-        }, null);
-        const latestSaleAdjustments = resolveSaleAdjustments(latestSale);
+        
+        // Optimize: Combine multiple iterations into single pass
+        let latestSale: SaleDoc | null = null;
+        let totalHockExtendedSack = 0;
+        let totalTrackExpenses = 0;
+        
+        for (const sale of customerSales) {
+          const adjustments = resolveSaleAdjustments(sale);
+          totalHockExtendedSack += adjustments.hockExtendedSack;
+          totalTrackExpenses += adjustments.trackExpenses;
+          
+          if (!latestSale || compareByLatestInput(
+            { id: String(sale._id ?? ""), date: sale.createdAt },
+            { id: String(latestSale._id ?? ""), date: latestSale.createdAt }
+          ) < 0) {
+            latestSale = sale;
+          }
+        }
+        
+        const latestSaleAdjustments = latestSale ? resolveSaleAdjustments(latestSale) : { hockExtendedSack: 0, trackExpenses: 0 };
         const latestQuantity = latestSale ? resolveSaleQuantity(latestSale) : 0;
         const latestPricePerKg =
           latestSale && latestQuantity > 0
             ? (Number(latestSale.total ?? 0) - latestSaleAdjustments.hockExtendedSack + latestSaleAdjustments.trackExpenses) /
               latestQuantity
             : 0;
-        const totalHockExtendedSack = customerSales.reduce(
-          (sum, sale) => sum + resolveSaleAdjustments(sale).hockExtendedSack,
-          0
-        );
-        const totalTrackExpenses = customerSales.reduce(
-          (sum, sale) => sum + resolveSaleAdjustments(sale).trackExpenses,
-          0
-        );
 
         return {
           _id: id,

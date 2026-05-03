@@ -429,12 +429,35 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
                   </td>
                   <td className="px-4 py-4 text-sm">Tk {formatAmount(filteredTotalPaid)}</td>
                   <td className="px-4 py-4 text-sm">
-                    <div className={filteredTotalDue > 0 ? "text-rose-600 font-semibold" : "text-slate-400"}>
-                      {filteredTotalDue > 0 ? `Due: Tk ${formatAmount(filteredTotalDue)}` : "Due: -"}
-                    </div>
-                    <div className={filteredTotalAdvance > 0 ? "text-sky-600 font-semibold" : "text-slate-400"}>
-                      {filteredTotalAdvance > 0 ? `Advance: Tk ${formatAmount(filteredTotalAdvance)}` : "Advance: -"}
-                    </div>
+                    {tableFilterDate ? (
+                      <>
+                        {!filteredEndingBalance.isAdvance && filteredEndingBalance.absoluteAmount > 0 ? (
+                          <div className="text-rose-600 font-semibold">
+                            Outstanding: Tk {formatAmount(filteredEndingBalance.absoluteAmount)}
+                          </div>
+                        ) : filteredEndingBalance.isAdvance && filteredEndingBalance.absoluteAmount > 0 ? (
+                          <div className="text-sky-600 font-semibold">
+                            Advance: Tk {formatAmount(filteredEndingBalance.absoluteAmount)}
+                          </div>
+                        ) : (
+                          <div className="text-slate-400">-</div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        {!balance.isAdvance && balance.absoluteAmount > 0 ? (
+                          <div className="text-rose-600 font-semibold">
+                            Outstanding: Tk {formatAmount(balance.absoluteAmount)}
+                          </div>
+                        ) : balance.isAdvance && balance.absoluteAmount > 0 ? (
+                          <div className="text-sky-600 font-semibold">
+                            Advance: Tk {formatAmount(balance.absoluteAmount)}
+                          </div>
+                        ) : (
+                          <div className="text-slate-400">-</div>
+                        )}
+                      </>
+                    )}
                   </td>
                   <td className="px-4 py-4 text-sm">-</td>
                 </tr>

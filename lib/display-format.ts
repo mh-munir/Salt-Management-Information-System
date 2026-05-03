@@ -1,7 +1,12 @@
+// Compile regex pattern once at module level instead of on every function call
+const DISPLAY_NAME_PATTERN = /(^[\s\-_/()[\].,]+)([a-z])/g;
+
 export const formatDisplayName = (value?: string, fallback = ""): string => {
   const source = String(value ?? "").trim() || fallback.trim();
   if (!source) return "";
-  return source.toLowerCase().replace(/(^[\s\-_/()[\].,]+)([a-z])/g, (_, prefix: string, letter: string) => `${prefix}${letter.toUpperCase()}`);
+  // Reset regex lastIndex since global flag persists state
+  DISPLAY_NAME_PATTERN.lastIndex = 0;
+  return source.toLowerCase().replace(DISPLAY_NAME_PATTERN, (_, prefix: string, letter: string) => `${prefix}${letter.toUpperCase()}`);
 };
 
 export const getNumberLocale = (language: "en" | "bn"): string => language === "bn" ? "bn-BD" : "en-BD";

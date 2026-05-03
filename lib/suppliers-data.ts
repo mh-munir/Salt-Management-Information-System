@@ -86,17 +86,20 @@ export const getSuppliersPageData = cache(async (): Promise<SupplierListItem[]> 
           totalDue: supplier.totalDue,
         });
         const lastActivityAt = Math.max(latestActivityBySupplier.get(id) ?? 0, getInputTimestamp(id));
-        const latestPurchase = supplierRecords.reduce<SupplierRecordDoc | null>((latest, current) => {
-          if (current.type !== "buy" && current.type !== "supplier-buy") return latest;
-          if (!latest) return current;
-
-          return compareByLatestInput(
-            { id: String(current._id ?? ""), date: current.date },
-            { id: String(latest._id ?? ""), date: latest.date }
-          ) < 0
-            ? current
-            : latest;
-        }, null);
+        
+        // Optimize: Find latest purchase in single pass
+        let latestPurchase: SupplierRecordDoc | null = null;
+        for (const record of supplierRecords) {
+          if (record.type !== "buy" && record.type !== "supplier-buy") continue;
+          
+          if (!latestPurchase || compareByLatestInput(
+            { id: String(record._id ?? ""), date: record.date },
+            { id: String(latestPurchase._id ?? ""), date: latestPurchase.date }
+          ) < 0) {
+            latestPurchase = record;
+          }
+        }
+        
         const latestPricePerMaund =
           latestPurchase && Number(latestPurchase.saltAmount ?? 0) > 0
             ? Number(latestPurchase.totalAmount ?? 0) / Number(latestPurchase.saltAmount ?? 0)
