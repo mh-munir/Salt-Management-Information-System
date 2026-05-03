@@ -35,7 +35,7 @@ export default function LoadMoreTable({
         <>{visibleRows}</>
       )}
       {hasMore ? (
-        <tr>
+        <tr className="print-hidden">
           <td colSpan={colSpan} className="px-4 py-4 text-center">
             <button
               type="button"

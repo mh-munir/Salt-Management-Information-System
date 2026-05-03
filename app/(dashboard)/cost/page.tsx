@@ -481,6 +481,16 @@ export default function CostPage() {
                   }
                 />
               </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-slate-200 bg-slate-50 font-semibold text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                  <td colSpan={3} className="px-4 py-4">
+                    {translate(language, "totals")}
+                  </td>
+                  <td className="px-4 py-4 text-right">
+                    {formatCurrency(filteredCostTotal)}
+                  </td>
+                </tr>
+              </tfoot>
             </table>
           </div>
         </div>

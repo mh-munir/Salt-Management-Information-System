@@ -227,6 +227,13 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
     [deferredCustomerTransactions]
   );
 
+  const costTotalAmount = useMemo(
+    () => deferredPaidTransactions
+      .filter((t) => t.type === "cost")
+      .reduce((sum, transaction) => sum + toSafeAmount(transaction.amount), 0),
+    [deferredPaidTransactions]
+  );
+
   const paidTransactionRows = useMemo(
     () =>
       deferredPaidTransactions.map((t, index) => (
