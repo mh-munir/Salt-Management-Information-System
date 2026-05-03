@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import { fetchAppShellSnapshot } from "@/lib/app-shell-client";
 import {
   DEFAULT_BRAND_LOGO_URL,
@@ -56,6 +56,15 @@ const navGroups: NavGroup[] = [
 
 const iconClassName = "h-5 w-5 shrink-0";
 
+const ICON_CONFIG = {
+  dashboard: { viewBox: "0 0 24 24", d: [["rect", { x: "3.5", y: "3.5", width: "7.5", height: "7.5", rx: "1.2" }], ["rect", { x: "13", y: "3.5", width: "7.5", height: "4.8", rx: "1.2" }], ["rect", { x: "13", y: "10.6", width: "7.5", height: "9.9", rx: "1.2" }], ["rect", { x: "3.5", y: "13", width: "7.5", height: "7.5", rx: "1.2" }]] },
+  transactions: { viewBox: "0 0 24 24", paths: ["M4 8h12", "m12 4 4 4-4 4", "M20 16H8", "m12 12-4 4 4 4"] },
+  suppliers: { viewBox: "0 0 24 24", paths: ["M3.2 10.7 12 4.2l8.8 6.5v9.6a1 1 0 0 1-1 1H4.2a1 1 0 0 1-1-1v-9.6Z", "M9 21.3v-6h6v6"] },
+  customers: { viewBox: "0 0 24 24", paths: ["M8.8 8.6 r2.8", "M3.8 17c1.1-2.3 2.8-3.5 5-3.5 2.1 0 3.8 1.2 4.9 3.5", "M17.4 9.4 r2.1", "M14.7 16.7c.8-1.6 1.9-2.4 3.5-2.4 1.5 0 2.6.8 3.4 2.4"] },
+  stock: { viewBox: "0 0 24 24", paths: ["M4 7h16", "M6 7V4.9h12V7", "M9 12h6"] },
+  cost: { viewBox: "0 0 24 24", paths: ["M5 6.5h14", "M8 4v5", "M16 4v5", "M8 12h8", "M8 16h5"] },
+} as const;
+
 type SidebarBrandingResponse = {
   sidebarLogoUrl?: string;
   sidebarHeading?: string;
@@ -72,79 +81,64 @@ type SidebarBrandingUpdateDetail = {
 };
 
 function NavIcon({ type }: { type: NavIconType }) {
-  if (type === "dashboard") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className={iconClassName}>
-        <rect x="3.5" y="3.5" width="7.5" height="7.5" rx="1.2" />
-        <rect x="13" y="3.5" width="7.5" height="4.8" rx="1.2" />
-        <rect x="13" y="10.6" width="7.5" height="9.9" rx="1.2" />
-        <rect x="3.5" y="13" width="7.5" height="7.5" rx="1.2" />
-      </svg>
-    );
-  }
-
-  if (type === "transactions") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className={iconClassName}>
-        <path d="M4 8h12" />
-        <path d="m12 4 4 4-4 4" />
-        <path d="M20 16H8" />
-        <path d="m12 12-4 4 4 4" />
-      </svg>
-    );
-  }
-
-  if (type === "suppliers") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className={iconClassName}>
-        <path d="M3.2 10.7 12 4.2l8.8 6.5v9.6a1 1 0 0 1-1 1H4.2a1 1 0 0 1-1-1v-9.6Z" />
-        <path d="M9 21.3v-6h6v6" />
-      </svg>
-    );
-  }
-
-  if (type === "customers") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className={iconClassName}>
-        <circle cx="8.8" cy="8.6" r="2.8" />
-        <path d="M3.8 17c1.1-2.3 2.8-3.5 5-3.5 2.1 0 3.8 1.2 4.9 3.5" />
-        <circle cx="17.4" cy="9.4" r="2.1" />
-        <path d="M14.7 16.7c.8-1.6 1.9-2.4 3.5-2.4 1.5 0 2.6.8 3.4 2.4" />
-      </svg>
-    );
-  }
-
-  if (type === "stock") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className={iconClassName}>
-        <path d="M4 7h16" />
-        <path d="M6 7V4.9h12V7" />
-        <rect x="4.4" y="7" width="15.2" height="12.8" rx="1.3" />
-        <path d="M9 12h6" />
-      </svg>
-    );
-  }
-
-  if (type === "cost") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className={iconClassName}>
-        <path d="M5 6.5h14" />
-        <path d="M8 4v5" />
-        <path d="M16 4v5" />
-        <rect x="4" y="6.5" width="16" height="13.5" rx="1.5" />
-        <path d="M8 12h8" />
-        <path d="M8 16h5" />
-      </svg>
-    );
-  }
-
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className={iconClassName}>
-      <path d="M12 8.4a3.6 3.6 0 1 0 0 7.2 3.6 3.6 0 0 0 0-7.2Z" />
-      <path d="m19.1 12 .9-1.4-1.8-3-1.7.4c-.4-.3-.8-.5-1.2-.7l-.4-2h-3.7l-.3 2c-.5.2-.9.4-1.3.7l-1.7-.4-1.8 3 .9 1.4-.9 1.4 1.8 3 1.7-.4c.4.3.8.5 1.3.7l.3 2h3.7l.4-2c.4-.2.8-.4 1.2-.7l1.7.4 1.8-3-.9-1.4Z" />
+      {type === "dashboard" && (
+        <>
+          <rect x="3.5" y="3.5" width="7.5" height="7.5" rx="1.2" />
+          <rect x="13" y="3.5" width="7.5" height="4.8" rx="1.2" />
+          <rect x="13" y="10.6" width="7.5" height="9.9" rx="1.2" />
+          <rect x="3.5" y="13" width="7.5" height="7.5" rx="1.2" />
+        </>
+      )}
+      {type === "transactions" && (
+        <>
+          <path d="M4 8h12" />
+          <path d="m12 4 4 4-4 4" />
+          <path d="M20 16H8" />
+          <path d="m12 12-4 4 4 4" />
+        </>
+      )}
+      {type === "suppliers" && (
+        <>
+          <path d="M3.2 10.7 12 4.2l8.8 6.5v9.6a1 1 0 0 1-1 1H4.2a1 1 0 0 1-1-1v-9.6Z" />
+          <path d="M9 21.3v-6h6v6" />
+        </>
+      )}
+      {type === "customers" && (
+        <>
+          <circle cx="8.8" cy="8.6" r="2.8" />
+          <path d="M3.8 17c1.1-2.3 2.8-3.5 5-3.5 2.1 0 3.8 1.2 4.9 3.5" />
+          <circle cx="17.4" cy="9.4" r="2.1" />
+          <path d="M14.7 16.7c.8-1.6 1.9-2.4 3.5-2.4 1.5 0 2.6.8 3.4 2.4" />
+        </>
+      )}
+      {type === "stock" && (
+        <>
+          <path d="M4 7h16" />
+          <path d="M6 7V4.9h12V7" />
+          <rect x="4.4" y="7" width="15.2" height="12.8" rx="1.3" />
+          <path d="M9 12h6" />
+        </>
+      )}
+      {type === "cost" && (
+        <>
+          <path d="M5 6.5h14" />
+          <path d="M8 4v5" />
+          <path d="M16 4v5" />
+          <rect x="4" y="6.5" width="16" height="13.5" rx="1.5" />
+          <path d="M8 12h8" />
+          <path d="M8 16h5" />
+        </>
+      )}
+      {!type.match(/dashboard|transactions|suppliers|customers|stock|cost/) && (
+        <path d="M12 8.4a3.6 3.6 0 1 0 0 7.2 3.6 3.6 0 0 0 0-7.2Z" />
+      )}
     </svg>
   );
 }
+
+const MemoizedNavIcon = memo(NavIcon);
 
 function BrandMark() {
   return (
@@ -424,7 +418,7 @@ export default function Sidebar({
                             : "border-transparent bg-slate-100/85 text-slate-500 group-hover:bg-slate-200/85 group-hover:text-slate-700"
                       }`}
                     >
-                      <NavIcon type={item.icon} />
+                      <MemoizedNavIcon type={item.icon} />
                     </span>
                     <span className="flex-1 min-w-0">
                       <span

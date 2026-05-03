@@ -25,17 +25,15 @@ type TransactionItem = {
   saltAmount?: number;
 };
 
-const getSafeNumber = (value: unknown) => {
+const getSafeNumber = (value: unknown): number => {
   const parsed = Number(value ?? 0);
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const getPercentChange = (current: number, previous: number) => {
-  if (!previous) return current > 0 ? 100 : 0;
-  return ((current - previous) / previous) * 100;
-};
+const getPercentChange = (current: number, previous: number): number =>
+  previous ? ((current - previous) / previous) * 100 : (current > 0 ? 100 : 0);
 
-const clampPercent = (value: number) => Math.min(100, Math.max(0, value));
+const clampPercent = (value: number): number => Math.max(0, Math.min(100, value));
 
 const KG_PER_MOUND = 40;
 
@@ -47,10 +45,12 @@ type StockClientProps = {
 
 export default function StockClient({ initialData }: StockClientProps) {
   const { language } = useLanguage();
-  const formatNumber = (value: number, options?: Intl.NumberFormatOptions) =>
-    formatLocalizedNumber(value, language, options);
-  const kgUnitLabel = language === "bn" ? "কেজি" : "kg";
-  const maundUnitLabel = language === "bn" ? "মণ" : "maund";
+  const formatNumber = useCallback(
+    (value: number, options?: Intl.NumberFormatOptions) => formatLocalizedNumber(value, language, options),
+    [language]
+  );
+  const kgUnitLabel = useMemo(() => language === "bn" ? "কেজি" : "kg", [language]);
+  const maundUnitLabel = useMemo(() => language === "bn" ? "মণ" : "maund", [language]);
   const [stock, setStock] = useState<StockData | null>({
     stockKg: initialData.stockKg,
     stockMounds: initialData.stockMounds,
@@ -80,17 +80,8 @@ export default function StockClient({ initialData }: StockClientProps) {
       }
 
       const data = (await response.json()) as StockPageData;
-      setStock({
-        stockKg: data.stockKg,
-        stockMounds: data.stockMounds,
-        totalBought: data.totalBought,
-        totalSoldKg: data.totalSoldKg,
-        totalPurchaseStock: data.totalPurchaseStock,
-        totalSaleStock: data.totalSaleStock,
-        totalSaleStockMaund: data.totalSaleStockMaund,
-        conversionKgPerMound: data.conversionKgPerMound,
-      });
-      setTransactions(Array.isArray(data.transactions) ? data.transactions : []);
+      setStock(data as unknown as StockData);
+      setTransactions(data.transactions || []);
     } catch {
       setStock(null);
       setTransactions([]);

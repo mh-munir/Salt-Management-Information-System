@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { FormEvent, useDeferredValue, useEffect, useMemo, useState } from "react";
+import { FormEvent, useDeferredValue, useEffect, useMemo, useState, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
@@ -67,41 +67,64 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const getPrintDateLabel = (value?: string) => formatLocalizedDate(value || new Date(), language);
-  const formatAmount = (value: number, maximumFractionDigits = 0) =>
-    formatLocalizedNumber(value, language, { maximumFractionDigits });
-  const getEditorRoleLabel = (role?: string) =>
-    role === "superadmin" ? translate(language, "superAdminLabel") : translate(language, "admin");
-  const getEditedByText = (item: Pick<Customer, "editedByName" | "editedByRole">) => {
+  
+  const formatAmount = useCallback(
+    (value: number, maximumFractionDigits = 0) => formatLocalizedNumber(value, language, { maximumFractionDigits }),
+    [language]
+  );
+
+  const getPrintDateLabel = useCallback(
+    (value?: string) => formatLocalizedDate(value || new Date(), language),
+    [language]
+  );
+
+  const getEditorRoleLabel = useCallback(
+    (role?: string) => role === "superadmin" ? translate(language, "superAdminLabel") : translate(language, "admin"),
+    [language]
+  );
+
+  const calculateTotalKg = useCallback((bags: string, bagType: string) => {
+    const bagsValue = Number(normalizeLocalizedDigits(bags));
+    const weightPerBag = Number(normalizeLocalizedDigits(bagType));
+    if (!bags.trim() || Number.isNaN(bagsValue) || bagsValue < 0 || !bagType.trim() || Number.isNaN(weightPerBag)) return "";
+    return (bagsValue * weightPerBag).toFixed(2);
+  }, []);
+
+  const calculateTotalPrice = useCallback((quantity: string, price: string) => {
+    const quantityValue = Number(normalizeLocalizedDigits(quantity));
+    const priceValue = Number(normalizeLocalizedDigits(price));
+    if (!quantity.trim() || !price.trim() || Number.isNaN(quantityValue) || Number.isNaN(priceValue)) return "";
+    return (quantityValue * priceValue).toFixed(2);
+  }, []);
+
+  const calculateAdjustedSaleTotal = useCallback((quantity: string, price: string, hockExtendedSack: string, trackExpenses: string) => {
+    const baseTotal = calculateTotalPrice(quantity, price);
+    if (baseTotal === "") return "";
+    const hockValue = hockExtendedSack.trim() === "" ? 0 : Number(normalizeLocalizedDigits(hockExtendedSack));
+    const trackValue = trackExpenses.trim() === "" ? 0 : Number(normalizeLocalizedDigits(trackExpenses));
+    if (Number.isNaN(hockValue) || Number.isNaN(trackValue)) return "";
+    return (Number(baseTotal) + hockValue - trackValue).toFixed(2);
+  }, [calculateTotalPrice]);
+
+  const getEditedByText = useCallback((item: Pick<Customer, "editedByName" | "editedByRole">) => {
     const name = item.editedByName?.trim();
     const role = item.editedByRole?.trim();
     if (!name && !role) return translate(language, "notEditedYet");
-
     const roleLabel = getEditorRoleLabel(role);
-    if (!name) return roleLabel;
+    return name ? `${name} (${roleLabel})` : roleLabel;
+  }, [getEditorRoleLabel, language]);
 
-    return `${name} (${roleLabel})`;
-  };
-  const formatBalanceText = (value: number) => {
+  const getBalanceInfo = useCallback((value: number) => {
     const balance = getBalanceSummary(value);
-    if (balance.isAdvance) {
-      return `${translate(language, "advanceBalance")} Tk ${formatAmount(balance.absoluteAmount)}`;
-    }
-
-    return `Tk ${formatAmount(balance.absoluteAmount)}`;
-  };
-  const formatTableBalanceStatus = (value: number) => {
-    const balance = getBalanceSummary(value);
-    if (balance.absoluteAmount === 0) return "0";
-
-    if (balance.isAdvance) {
-      return `${language === "bn" ? "অগ্রিম" : "Advance"} Tk ${formatAmount(balance.absoluteAmount)}`;
-    }
-
-    return `Tk ${formatAmount(balance.absoluteAmount)}`;
-  };
-  const getBalanceClassName = (value: number) =>
-    getBalanceSummary(value).isAdvance ? "text-sky-600" : "text-rose-600";
+    const text = balance.isAdvance
+      ? `${translate(language, "advanceBalance")} Tk ${formatAmount(balance.absoluteAmount)}`
+      : `Tk ${formatAmount(balance.absoluteAmount)}`;
+    const className = balance.isAdvance ? "text-sky-600" : "text-rose-600";
+    const status = balance.absoluteAmount === 0 ? "0" : balance.isAdvance
+      ? `${language === "bn" ? "অগ্রিম" : "Advance"} Tk ${formatAmount(balance.absoluteAmount)}`
+      : `Tk ${formatAmount(balance.absoluteAmount)}`;
+    return { text, className, status };
+  }, [formatAmount, language]);
   const [customers, setCustomers] = useState<Customer[]>(() =>
     sortCustomersByLatestInput(initialData.map((customer) => ({ ...customer, totalPaid: customer.totalPaid ?? 0 })))
   );
@@ -214,15 +237,15 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
   const totalAmount = deferredFilteredCustomers.reduce((sum, customer) => sum + (customer.totalSalesAmount ?? 0), 0);
   const firstCustomerId = customers[0]?._id;
 
-  const isValidPhone = (value: string) => /^\d{11}$/.test(normalizeLocalizedDigits(value).trim());
+  const isValidPhone = useCallback((value: string) => /^\d{11}$/.test(normalizeLocalizedDigits(value).trim()), []);
 
-  const parseJson = async (res: Response) => {
+  const parseJson = useCallback(async (res: Response) => {
     if (!res.ok) return null;
     const text = await res.text();
     return text ? JSON.parse(text) : null;
-  };
+  }, []);
 
-  const refreshCustomers = () =>
+  const refreshCustomers = useCallback(() =>
     fetch("/api/customers", { cache: "no-store" })
       .then(parseJson)
       .then((data) => {
@@ -236,57 +259,9 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
             )
           );
         }
-      });
-
-  const calculateTotalKg = (bags: string, bagType: string) => {
-    // Support Bangla digits
-    const { normalizeLocalizedDigits } = require("@/lib/number-input");
-    const bagsValue = Number(normalizeLocalizedDigits(bags));
-    const weightPerBag = Number(normalizeLocalizedDigits(bagType));
-    if (bags.trim() === "" || Number.isNaN(bagsValue) || bagsValue < 0 || bagType.trim() === "" || Number.isNaN(weightPerBag)) {
-      return "";
-    }
-    return (bagsValue * weightPerBag).toFixed(2);
-  };
-
-  const calculateTotalPrice = (quantity: string, price: string) => {
-    // Support Bangla digits
-    const { normalizeLocalizedDigits } = require("@/lib/number-input");
-    const quantityValue = Number(normalizeLocalizedDigits(quantity));
-    const priceValue = Number(normalizeLocalizedDigits(price));
-
-    if (
-      quantity.trim() === "" ||
-      price.trim() === "" ||
-      Number.isNaN(quantityValue) ||
-      Number.isNaN(priceValue)
-    ) {
-      return "";
-    }
-
-    return (quantityValue * priceValue).toFixed(2);
-  };
-
-  const calculateAdjustedSaleTotal = (
-    quantity: string,
-    price: string,
-    hockExtendedSack: string,
-    trackExpenses: string
-  ) => {
-    // Support Bangla digits
-    const { normalizeLocalizedDigits } = require("@/lib/number-input");
-    const baseTotal = calculateTotalPrice(quantity, price);
-    if (baseTotal === "") return "";
-
-    const hockValue = hockExtendedSack.trim() === "" ? 0 : Number(normalizeLocalizedDigits(hockExtendedSack));
-    const trackValue = trackExpenses.trim() === "" ? 0 : Number(normalizeLocalizedDigits(trackExpenses));
-
-    if (Number.isNaN(hockValue) || Number.isNaN(trackValue)) {
-      return "";
-    }
-
-    return (Number(baseTotal) + hockValue - trackValue).toFixed(2);
-  };
+      }),
+    [parseJson]
+  );
 
   const updateSaleAmounts = (
     totalKg: string,
@@ -617,8 +592,8 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
           <td className="print-table-hidden px-4 py-4 text-center text-slate-600">Tk {formatAmount(customer.totalHockExtendedSack ?? 0)}</td>
           <td className="print-table-hidden px-4 py-4 text-center text-slate-600">Tk {formatAmount(customer.totalTrackExpenses ?? 0)}</td>
           <td className="px-4 py-4 text-center text-slate-600">Tk {formatAmount(customer.totalPaid ?? 0)}</td>
-          <td className={`px-4 py-4 text-center ${getBalanceClassName(customer.totalDue ?? 0)}`}>
-            {formatTableBalanceStatus(customer.totalDue ?? 0)}
+          <td className={`px-4 py-4 text-center ${getBalanceInfo(customer.totalDue ?? 0).className}`}>
+            {getBalanceInfo(customer.totalDue ?? 0).status}
           </td>
           <td className="print-table-hidden px-4 py-4 text-center">
             <span className="inline-flex rounded-lg border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
@@ -1015,8 +990,8 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
             {paymentCustomerId ? (
               <div className="rounded-lg border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-slate-700">
                 {translate(language, "balanceLabel")}:{" "}
-                <span className={getBalanceClassName(customers.find((c) => c._id === paymentCustomerId)?.totalDue ?? 0)}>
-                  {formatBalanceText(customers.find((c) => c._id === paymentCustomerId)?.totalDue ?? 0)}
+                <span className={getBalanceInfo(customers.find((c) => c._id === paymentCustomerId)?.totalDue ?? 0).className}>
+                  {getBalanceInfo(customers.find((c) => c._id === paymentCustomerId)?.totalDue ?? 0).text}
                 </span>
               </div>
             ) : null}
@@ -1173,7 +1148,7 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
               <td className="print-table-hidden px-4 py-4 text-center">Tk {formatAmount(totalHockExtendedSack)}</td>
               <td className="print-table-hidden px-4 py-4 text-center">Tk {formatAmount(totalTrackExpenses)}</td>
               <td className="px-4 py-4 text-center">Tk {formatAmount(totalPaid)}</td>
-              <td className={`px-4 py-4 text-center ${getBalanceClassName(totalDue)}`}>{formatTableBalanceStatus(totalDue)}</td>
+              <td className={`px-4 py-4 text-center ${getBalanceInfo(totalDue).className}`}>{getBalanceInfo(totalDue).status}</td>
               <td className="print-table-hidden px-4 py-4 text-center"></td>
               <td className="print-table-hidden px-4 py-4 text-center"></td>
             </tr>
