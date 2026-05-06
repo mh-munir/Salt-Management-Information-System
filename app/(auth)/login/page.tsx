@@ -60,7 +60,7 @@ export default function LoginPage() {
     await login();
   };
 
-  // Load saved credentials if remember is checked
+  // Load and sync saved credentials
   useEffect(() => {
     if (remember) {
       const savedEmail = localStorage.getItem("savedEmail");
@@ -68,30 +68,16 @@ export default function LoginPage() {
       if (savedEmail) setEmail(savedEmail);
       if (savedPassword) setPassword(savedPassword);
     }
-    // eslint-disable-next-line
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Save credentials when they change
   useEffect(() => {
     if (remember) {
       localStorage.setItem("savedEmail", email);
       localStorage.setItem("savedPassword", password);
     }
   }, [email, password, remember]);
-
-  // Load saved credentials if remember is checked
-  useEffect(() => {
-    if (remember) {
-      const savedEmail = localStorage.getItem("savedEmail");
-      if (savedEmail) setEmail(savedEmail);
-    }
-    // eslint-disable-next-line
-  }, []);
-
-  useEffect(() => {
-    if (remember) {
-      localStorage.setItem("savedEmail", email);
-    }
-  }, [email, remember]);
 
   return (
     <main className="auth-shell relative min-h-screen overflow-hidden bg-[#F0F1F7] px-4 py-8">
