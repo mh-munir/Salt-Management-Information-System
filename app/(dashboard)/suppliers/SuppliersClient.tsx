@@ -204,8 +204,9 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
       const [showPaymentPopup, setShowPaymentPopup] = useState(false);
       const [paymentSupplierId, setPaymentSupplierId] = useState<string | null>(null);
       const [paymentAmount, setPaymentAmount] = useState("");
-      const [paymentDate, setPaymentDate] = useState(getLocalDateInputValue());
+      const [paymentDate, setPaymentDate] = useState("");
       const [paymentError, setPaymentError] = useState("");
+      const [isHydrated, setIsHydrated] = useState(false);
       const requestedPaymentSupplierId = searchParams.get("paymentId");
       const returnTo = searchParams.get("returnTo");
       const isProfilePaymentFlow = Boolean(requestedPaymentSupplierId);
@@ -255,6 +256,11 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
       });
 
   useEffect(() => {
+    setIsHydrated(true);
+    setPaymentDate(getLocalDateInputValue());
+  }, []);
+
+  useEffect(() => {
     if (!requestedPaymentSupplierId) return;
 
     const matchedSupplier = suppliers.find((supplier) => supplier._id === requestedPaymentSupplierId);
@@ -280,7 +286,7 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
   );
   const firstSupplierId = suppliers[0]?._id;
 
-  const currentPurchaseDate = new Date().toISOString();
+  const currentPurchaseDate = useMemo(() => new Date().toISOString(), [isHydrated]);
 
   const handleBuySubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -776,7 +782,7 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
       </div>
 
       {/* Payment Now Button */}
-      <div className="print-hidden mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="print-hidden mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-end">
         <div className="min-w-[15rem]">
           <CompactDateInput
             name="supplierTableFilterDate"

@@ -180,8 +180,9 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
   const [showPaymentPopup, setShowPaymentPopup] = useState(false);
   const [paymentCustomerId, setPaymentCustomerId] = useState<string | null>(null);
   const [paymentAmount, setPaymentAmount] = useState("");
-  const [paymentDate, setPaymentDate] = useState(getLocalDateInputValue());
+  const [paymentDate, setPaymentDate] = useState("");
   const [paymentError, setPaymentError] = useState("");
+  const [isHydrated, setIsHydrated] = useState(false);
   const requestedPaymentCustomerId = searchParams.get("paymentId");
   const returnTo = searchParams.get("returnTo");
   const isProfilePaymentFlow = Boolean(requestedPaymentCustomerId);
@@ -318,6 +319,11 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
     if (total.trim() === "" || paid.trim() === "" || Number.isNaN(totalValue) || Number.isNaN(paidValue)) return "";
     return (totalValue - paidValue).toFixed(2);
   };
+
+  useEffect(() => {
+    setIsHydrated(true);
+    setPaymentDate(getLocalDateInputValue());
+  }, []);
 
   useEffect(() => {
     if (!requestedPaymentCustomerId) return;

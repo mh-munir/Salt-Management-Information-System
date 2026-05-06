@@ -80,10 +80,11 @@ export default function CostPage() {
   const [personName, setPersonName] = useState("");
   const [amount, setAmount] = useState("");
   const [purpose, setPurpose] = useState("");
-  const [date, setDate] = useState(todayIso());
+  const [date, setDate] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [isHydrated, setIsHydrated] = useState(false);
 
   const refreshCosts = useCallback(
     () =>
@@ -105,10 +106,15 @@ export default function CostPage() {
   );
 
   useEffect(() => {
+    setIsHydrated(true);
+    setDate(todayIso());
+  }, []);
+
+  useEffect(() => {
     void refreshCosts();
   }, [refreshCosts]);
 
-  const todayKey = todayIso();
+  const todayKey = useMemo(() => (isHydrated ? todayIso() : ""), [isHydrated]);
   const totalCost = useMemo(() => costs.reduce((sum, item) => sum + Number(item.amount ?? 0), 0), [costs]);
   const todayCost = useMemo(
     () =>
