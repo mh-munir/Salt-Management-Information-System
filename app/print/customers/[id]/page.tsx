@@ -24,6 +24,9 @@ type UnifiedRecord = {
   totalAmount: number;
   paidAmount: number;
   quantityKg: number;
+  numberOfBags: number;
+  bagType: string;
+  pricePerBosta: number;
   hockExtendedSack: number;
   trackExpenses: number;
 };
@@ -34,6 +37,13 @@ const resolveSaleQuantity = (sale: { items?: Array<{ quantity?: number }>; saltA
   }
 
   return Number(sale.saltAmount ?? 0);
+};
+
+const resolvePricePerBosta = (sale: { total?: number; numberOfBags?: number }) => {
+  const numberOfBags = Number(sale.numberOfBags ?? 0);
+  if (numberOfBags <= 0) return 0;
+
+  return Number(sale.total ?? 0) / numberOfBags;
 };
 
 const getDateKey = (value?: string | Date) => {
@@ -82,6 +92,9 @@ export default async function CustomerTimelinePrintPage({
     totalAmount: Number(sale.total ?? 0),
     paidAmount: Number(sale.paid ?? 0),
     quantityKg: resolveSaleQuantity(sale),
+    numberOfBags: Number(sale.numberOfBags ?? 0),
+    bagType: String(sale.bagType ?? "50"),
+    pricePerBosta: resolvePricePerBosta(sale),
     hockExtendedSack: Number(sale.hockExtendedSack ?? 0),
     trackExpenses: Number(sale.trackExpenses ?? 0),
   }));
@@ -93,6 +106,9 @@ export default async function CustomerTimelinePrintPage({
     totalAmount: 0,
     paidAmount: Number(transaction.amount ?? 0),
     quantityKg: 0,
+    numberOfBags: 0,
+    bagType: "-",
+    pricePerBosta: 0,
     hockExtendedSack: 0,
     trackExpenses: 0,
   }));
@@ -127,7 +143,7 @@ export default async function CustomerTimelinePrintPage({
     runningBalanceByKey.set(getRecordKey(record, index), runningBalance);
   }
 
-  const filteredSaltDelivered = filteredRecords.reduce((sum, record) => sum + record.quantityKg, 0);
+  const filteredNumberOfBags = filteredRecords.reduce((sum, record) => sum + record.numberOfBags, 0);
   const filteredHockExtendedSack = filteredRecords.reduce((sum, record) => sum + record.hockExtendedSack, 0);
   const filteredTrackExpenses = filteredRecords.reduce((sum, record) => sum + record.trackExpenses, 0);
   const filteredReceivedAmount = filteredRecords.reduce((sum, record) => sum + record.paidAmount, 0);
@@ -165,12 +181,16 @@ export default async function CustomerTimelinePrintPage({
         </div>
       </section>
 
-      <table className="w-full border-collapse text-left text-sm text-slate-800">
-        <thead className="bg-slate-50 text-slate-600">
+      <div className="app-table-shell">
+      <div className="app-table-scroll">
+      <table className="app-table w-full border-collapse text-left text-sm text-slate-800">
+        <thead className="text-slate-600">
           <tr>
             <th className="border border-slate-200 px-4 py-3 text-sm font-medium">{translate(language, "dateLabel")}</th>
             <th className="border border-slate-200 px-4 py-3 text-sm font-medium">{translate(language, "typeLabel")}</th>
-            <th className="border border-slate-200 px-4 py-3 text-sm font-medium">{translate(language, "saltKgShort")}</th>
+            <th className="border border-slate-200 px-4 py-3 text-sm font-medium">{translate(language, "numberOfBostaSack")}</th>
+            <th className="border border-slate-200 px-4 py-3 text-sm font-medium">{translate(language, "bagType")}</th>
+            <th className="border border-slate-200 px-4 py-3 text-sm font-medium">{translate(language, "pricePerBosta")}</th>
             <th className="border border-slate-200 px-4 py-3 text-sm font-medium">{translate(language, "hockExtendedSack")}</th>
             <th className="border border-slate-200 px-4 py-3 text-sm font-medium">{translate(language, "trackExpenses")}</th>
             <th className="border border-slate-200 px-4 py-3 text-sm font-medium">{translate(language, "paidAmount")}</th>
@@ -186,20 +206,24 @@ export default async function CustomerTimelinePrintPage({
 
               return (
                 <tr key={getRecordKey(record, index)} className={index % 2 === 0 ? "bg-white" : "bg-slate-50/50"}>
-                  <td className="border border-slate-200 px-4 py-3">{formatDate(record.date)}</td>
-                  <td className="border border-slate-200 px-4 py-3">
+                  <td className="px-4 py-3">{formatDate(record.date)}</td>
+                  <td className="px-4 py-3">
                     {record.type === "sale" ? translate(language, "sale") : translate(language, "payment")}
                   </td>
-                  <td className="border border-slate-200 px-4 py-3">{formatAmount(record.quantityKg)}</td>
-                  <td className="border border-slate-200 px-4 py-3">Tk {formatAmount(record.hockExtendedSack)}</td>
-                  <td className="border border-slate-200 px-4 py-3">Tk {formatAmount(record.trackExpenses)}</td>
-                  <td className="border border-slate-200 px-4 py-3">Tk {formatAmount(record.paidAmount)}</td>
-                  <td className={`border border-slate-200 px-4 py-3 ${recordBalanceSummary.isAdvance ? "text-sky-600" : "text-rose-600"}`}>
+                  <td className="px-4 py-3">{record.type === "sale" ? formatAmount(record.numberOfBags) : "-"}</td>
+                  <td className="px-4 py-3">{record.type === "sale" ? `${record.bagType} kg` : "-"}</td>
+                  <td className="px-4 py-3">
+                    {record.type === "sale" && record.pricePerBosta > 0 ? `Tk ${formatAmount(record.pricePerBosta)}` : "-"}
+                  </td>
+                  <td className="px-4 py-3">Tk {formatAmount(record.hockExtendedSack)}</td>
+                  <td className="px-4 py-3">Tk {formatAmount(record.trackExpenses)}</td>
+                  <td className="px-4 py-3">Tk {formatAmount(record.paidAmount)}</td>
+                  <td className={`px-4 py-3 ${recordBalanceSummary.isAdvance ? "text-sky-600" : "text-rose-600"}`}>
                     {recordBalanceSummary.isAdvance
                       ? `${translate(language, "advanceBalance")} Tk ${formatAmount(recordBalanceSummary.absoluteAmount)}`
                       : `Tk ${formatAmount(recordBalanceSummary.absoluteAmount)}`}
                   </td>
-                  <td className="border border-slate-200 px-4 py-3">
+                  <td className="app-table-note px-4 py-3">
                     {record.type === "sale"
                       ? translate(language, "saltSaleEntryNote")
                       : translate(language, "customerPaymentEntryNote")}
@@ -209,27 +233,31 @@ export default async function CustomerTimelinePrintPage({
             })
           ) : (
             <tr>
-              <td colSpan={8} className="border border-slate-200 px-4 py-8 text-center text-slate-500">
+              <td colSpan={10} className="px-4 py-8 text-center text-slate-500">
                 {translate(language, "noCustomerRecordsFound")}
               </td>
             </tr>
           )}
-          <tr className="bg-slate-100 font-semibold">
-            <td className="border border-slate-200 px-4 py-3">{translate(language, "totals")}</td>
-            <td className="border border-slate-200 px-4 py-3">-</td>
-            <td className="border border-slate-200 px-4 py-3">{formatAmount(filteredSaltDelivered)}</td>
-            <td className="border border-slate-200 px-4 py-3">Tk {formatAmount(filteredHockExtendedSack)}</td>
-            <td className="border border-slate-200 px-4 py-3">Tk {formatAmount(filteredTrackExpenses)}</td>
-            <td className="border border-slate-200 px-4 py-3">Tk {formatAmount(filteredReceivedAmount)}</td>
-            <td className={`border border-slate-200 px-4 py-3 ${filteredEndingBalance.isAdvance ? "text-sky-600" : "text-rose-600"}`}>
+          <tr className="app-table-total font-semibold">
+            <td className="px-4 py-3">{translate(language, "totals")}</td>
+            <td className="px-4 py-3">-</td>
+            <td className="px-4 py-3">{formatAmount(filteredNumberOfBags)}</td>
+            <td className="px-4 py-3">-</td>
+            <td className="px-4 py-3">-</td>
+            <td className="px-4 py-3">Tk {formatAmount(filteredHockExtendedSack)}</td>
+            <td className="px-4 py-3">Tk {formatAmount(filteredTrackExpenses)}</td>
+            <td className="px-4 py-3">Tk {formatAmount(filteredReceivedAmount)}</td>
+            <td className={`px-4 py-3 ${filteredEndingBalance.isAdvance ? "text-sky-600" : "text-rose-600"}`}>
               {filteredEndingBalance.isAdvance
                 ? `${translate(language, "advanceBalance")} Tk ${formatAmount(filteredEndingBalance.absoluteAmount)}`
                 : `Tk ${formatAmount(filteredEndingBalance.absoluteAmount)}`}
             </td>
-            <td className="border border-slate-200 px-4 py-3">-</td>
+            <td className="px-4 py-3">-</td>
           </tr>
         </tbody>
       </table>
+      </div>
+      </div>
     </main>
   );
 }

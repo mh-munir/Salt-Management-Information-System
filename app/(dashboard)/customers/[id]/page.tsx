@@ -28,6 +28,9 @@ type UnifiedRecord = {
   totalAmount: number;
   paidAmount: number;
   quantityKg: number;
+  numberOfBags: number;
+  bagType: string;
+  pricePerBosta: number;
   hockExtendedSack: number;
   trackExpenses: number;
 };
@@ -63,6 +66,13 @@ const resolveSaleQuantity = (sale: { items?: Array<{ quantity?: number }>; saltA
   }
 
   return Number(sale.saltAmount ?? 0);
+};
+
+const resolvePricePerBosta = (sale: { total?: number; numberOfBags?: number }) => {
+  const numberOfBags = Number(sale.numberOfBags ?? 0);
+  if (numberOfBags <= 0) return 0;
+
+  return Number(sale.total ?? 0) / numberOfBags;
 };
 
 const getRecordKey = (record: UnifiedRecord, index: number) => record._id || `${record.type}-${index}`;
@@ -162,6 +172,9 @@ export default async function CustomerDetailPage({ params, searchParams }: Custo
     totalAmount: Number(sale.total ?? 0),
     paidAmount: Number(sale.paid ?? 0),
     quantityKg: resolveSaleQuantity(sale),
+    numberOfBags: Number(sale.numberOfBags ?? 0),
+    bagType: String(sale.bagType ?? "50"),
+    pricePerBosta: resolvePricePerBosta(sale),
     hockExtendedSack: Number(sale.hockExtendedSack ?? 0),
     trackExpenses: Number(sale.trackExpenses ?? 0),
   }));
@@ -173,6 +186,9 @@ export default async function CustomerDetailPage({ params, searchParams }: Custo
     totalAmount: 0,
     paidAmount: Number(transaction.amount ?? 0),
     quantityKg: 0,
+    numberOfBags: 0,
+    bagType: "-",
+    pricePerBosta: 0,
     hockExtendedSack: 0,
     trackExpenses: 0,
   }));
@@ -223,7 +239,7 @@ export default async function CustomerDetailPage({ params, searchParams }: Custo
 
   const filteredSalesAmount = filteredRecords.reduce((sum, record) => sum + record.totalAmount, 0);
   const filteredReceivedAmount = filteredRecords.reduce((sum, record) => sum + record.paidAmount, 0);
-  const filteredSaltDelivered = filteredRecords.reduce((sum, record) => sum + record.quantityKg, 0);
+  const filteredNumberOfBags = filteredRecords.reduce((sum, record) => sum + record.numberOfBags, 0);
   const filteredHockExtendedSack = filteredRecords.reduce((sum, record) => sum + record.hockExtendedSack, 0);
   const filteredTrackExpenses = filteredRecords.reduce((sum, record) => sum + record.trackExpenses, 0);
   const filteredEndingBalanceValue =
@@ -264,7 +280,11 @@ export default async function CustomerDetailPage({ params, searchParams }: Custo
             {record.type === "sale" ? translate(language, "sale") : translate(language, "payment")}
           </span>
         </td>
-        <td className="px-4 py-4 text-sm text-slate-700">{formatAmount(record.quantityKg)}</td>
+        <td className="px-4 py-4 text-sm text-slate-700">{record.type === "sale" ? formatAmount(record.numberOfBags) : "-"}</td>
+        <td className="px-4 py-4 text-sm text-slate-700">{record.type === "sale" ? `${record.bagType} kg` : "-"}</td>
+        <td className="px-4 py-4 text-sm text-slate-700">
+          {record.type === "sale" && record.pricePerBosta > 0 ? `Tk ${formatAmount(record.pricePerBosta)}` : "-"}
+        </td>
         <td className="px-4 py-4 text-sm text-slate-700">Tk {formatAmount(record.hockExtendedSack)}</td>
         <td className="px-4 py-4 text-sm text-slate-700">Tk {formatAmount(record.trackExpenses)}</td>
         <td className="px-4 py-4 text-sm text-slate-700">Tk {formatAmount(record.paidAmount)}</td>
@@ -429,14 +449,16 @@ export default async function CustomerDetailPage({ params, searchParams }: Custo
           </div>
         </div>
 
-        <div className="mt-6 overflow-hidden rounded-lg border border-slate-200">
-          <div className="overflow-x-auto">
-            <table className="min-w-[48rem] w-full text-left text-sm">
-              <thead className="bg-slate-50/80 text-slate-500">
+        <div className="app-table-shell mt-6">
+          <div className="app-table-scroll">
+            <table className="app-table min-w-[48rem] w-full text-left text-sm">
+              <thead className="text-slate-500">
                 <tr>
                   <th className="px-4 py-4 text-sm font-medium">{translate(language, "dateLabel")}</th>
                   <th className="px-4 py-4 text-sm font-medium">{translate(language, "typeLabel")}</th>
-                  <th className="px-4 py-4 text-sm font-medium">Salt (KG)</th>
+                  <th className="px-4 py-4 text-sm font-medium">{translate(language, "numberOfBostaSack")}</th>
+                  <th className="px-4 py-4 text-sm font-medium">{translate(language, "bagType")}</th>
+                  <th className="px-4 py-4 text-sm font-medium">{translate(language, "pricePerBosta")}</th>
                   <th className="px-4 py-4 text-sm font-medium">{translate(language, "hockExtendedSack")}</th>
                   <th className="px-4 py-4 text-sm font-medium">{translate(language, "trackExpenses")}</th>
                   <th className="px-4 py-4 text-sm font-medium">{translate(language, "paidAmount")}</th>
@@ -447,21 +469,23 @@ export default async function CustomerDetailPage({ params, searchParams }: Custo
               <tbody>
                 <LoadMoreTable
                   rows={recordRows}
-                  colSpan={8}
+                  colSpan={10}
                   loadMoreLabel={language === "bn" ? "আরও দেখুন" : "Show more"}
                   emptyState={
                     <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center text-sm text-slate-500">
+                  <td colSpan={10} className="px-4 py-10 text-center text-sm text-slate-500">
                         No records found for this customer.
                       </td>
                     </tr>
                   }
                 />
 
-                <tr className="border-t border-slate-200 bg-slate-50/70 text-sm font-semibold text-slate-800">
+                <tr className="app-table-total text-sm font-semibold text-slate-800">
                   <td className="px-4 py-4 text-sm">Totals</td>
                   <td className="px-4 py-4 text-sm">-</td>
-                  <td className="px-4 py-4 text-sm">{formatAmount(filteredSaltDelivered)}</td>
+                  <td className="px-4 py-4 text-sm">{formatAmount(filteredNumberOfBags)}</td>
+                  <td className="px-4 py-4 text-sm">-</td>
+                  <td className="px-4 py-4 text-sm">-</td>
                   <td className="px-4 py-4 text-sm">Tk {formatAmount(filteredHockExtendedSack)}</td>
                   <td className="px-4 py-4 text-sm">Tk {formatAmount(filteredTrackExpenses)}</td>
                   <td className="px-4 py-4 text-sm">Tk {formatAmount(filteredReceivedAmount)}</td>

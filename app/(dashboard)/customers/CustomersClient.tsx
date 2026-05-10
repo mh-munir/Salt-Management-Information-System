@@ -126,23 +126,17 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
     return { text, className, status };
   }, [formatAmount, language]);
   const getTotalBalanceInfo = useCallback((dueAmount: number, advanceAmount: number) => {
-    if (dueAmount <= 0 && advanceAmount <= 0) {
+    const netBalance = getBalanceSummary(dueAmount - advanceAmount);
+
+    if (netBalance.isSettled) {
       return { className: "text-slate-800", status: "0" };
     }
 
-    const parts: string[] = [];
-    if (dueAmount > 0) {
-      parts.push(`${language === "bn" ? "মোট বকেয়া" : "Total Due"} Tk ${formatAmount(dueAmount)}`);
-    }
-    if (advanceAmount > 0) {
-      parts.push(`${language === "bn" ? "মোট অগ্রিম" : "Total Advance"} Tk ${formatAmount(advanceAmount)}`);
-    }
-
-    const className = dueAmount > 0 && advanceAmount > 0 ? "text-amber-600" : advanceAmount > 0 ? "text-sky-600" : "text-rose-600";
-
     return {
-      className,
-      status: parts.join(" | "),
+      className: netBalance.isAdvance ? "text-sky-600" : "text-rose-600",
+      status: netBalance.isAdvance
+        ? `${language === "bn" ? "মোট অগ্রিম" : "Total Advance"} Tk ${formatAmount(netBalance.absoluteAmount)}`
+        : `${language === "bn" ? "মোট বকেয়া" : "Total Due"} Tk ${formatAmount(netBalance.absoluteAmount)}`,
     };
   }, [formatAmount, language]);
   const [customers, setCustomers] = useState<Customer[]>(() =>
@@ -252,6 +246,7 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
   );
   const deferredFilteredCustomers = useDeferredValue(filteredCustomers);
   const totalSalt = deferredFilteredCustomers.reduce((sum, customer) => sum + (customer.saltAmount ?? 0), 0);
+  const totalBags = deferredFilteredCustomers.reduce((sum, customer) => sum + (customer.totalNumberOfBags ?? 0), 0);
   const totalHockExtendedSack = deferredFilteredCustomers.reduce((sum, customer) => sum + (customer.totalHockExtendedSack ?? 0), 0);
   const totalTrackExpenses = deferredFilteredCustomers.reduce((sum, customer) => sum + (customer.totalTrackExpenses ?? 0), 0);
   const totalBalance = getAggregateBalanceSummary(
@@ -289,13 +284,13 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
   }, [parseJson]);
 
   const updateSaleAmounts = (
-    totalKg: string,
-    price: string,
+    numberOfBags: string,
+    pricePerBosta: string,
     hockExtendedSack: string,
     trackExpenses: string,
     paid: string
   ) => {
-    const updatedTotal = calculateAdjustedSaleTotal(totalKg, price, hockExtendedSack, trackExpenses);
+    const updatedTotal = calculateAdjustedSaleTotal(numberOfBags, pricePerBosta, hockExtendedSack, trackExpenses);
     setSaleTotalPrice(updatedTotal);
     setSaleDue(calculateDue(updatedTotal, paid));
   };
@@ -303,14 +298,14 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
   const updateTotalKgAndAmounts = (
     bags: string,
     bagType: string,
-    price: string,
+    pricePerBosta: string,
     hockExtendedSack: string,
     trackExpenses: string,
     paid: string
   ) => {
     const totalKg = calculateTotalKg(bags, bagType);
     setSaleTotalKg(totalKg);
-    updateSaleAmounts(totalKg, price, hockExtendedSack, trackExpenses, paid);
+    updateSaleAmounts(bags, pricePerBosta, hockExtendedSack, trackExpenses, paid);
   };
 
   const calculateDue = (total: string, paid: string) => {
@@ -602,13 +597,12 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
     () =>
       deferredFilteredCustomers.map((customer, index) => (
         <tr key={customer._id} className={`border-b border-slate-100 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}>
-          <td className="px-4 py-4 text-slate-800">{formatDisplayName(customer.name, "Unnamed customer")}</td>
-          <td className="print-table-hidden px-4 py-4 text-center text-slate-600">{formatAmount(customer.saltAmount ?? 0)}</td>
-          <td className="px-4 py-4 text-center text-slate-600">Tk {formatAmount(customer.totalSalesAmount ?? 0)}</td>
+          <td className="px-4 py-4 text-slate-800 whitespace-nowrap overflow-hidden text-ellipsis">{formatDisplayName(customer.name, "Unnamed customer")}</td>
+          <td className="print-table-hidden px-4 py-4 text-center text-slate-600">{formatAmount(customer.totalNumberOfBags ?? 0)}</td>
           <td className="print-table-hidden px-4 py-4 text-center text-slate-600">
             {customer.latestSaleId ? (
               <div className="flex flex-col items-center gap-1">
-                <span>Tk {formatAmount(customer.latestPricePerKg ?? 0, 2)}</span>
+                <span>Tk {formatAmount((customer.latestPricePerKg ?? 0) * (Number(customer.latestBagType ?? 50)), 2)}</span>
                 <span className="text-xs text-slate-400">
                   {formatLocalizedDate(customer.editedAt ?? customer.latestSaleDate ?? undefined, language)}
                 </span>
@@ -620,6 +614,7 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
           <td className="print-table-hidden px-4 py-4 text-center text-slate-600">
             {customer.latestSaleId ? `${customer.latestBagType ?? "50"} kg` : "-"}
           </td>
+          <td className="px-4 py-4 text-center text-slate-600">Tk {formatAmount(customer.totalSalesAmount ?? 0)}</td>
           <td className="print-table-hidden px-4 py-4 text-center text-slate-600">Tk {formatAmount(customer.totalHockExtendedSack ?? 0)}</td>
           <td className="print-table-hidden px-4 py-4 text-center text-slate-600">Tk {formatAmount(customer.totalTrackExpenses ?? 0)}</td>
           <td className="px-4 py-4 text-center text-slate-600">Tk {formatAmount(customer.totalPaid ?? 0)}</td>
@@ -778,27 +773,16 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
               labelClassName="bg-slate-50 text-slate-500"
             />
             <FloatingInput
-              name="saleTotalKg"
+              name="salePricePerBosta"
               type="number"
               step="1"
               min="0"
-              label="Total Salt (kg)"
-              value={saleTotalKg}
-              readOnly
-              inputClassName="w-full rounded-lg border border-emerald-200 bg-gradient-to-r from-emerald-50 to-emerald-100 px-4 pr-10 text-base font-semibold text-emerald-800 outline-none"
-              labelClassName="bg-emerald-50 text-emerald-700"
-            />
-            <FloatingInput
-              name="salePricePerKg"
-              type="number"
-              step="1"
-              min="0"
-              label={translate(language, "pricePerKg")}
+              label={translate(language, "pricePerBosta") || "Price per Bosta/Sack (Tk)"}
               value={salePricePerKg}
               onChange={(event) => {
                 const value = event.target.value;
                 setSalePricePerKg(value);
-                updateSaleAmounts(saleTotalKg, value, saleHockExtendedSack, saleTrackExpenses, salePaid);
+                updateSaleAmounts(saleNumberOfBags, value, saleHockExtendedSack, saleTrackExpenses, salePaid);
               }}
               inputClassName="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white"
               labelClassName="bg-slate-50 text-slate-500"
@@ -813,7 +797,7 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
               onChange={(event) => {
                 const value = event.target.value;
                 setSaleHockExtendedSack(value);
-                updateSaleAmounts(saleTotalKg, salePricePerKg, value, saleTrackExpenses, salePaid);
+                updateSaleAmounts(saleNumberOfBags, salePricePerKg, value, saleTrackExpenses, salePaid);
               }}
               inputClassName="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white"
               labelClassName="bg-slate-50 text-slate-500"
@@ -828,7 +812,7 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
               onChange={(event) => {
                 const value = event.target.value;
                 setSaleTrackExpenses(value);
-                updateSaleAmounts(saleTotalKg, salePricePerKg, saleHockExtendedSack, value, salePaid);
+                updateSaleAmounts(saleNumberOfBags, salePricePerKg, saleHockExtendedSack, value, salePaid);
               }}
               inputClassName="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 text-base font-bold text-slate-900 outline-none focus:border-slate-400 focus:bg-white"
               labelClassName="bg-slate-50 text-slate-500"
@@ -1137,19 +1121,20 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
         </ModalShell>
       ) : null}
 
-      <div className="print-list-shell overflow-x-auto rounded-lg bg-white p-4 shadow-sm">
+      <div className="print-list-shell app-table-shell p-4">
         <div className="print-only border-b border-slate-200 px-4 py-4">
           <h2 className="text-xl font-semibold text-slate-900">{translate(language, "printCustomerList")}</h2>
           <p className="mt-1 text-sm text-slate-500">Date: {getPrintDateLabel(tableFilterDate)}</p>
         </div>
-        <table className="min-w-[60rem] w-full text-left text-sm">
-          <thead className="border-b border-slate-200 text-slate-500">
+        <div className="app-table-scroll">
+        <table className="app-table min-w-[60rem] w-full text-left text-sm">
+          <thead className="text-slate-500">
             <tr>
               <th className="px-4 py-3 text-sm">{translate(language, "nameLabel")}</th>
-              <th className="print-table-hidden px-4 py-3 text-sm text-center">{translate(language, "saltKg")}</th>
-              <th className="px-4 py-3 text-sm text-center">{translate(language, "amount")}</th>
-              <th className="print-table-hidden px-4 py-3 text-sm text-center">{translate(language, "saltPricePerKg")}</th>
+              <th className="print-table-hidden px-4 py-3 text-sm text-center">{translate(language, "numberOfBostaSack")}</th>
+              <th className="print-table-hidden px-4 py-3 text-sm text-center">{translate(language, "pricePerBosta")}</th>
               <th className="print-table-hidden px-4 py-3 text-sm text-center">{translate(language, "bagType")}</th>
+              <th className="px-4 py-3 text-sm text-center">{translate(language, "amount")}</th>
               <th className="print-table-hidden px-4 py-3 text-sm text-center">{translate(language, "hockExtendedSack")}</th>
               <th className="print-table-hidden px-4 py-3 text-sm text-center">{translate(language, "trackCost")}</th>
               <th className="px-4 py-3 text-sm text-center">{translate(language, "totalReceived")}</th>
@@ -1171,21 +1156,24 @@ export default function CustomersClient({ initialData }: CustomersClientProps) {
                 </tr>
               }
             />
-            <tr className="border-t border-slate-200 bg-slate-50 font-semibold text-slate-800">
+            <tr className="app-table-total font-semibold text-slate-800">
               <td className="px-4 py-4">{translate(language, "totals")}</td>
-              <td className="print-table-hidden px-4 py-4 text-center">{formatAmount(totalSalt)}</td>
+              <td className="print-table-hidden px-4 py-4 text-center">{formatAmount(totalBags)}</td>
+              <td className="print-table-hidden px-4 py-4 text-center"></td>
+              <td className="print-table-hidden px-4 py-4 text-center"></td>
               <td className="px-4 py-4 text-center">Tk {formatAmount(totalAmount)}</td>
-              <td className="print-table-hidden px-4 py-4 text-center"></td>
-              <td className="print-table-hidden px-4 py-4 text-center"></td>
               <td className="print-table-hidden px-4 py-4 text-center">Tk {formatAmount(totalHockExtendedSack)}</td>
               <td className="print-table-hidden px-4 py-4 text-center">Tk {formatAmount(totalTrackExpenses)}</td>
               <td className="px-4 py-4 text-center">Tk {formatAmount(totalPaid)}</td>
-              <td className={`px-4 py-4 text-center ${totalBalanceInfo.className}`}>{totalBalanceInfo.status}</td>
+              <td className="px-4 py-4 text-center">
+                <span className={`font-semibold ${totalBalanceInfo.className}`}>{totalBalanceInfo.status}</span>
+              </td>
               <td className="print-table-hidden px-4 py-4 text-center"></td>
               <td className="print-table-hidden px-4 py-4 text-center"></td>
             </tr>
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

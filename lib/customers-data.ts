@@ -50,6 +50,7 @@ export type CustomerListItem = {
   totalTrackExpenses?: number;
   totalDue?: number;
   saltAmount?: number;
+  totalNumberOfBags?: number;
   totalPaid?: number;
   lastActivityAt?: number;
   latestSaleId?: string | null;
@@ -138,11 +139,13 @@ export const getCustomersPageData = cache(async (): Promise<CustomerListItem[]> 
         let latestSale: SaleDoc | null = null;
         let totalHockExtendedSack = 0;
         let totalTrackExpenses = 0;
+        let totalNumberOfBags = 0;
         
         for (const sale of customerSales) {
           const adjustments = resolveSaleAdjustments(sale);
           totalHockExtendedSack += adjustments.hockExtendedSack;
           totalTrackExpenses += adjustments.trackExpenses;
+          totalNumberOfBags += Number(sale.numberOfBags ?? 0);
           
           if (!latestSale || compareByLatestInput(
             { id: String(sale._id ?? ""), date: sale.createdAt },
@@ -170,6 +173,7 @@ export const getCustomersPageData = cache(async (): Promise<CustomerListItem[]> 
           totalTrackExpenses,
           totalDue: summary.totalDueAmount,
           saltAmount: summary.totalSaltKg,
+          totalNumberOfBags,
           totalPaid: summary.totalPaidAmount,
           lastActivityAt,
           latestSaleId: latestSale?._id ? String(latestSale._id) : null,

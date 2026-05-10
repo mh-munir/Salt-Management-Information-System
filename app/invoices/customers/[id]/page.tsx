@@ -118,9 +118,10 @@ export default async function CustomerInvoicePage({ params }: CustomerInvoicePag
         </div>
 
         <div className="px-6 py-6">
-          <div className="overflow-x-auto rounded border border-gray-200">
-            <table className="min-w-full text-left text-sm">
-              <thead className="bg-gray-900 text-white">
+          <div className="app-table-shell">
+            <div className="app-table-scroll">
+            <table className="app-table min-w-full text-left text-sm">
+              <thead className="text-white">
                 <tr>
                   <th className="px-4 py-3 font-semibold">{translate(language, "sku").toUpperCase()}</th>
                   <th className="px-4 py-3 font-semibold">{translate(language, "itemDescription").toUpperCase()}</th>
@@ -133,6 +134,7 @@ export default async function CustomerInvoicePage({ params }: CustomerInvoicePag
                 <CustomerInvoiceTable records={invoice.records} language={language} />
               </tbody>
             </table>
+            </div>
           </div>
         </div>
 

@@ -469,10 +469,10 @@ export default function CostPage() {
           </div>
         </div>
 
-        <div className="dashboard-card-surface mt-6 overflow-hidden rounded-lg border border-slate-200 bg-white/80 ring-1 ring-slate-200/70 backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/80 dark:ring-slate-800">
-          <div className="overflow-x-auto">
-            <table className="min-w-[42rem] w-full text-left text-sm">
-              <thead className="text-sm capitalize tracking-[0.16em] border-b border-gray-200 dark:border-gray-100  dark:bg-slate-900 dark:text-slate-300">
+        <div className="dashboard-card-surface app-table-shell mt-6">
+          <div className="app-table-scroll">
+            <table className="app-table min-w-[42rem] w-full text-left text-sm">
+              <thead className="text-sm capitalize tracking-[0.16em] dark:text-slate-300">
                 <tr>
                   <th className="px-4 py-4">{translate(language, "dateLabel")}</th>
                   <th className="px-4 py-4">{translate(language, "costForLabel")}</th>
@@ -495,7 +495,7 @@ export default function CostPage() {
                 />
               </tbody>
               <tfoot>
-                <tr className="border-t-2 border-slate-200 bg-slate-50 font-semibold text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                <tr className="app-table-total font-semibold text-slate-800 dark:text-slate-100">
                   <td colSpan={3} className="px-4 py-4">
                     {translate(language, "totals")}
                   </td>

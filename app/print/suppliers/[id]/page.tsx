@@ -122,15 +122,17 @@ export default async function SupplierTimelinePrintPage({
         </div>
       </section>
 
-      <table className="w-full border-collapse text-left text-sm text-slate-800">
-        <thead className="bg-slate-50 text-slate-600">
+      <div className="app-table-shell">
+        <div className="app-table-scroll">
+      <table className="app-table w-full border-collapse text-left text-sm text-slate-800">
+        <thead className="text-slate-600">
           <tr>
-            <th className="border border-slate-200 px-4 py-3 text-sm font-medium">{translate(language, "dateLabel")}</th>
-            <th className="border border-slate-200 px-4 py-3 text-sm font-medium">{translate(language, "typeLabel")}</th>
-            <th className="border border-slate-200 px-4 py-3 text-sm font-medium">{translate(language, "saltMaundShort")}</th>
-            <th className="border border-slate-200 px-4 py-3 text-sm font-medium">{translate(language, "paidAmountShort")}</th>
-            <th className="border border-slate-200 px-4 py-3 text-sm font-medium">{translate(language, "dueOrAdvance")}</th>
-            <th className="border border-slate-200 px-4 py-3 text-sm font-medium">{translate(language, "noteLabel")}</th>
+            <th className="px-4 py-3 text-sm font-medium">{translate(language, "dateLabel")}</th>
+            <th className="px-4 py-3 text-sm font-medium">{translate(language, "typeLabel")}</th>
+            <th className="px-4 py-3 text-sm font-medium">{translate(language, "saltMaundShort")}</th>
+            <th className="px-4 py-3 text-sm font-medium">{translate(language, "paidAmountShort")}</th>
+            <th className="px-4 py-3 text-sm font-medium">{translate(language, "dueOrAdvance")}</th>
+            <th className="px-4 py-3 text-sm font-medium">{translate(language, "noteLabel")}</th>
           </tr>
         </thead>
         <tbody>
@@ -146,25 +148,25 @@ export default async function SupplierTimelinePrintPage({
 
               return (
                 <tr key={String(record._id ?? record.date?.toString())} className={index % 2 === 0 ? "bg-white" : "bg-slate-50/50"}>
-                  <td className="border border-slate-200 px-4 py-3">{formatDate(record.date)}</td>
-                  <td className="border border-slate-200 px-4 py-3">
+                  <td className="px-4 py-3">{formatDate(record.date)}</td>
+                  <td className="px-4 py-3">
                     {isPurchase ? translate(language, "purchaseLabel") : translate(language, "payment")}
                   </td>
-                  <td className="border border-slate-200 px-4 py-3">
+                  <td className="px-4 py-3">
                     <div>{formatAmount(saltMaund)}</div>
-                    <div className="text-xs text-slate-500">
+                    <div className="app-table-note text-xs">
                       {isPurchase && perMaundPrice > 0
                         ? `${translate(language, "perMaundPriceLabel")} ${formatAmount(perMaundPrice)}`
                         : "-"}
                     </div>
                   </td>
-                  <td className="border border-slate-200 px-4 py-3">Tk {formatAmount(Number(record.amount ?? 0))}</td>
-                  <td className={`border border-slate-200 px-4 py-3 ${recordBalanceSummary.isAdvance ? "text-sky-600" : "text-rose-600"}`}>
+                  <td className="px-4 py-3">Tk {formatAmount(Number(record.amount ?? 0))}</td>
+                  <td className={`px-4 py-3 ${recordBalanceSummary.isAdvance ? "text-sky-600" : "text-rose-600"}`}>
                     {recordBalanceSummary.isAdvance
                       ? `${translate(language, "advanceBalance")} Tk ${formatAmount(recordBalanceSummary.absoluteAmount)}`
                       : `Tk ${formatAmount(recordBalanceSummary.absoluteAmount)}`}
                   </td>
-                  <td className="border border-slate-200 px-4 py-3">
+                  <td className="app-table-note px-4 py-3">
                     {isPurchase
                       ? translate(language, "saltPurchaseEntryNote")
                       : translate(language, "supplierPaymentEntryNote")}
@@ -174,32 +176,34 @@ export default async function SupplierTimelinePrintPage({
             })
           ) : (
             <tr>
-              <td colSpan={6} className="border border-slate-200 px-4 py-8 text-center text-slate-500">
+              <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
                 {translate(language, "noSupplierRecordsFound")}
               </td>
             </tr>
           )}
-          <tr className="bg-slate-100 font-semibold">
-            <td className="border border-slate-200 px-4 py-3">{translate(language, "totals")}</td>
-            <td className="border border-slate-200 px-4 py-3">-</td>
-            <td className="border border-slate-200 px-4 py-3">
+          <tr className="app-table-total font-semibold">
+            <td className="px-4 py-3">{translate(language, "totals")}</td>
+            <td className="px-4 py-3">-</td>
+            <td className="px-4 py-3">
               <div>{formatAmount(filteredTotalSaltMoved)}</div>
-              <div className="text-xs font-medium text-slate-500">
+              <div className="app-table-note text-xs font-medium">
                 {filteredAveragePurchasePerMaund > 0
                   ? `${translate(language, "perMaundPriceLabel")} ${formatAmount(filteredAveragePurchasePerMaund)}`
                   : "-"}
               </div>
             </td>
-            <td className="border border-slate-200 px-4 py-3">Tk {formatAmount(filteredTotalPaid)}</td>
-            <td className={`border border-slate-200 px-4 py-3 ${filteredEndingBalance.isAdvance ? "text-sky-600" : "text-rose-600"}`}>
+            <td className="px-4 py-3">Tk {formatAmount(filteredTotalPaid)}</td>
+            <td className={`px-4 py-3 ${filteredEndingBalance.isAdvance ? "text-sky-600" : "text-rose-600"}`}>
               {filteredEndingBalance.isAdvance
                 ? `${translate(language, "advanceBalance")} Tk ${formatAmount(filteredEndingBalance.absoluteAmount)}`
                 : `Tk ${formatAmount(filteredEndingBalance.absoluteAmount)}`}
             </td>
-            <td className="border border-slate-200 px-4 py-3">-</td>
+            <td className="px-4 py-3">-</td>
           </tr>
         </tbody>
       </table>
+        </div>
+      </div>
     </main>
   );
 }

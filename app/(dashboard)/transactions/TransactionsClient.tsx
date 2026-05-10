@@ -299,7 +299,7 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
-        <div className={`overflow-x-auto rounded-lg bg-white p-4 shadow-sm ${printTarget === "customer" ? "print-target-hidden" : ""}`}>
+        <div className={`app-table-shell p-4 ${printTarget === "customer" ? "print-target-hidden" : ""}`}>
           <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
             <div>
               <h2 className="text-xl font-semibold text-slate-900">{translate(language, "paidTransactions")}</h2>
@@ -336,8 +336,9 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
               </button>
             </div>
           </div>
-          <table className="min-w-[50rem] text-left text-sm">
-            <thead className="border-b border-slate-200 text-sm text-slate-500">
+          <div className="app-table-scroll">
+          <table className="app-table min-w-[50rem] text-left text-sm">
+            <thead className="text-sm text-slate-500">
               <tr>
                 <th className="px-4 py-3">Date</th>
                 <th className="px-4 py-3">Name</th>
@@ -365,7 +366,7 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
               />
             </tbody>
             <tfoot>
-              <tr className="border-t-2 border-slate-200 bg-slate-50 font-semibold text-slate-800">
+              <tr className="app-table-total font-semibold text-slate-800">
                 <td colSpan={3} className="px-4 py-3">
                   {translate(language, "totals")}
                 </td>
@@ -376,9 +377,10 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
               </tr>
             </tfoot>
           </table>
+          </div>
         </div>
 
-        <div className={`overflow-x-auto rounded-lg bg-white p-4 shadow-sm ${printTarget === "paid" ? "print-target-hidden" : ""}`}>
+        <div className={`app-table-shell p-4 ${printTarget === "paid" ? "print-target-hidden" : ""}`}>
           <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
             <div>
               <h2 className="text-xl font-semibold text-slate-900">{translate(language, "customerTransactions")}</h2>
@@ -415,8 +417,9 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
               </button>
             </div>
           </div>
-          <table className="min-w-[50rem] text-left text-sm">
-            <thead className="border-b border-slate-200 text-sm text-slate-500">
+          <div className="app-table-scroll">
+          <table className="app-table min-w-[50rem] text-left text-sm">
+            <thead className="text-sm text-slate-500">
               <tr>
                 <th className="px-4 py-3">Date</th>
                 <th className="px-4 py-3">Name</th>
@@ -444,7 +447,7 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
               />
             </tbody>
             <tfoot>
-              <tr className="border-t-2 border-slate-200 bg-slate-50 font-semibold text-slate-800">
+              <tr className="app-table-total font-semibold text-slate-800">
                 <td colSpan={3} className="px-4 py-3">
                   {translate(language, "totals")}
                 </td>
@@ -455,6 +458,7 @@ export default function TransactionsClient({ initialData }: TransactionsClientPr
               </tr>
             </tfoot>
           </table>
+          </div>
         </div>
       </div>
     </div>

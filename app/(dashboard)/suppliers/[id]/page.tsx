@@ -391,10 +391,10 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
           </div>
         </div>
 
-        <div className="mt-6 overflow-hidden rounded-lg border border-slate-200">
-          <div className="w-full overflow-x-auto">
-            <table className="min-w-[46rem] w-full text-left text-sm">
-              <thead className="bg-slate-50/80 text-slate-500">
+        <div className="app-table-shell mt-6">
+          <div className="app-table-scroll">
+            <table className="app-table min-w-[46rem] w-full text-left text-sm">
+              <thead className="text-slate-500">
                 <tr>
                   <th className="px-4 py-4 text-sm font-medium">Date</th>
                   <th className="px-4 py-4 text-sm font-medium">Type</th>
@@ -418,7 +418,7 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
                   }
                 />
 
-                <tr className="border-t border-slate-200 bg-slate-50/70 text-sm font-semibold text-slate-800">
+                <tr className="app-table-total text-sm font-semibold text-slate-800">
                   <td className="px-4 py-4 text-sm">Totals</td>
                   <td className="px-4 py-4 text-sm">-</td>
                   <td className="px-4 py-4 text-sm">

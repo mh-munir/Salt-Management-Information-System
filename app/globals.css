@@ -67,6 +67,93 @@ table :is(th, td, th *, td *) {
   line-height: 1.5rem !important;
 }
 
+.app-table-shell {
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 1.25rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 250, 252, 0.92) 100%);
+  box-shadow:
+    0 18px 40px -28px rgba(15, 23, 42, 0.32),
+    0 10px 22px -20px rgba(15, 23, 42, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+}
+
+.app-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.7) transparent;
+}
+
+.app-table-scroll::-webkit-scrollbar {
+  height: 0.7rem;
+}
+
+.app-table-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.app-table-scroll::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.65);
+  background-clip: padding-box;
+}
+
+.app-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  color: #0f172a;
+}
+
+.app-table thead {
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.98) 0%, rgba(241, 245, 249, 0.9) 100%);
+  color: #475569;
+}
+
+.app-table thead th {
+  position: relative;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  font-size: 0.78rem !important;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.app-table tbody tr {
+  transition: background-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.app-table tbody tr:nth-child(odd) {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.app-table tbody tr:nth-child(even) {
+  background: rgba(248, 250, 252, 0.86);
+}
+
+.app-table tbody tr:hover {
+  background: rgba(239, 246, 255, 0.9);
+}
+
+.app-table tbody td {
+  border-bottom: 1px solid rgba(226, 232, 240, 0.85);
+}
+
+.app-table tfoot td,
+.app-table-total td {
+  border-top: 1px solid rgba(148, 163, 184, 0.22);
+  background: linear-gradient(180deg, rgba(241, 245, 249, 0.95) 0%, rgba(226, 232, 240, 0.62) 100%);
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.app-table-note {
+  color: #64748b;
+}
+
 label,
 input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]),
 select,
@@ -172,6 +259,54 @@ html.theme-dark .sidebar-shell {
   background-color: #1F2128 !important;
 }
 
+html.theme-dark .app-table-shell {
+  border-color: rgba(71, 85, 105, 0.5);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.96) 0%, rgba(15, 23, 42, 0.88) 100%);
+  box-shadow:
+    0 20px 40px -30px rgba(2, 6, 23, 0.7),
+    inset 0 1px 0 rgba(148, 163, 184, 0.08);
+}
+
+html.theme-dark .app-table {
+  color: #e2e8f0;
+}
+
+html.theme-dark .app-table thead {
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.98) 0%, rgba(15, 23, 42, 0.94) 100%);
+  color: #cbd5e1;
+}
+
+html.theme-dark .app-table thead th {
+  border-bottom-color: rgba(71, 85, 105, 0.55);
+}
+
+html.theme-dark .app-table tbody tr:nth-child(odd) {
+  background: rgba(15, 23, 42, 0.74);
+}
+
+html.theme-dark .app-table tbody tr:nth-child(even) {
+  background: rgba(30, 41, 59, 0.62);
+}
+
+html.theme-dark .app-table tbody tr:hover {
+  background: rgba(14, 116, 144, 0.22);
+}
+
+html.theme-dark .app-table tbody td {
+  border-bottom-color: rgba(51, 65, 85, 0.72);
+}
+
+html.theme-dark .app-table tfoot td,
+html.theme-dark .app-table-total td {
+  border-top-color: rgba(71, 85, 105, 0.58);
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.92) 0%, rgba(15, 23, 42, 0.9) 100%);
+  color: #f8fafc;
+}
+
+html.theme-dark .app-table-note {
+  color: #94a3b8;
+}
+
 @media print {
   html,
   body {
@@ -220,6 +355,20 @@ html.theme-dark .sidebar-shell {
     box-shadow: none !important;
     padding: 0 !important;
     overflow: visible !important;
+  }
+
+  .app-table-shell {
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+  }
+
+  .app-table thead,
+  .app-table tbody tr,
+  .app-table tfoot td,
+  .app-table-total td {
+    background: #ffffff !important;
   }
 
   .invoice-page {

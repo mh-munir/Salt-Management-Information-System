@@ -60,6 +60,7 @@ export default function Navbar({ initialLanguage, initialProfile }: NavbarProps)
     if (pathname.startsWith("/customers")) return translate(language, "customers");
     if (pathname.startsWith("/stock")) return translate(language, "stock");
     if (pathname.startsWith("/cost")) return translate(language, "cost");
+    if (pathname.startsWith("/transport-info")) return translate(language, "transportInfo");
     if (pathname.startsWith("/settings")) return translate(language, "settings");
     return translate(language, "dashboard");
   }, [language, pathname]);

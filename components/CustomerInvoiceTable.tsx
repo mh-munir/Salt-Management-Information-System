@@ -38,11 +38,11 @@ export default function CustomerInvoiceTable({
   language,
 }: CustomerInvoiceTableProps) {
   const rows = records.map((record, index) => (
-    <tr key={record.id} className={index % 2 === 0 ? "bg-gray-50" : "bg-white"}>
+    <tr key={record.id}>
       <td className="px-4 py-3 text-sm text-gray-700">{formatLocalizedNumber(index + 1, language, { maximumFractionDigits: 0 })}</td>
       <td className="px-4 py-3 text-sm text-gray-700">
         <p className="font-medium text-gray-800">{record.label}</p>
-        <p className="mt-1 text-xs text-gray-500">{record.note}</p>
+        <p className="app-table-note mt-1 text-xs">{record.note}</p>
       </td>
       <td className="px-4 py-3 text-right text-sm font-semibold text-gray-900">
         {record.pricePerKg > 0 ? `Tk ${formatMoney(record.pricePerKg, language)}` : "-"}

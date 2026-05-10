@@ -17,7 +17,7 @@ import {
 import { translate, type TranslationKey } from "@/lib/language";
 import { useLanguage } from "@/lib/useLanguage";
 
-type NavIconType = "dashboard" | "transactions" | "suppliers" | "customers" | "stock" | "cost" | "settings";
+type NavIconType = "dashboard" | "transactions" | "suppliers" | "customers" | "stock" | "cost" | "transportInfo" | "settings";
 
 type NavItem = {
   href: string;
@@ -46,6 +46,7 @@ const navGroups: NavGroup[] = [
       { href: "/customers", label: "customers", icon: "customers", description: "Client sales and due tracking" },
       { href: "/stock", label: "stock", icon: "stock", description: "Inventory position and movement" },
       { href: "/cost", label: "cost", icon: "cost", description: "Operational expense records" },
+      { href: "/transport-info", label: "transportInfo", icon: "transportInfo", description: "Driver, helper, and license records" },
     ],
   },
   {
@@ -63,6 +64,7 @@ const ICON_CONFIG = {
   customers: { viewBox: "0 0 24 24", paths: ["M8.8 8.6 r2.8", "M3.8 17c1.1-2.3 2.8-3.5 5-3.5 2.1 0 3.8 1.2 4.9 3.5", "M17.4 9.4 r2.1", "M14.7 16.7c.8-1.6 1.9-2.4 3.5-2.4 1.5 0 2.6.8 3.4 2.4"] },
   stock: { viewBox: "0 0 24 24", paths: ["M4 7h16", "M6 7V4.9h12V7", "M9 12h6"] },
   cost: { viewBox: "0 0 24 24", paths: ["M5 6.5h14", "M8 4v5", "M16 4v5", "M8 12h8", "M8 16h5"] },
+  transportInfo: { viewBox: "0 0 24 24", paths: ["M3.5 7.5h10.8v7.8H3.5z", "M14.3 10h3.4l2.8 2.9v2.4h-6.2", "M6.8 18.2a1.8 1.8 0 1 0 0 .1", "M17.7 18.2a1.8 1.8 0 1 0 0 .1"] },
 } as const;
 
 type SidebarBrandingResponse = {
@@ -131,7 +133,15 @@ function NavIcon({ type }: { type: NavIconType }) {
           <path d="M8 16h5" />
         </>
       )}
-      {!type.match(/dashboard|transactions|suppliers|customers|stock|cost/) && (
+      {type === "transportInfo" && (
+        <>
+          <path d="M3.5 7.5h10.8v7.8H3.5Z" />
+          <path d="M14.3 10h3.4l2.8 2.9v2.4h-6.2" />
+          <circle cx="6.8" cy="18.2" r="1.8" />
+          <circle cx="17.7" cy="18.2" r="1.8" />
+        </>
+      )}
+      {!type.match(/dashboard|transactions|suppliers|customers|stock|cost|transportInfo/) && (
         <path d="M12 8.4a3.6 3.6 0 1 0 0 7.2 3.6 3.6 0 0 0 0-7.2Z" />
       )}
     </svg>

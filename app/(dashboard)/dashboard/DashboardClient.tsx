@@ -83,16 +83,6 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
     [todaySales, todayBuy]
   );
 
-  const supplierDueEquivalentMaund = useMemo(() => {
-    const dueAmount = getBalanceSummary(supplierDue).dueAmount;
-    if (dueAmount <= 0 || totalBuy <= 0 || totalSaltBuy <= 0) return 0;
-
-    const averagePurchasePricePerMaund = totalBuy / totalSaltBuy;
-    if (!Number.isFinite(averagePurchasePricePerMaund) || averagePurchasePricePerMaund <= 0) return 0;
-
-    return dueAmount / averagePurchasePricePerMaund;
-  }, [supplierDue, totalBuy, totalSaltBuy]);
-
   const stockOfPurchasePercent = useMemo(() => {
     if (stockData.totalBought <= 0) return 0;
 
@@ -108,16 +98,21 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
     const average = totalBuy / totalSaltBuy;
     return Number.isFinite(average) ? average : 0;
   }, [totalBuy, totalSaltBuy]);
+  const totalSoldMaund = useMemo(
+    () => Math.max(0, stockData.totalBought - stockData.stockMounds),
+    [stockData.stockMounds, stockData.totalBought]
+  );
+  const averageSalePricePerMaund = useMemo(() => {
+    if (totalSales <= 0 || totalSoldMaund <= 0) return 0;
+
+    const average = totalSales / totalSoldMaund;
+    return Number.isFinite(average) ? average : 0;
+  }, [totalSales, totalSoldMaund]);
 
   const totalPurchaseCost = useMemo(() => Math.max(0, totalBuy + totalCost), [totalBuy, totalCost]);
   const totalCostSharePercent = useMemo(
     () => getRatioPercent(totalCost, totalPurchaseCost),
     [totalCost, totalPurchaseCost]
-  );
-
-  const totalSoldMaund = useMemo(
-    () => Math.max(0, stockData.totalBought - stockData.stockMounds),
-    [stockData.stockMounds, stockData.totalBought]
   );
 
   const estimatedStockValue = useMemo(() => {
@@ -264,21 +259,69 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
   const todayTradeVolume = dailyTransactionSection.amount;
   const supplierBalance = getBalanceSummary(supplierDue);
   const customerBalance = getBalanceSummary(customerDue);
+  const supplierBalanceEquivalentMaund = useMemo(() => {
+    if (supplierBalance.absoluteAmount <= 0 || averagePurchasePricePerMaund <= 0) return 0;
+
+    const equivalent = supplierBalance.absoluteAmount / averagePurchasePricePerMaund;
+    return Number.isFinite(equivalent) ? equivalent : 0;
+  }, [averagePurchasePricePerMaund, supplierBalance.absoluteAmount]);
+  const customerBalanceEquivalentMaund = useMemo(() => {
+    if (customerBalance.absoluteAmount <= 0 || averageSalePricePerMaund <= 0) return 0;
+
+    const equivalent = customerBalance.absoluteAmount / averageSalePricePerMaund;
+    return Number.isFinite(equivalent) ? equivalent : 0;
+  }, [averageSalePricePerMaund, customerBalance.absoluteAmount]);
+  const supplierBalanceTitle = useMemo(() => {
+    if (!supplierBalance.isAdvance) {
+      return translate(language, "suppliersDue");
+    }
+
+    return language === "bn" ? "সরবরাহকারী অগ্রিম ব্যালেন্স" : "Supplier Advance Balance";
+  }, [language, supplierBalance.isAdvance]);
+
+  const customerBalanceTitle = useMemo(() => {
+    if (!customerBalance.isAdvance) {
+      return translate(language, "customerDueCard");
+    }
+
+    return language === "bn" ? "কাস্টমার অগ্রিম ব্যালেন্স" : "Customer Advance Balance";
+  }, [language, customerBalance.isAdvance]);
   const totalPurchaseRingPercent = getRatioPercent(totalBuy, totalTradeVolume);
   const totalSalesRingPercent = getRatioPercent(totalSales, totalTradeVolume);
-  const supplierDueRingPercent = getRatioPercent(supplierBalance.dueAmount, totalBuy);
-  const customerDueRingPercent = getRatioPercent(customerBalance.dueAmount, totalSales);
+  const supplierDueRingPercent = getRatioPercent(supplierBalanceEquivalentMaund, totalSaltBuy);
+  const customerDueRingPercent = getRatioPercent(customerBalanceEquivalentMaund, totalSoldMaund);
   const dailySalesRingPercent = getRatioPercent(todaySales, todayTradeVolume);
   const dailyPurchaseRingPercent = getRatioPercent(todayBuy, todayTradeVolume);
   const dailyTransactionRingPercent = getRatioPercent(todayTradeVolume, totalTradeVolume);
   const dailyCostRingPercent = getRatioPercent(todayCost, todayBuy);
+  const supplierBalancePercentLabel = `${formatPercent(supplierDueRingPercent)}%`;
   const customerDuePercentLabel = `${formatPercent(customerDueRingPercent)}%`;
   const dailyCostPercentLabel = `${formatPercent(dailyCostRingPercent)}%`;
   const dailyPurchaseAndCostTotal = todayBuy + todayCost;
+  const supplierBalanceTrendDetail =
+    supplierBalance.absoluteAmount <= 0
+      ? language === "bn"
+        ? "সরবরাহকারীদের কোনো বকেয়া বা অগ্রিম ব্যালেন্স নেই"
+        : "There is no supplier due or advance balance"
+      : supplierBalance.isAdvance
+      ? language === "bn"
+        ? `প্রায় ${formatWeight(supplierBalanceEquivalentMaund)} ${translate(language, "maundUnit")} লবণের অগ্রিম, যা মোট ক্রয়ের ${supplierBalancePercentLabel}`
+        : `Advance equals about ${formatWeight(supplierBalanceEquivalentMaund)} ${translate(language, "maundUnit")} of salt, which is ${supplierBalancePercentLabel} of total purchase`
+      : language === "bn"
+      ? `প্রায় ${formatWeight(supplierBalanceEquivalentMaund)} ${translate(language, "maundUnit")} লবণের টাকা বকেয়া, যা মোট ক্রয়ের ${supplierBalancePercentLabel}`
+      : `Due equals about ${formatWeight(supplierBalanceEquivalentMaund)} ${translate(language, "maundUnit")} of salt, which is ${supplierBalancePercentLabel} of total purchase`;
   const customerDueTrendDetail =
-    language === "bn"
-      ? `মোট বিক্রয়ের ${customerDuePercentLabel} এখনো গ্রাহকদের কাছে পাওনা আছে`
-      : `${customerDuePercentLabel} of total sales is still receivable from customers`;
+    customerBalance.absoluteAmount <= 0
+      ? language === "bn"
+        ? "গ্রাহকদের কোনো পাওনা বা অগ্রিম ব্যালেন্স নেই"
+        : "There is no customer due or advance balance"
+      : customerBalance.isAdvance
+      ? language === "bn"
+        ? `প্রায় ${formatWeight(customerBalanceEquivalentMaund)} ${translate(language, "maundUnit")} লবণের অগ্রিম, যা মোট বিক্রয়ের ${customerDuePercentLabel}`
+        : `Advance equals about ${formatWeight(customerBalanceEquivalentMaund)} ${translate(language, "maundUnit")} of salt, which is ${customerDuePercentLabel} of total sales`
+      : language === "bn"
+      ? `প্রায় ${formatWeight(customerBalanceEquivalentMaund)} ${translate(language, "maundUnit")} লবণের টাকা পাওনা, যা মোট বিক্রয়ের ${customerDuePercentLabel}`
+      : `Receivable equals about ${formatWeight(customerBalanceEquivalentMaund)} ${translate(language, "maundUnit")} of salt, which is ${customerDuePercentLabel} of total sales`;
 
   const stockMixSegments = [
     {
@@ -544,18 +587,10 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
             accentValue
           />
           <Card
-            title={supplierBalance.isAdvance ? translate(language, "advanceBalance") : translate(language, "suppliersDue")}
+            title={supplierBalanceTitle}
             value={`Tk ${formatFullCurrency(supplierBalance.absoluteAmount)}`}
-            trendPercent={`Tk ${formatWeight(averagePurchasePricePerMaund)}`}
-            trendDetail={
-              supplierBalance.isAdvance
-                ? language === "bn"
-                  ? `সরবরাহকারীদের কাছে অগ্রিম Tk ${formatFullCurrency(supplierBalance.absoluteAmount)}`
-                  : `Advance already paid to suppliers Tk ${formatFullCurrency(supplierBalance.absoluteAmount)}`
-                : language === "bn"
-                ? `${translate(language, "supplierDueApproxDetail")}: ${formatWeight(supplierDueEquivalentMaund)} ${translate(language, "maundUnit")}`
-                : `Approx. ${formatWeight(supplierDueEquivalentMaund)} ${translate(language, "maundUnit")} due`
-            }
+            trendPercent={supplierBalancePercentLabel}
+            trendDetail={supplierBalanceTrendDetail}
             trendDirection="neutral"
             visual="ring"
             ringPercent={supplierDueRingPercent}
@@ -575,7 +610,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
             tone="emerald"
           />
           <Card
-            title={customerBalance.isAdvance ? translate(language, "advanceBalance") : translate(language, "customerDueCard")}
+            title={customerBalanceTitle}
             value={`Tk ${formatFullCurrency(customerBalance.absoluteAmount)}`}
             trendPercent={customerDuePercentLabel}
             trendDetail={customerDueTrendDetail}

@@ -99,23 +99,19 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
     return `Tk ${formatAmount(balance.absoluteAmount)}`;
   };
   const formatTotalBalanceStatus = (dueAmount: number, advanceAmount: number) => {
-    if (dueAmount <= 0 && advanceAmount <= 0) return "0";
+    const netBalance = getBalanceSummary(dueAmount - advanceAmount);
 
-    const parts: string[] = [];
+    if (netBalance.isSettled) return "0";
 
-    if (dueAmount > 0) {
-      parts.push(`${language === "bn" ? "মোট বকেয়া" : "Total Due"} Tk ${formatAmount(dueAmount)}`);
-    }
-
-    if (advanceAmount > 0) {
-      parts.push(`${language === "bn" ? "মোট অগ্রিম" : "Total Advance"} Tk ${formatAmount(advanceAmount)}`);
-    }
-
-    return parts.join(" | ");
+    return netBalance.isAdvance
+      ? `${language === "bn" ? "মোট অগ্রিম" : "Total Advance"} Tk ${formatAmount(netBalance.absoluteAmount)}`
+      : `${language === "bn" ? "মোট বকেয়া" : "Total Due"} Tk ${formatAmount(netBalance.absoluteAmount)}`;
   };
   const getTotalBalanceClassName = (dueAmount: number, advanceAmount: number) => {
-    if (dueAmount > 0 && advanceAmount > 0) return "text-amber-600";
-    if (advanceAmount > 0) return "text-sky-600";
+    const netBalance = getBalanceSummary(dueAmount - advanceAmount);
+
+    if (netBalance.isSettled) return "text-slate-800";
+    if (netBalance.isAdvance) return "text-sky-600";
     return "text-rose-600";
   };
   const getBalanceClassName = (value: number) =>
@@ -529,11 +525,6 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
         <tr key={supplier._id} className={`border-b border-slate-100 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}>
           <td className="px-4 py-4 text-slate-800">{formatDisplayName(supplier.name, "Unnamed supplier")}</td>
           <td className="print-table-hidden px-4 py-4 text-center text-slate-600">{formatAmount(supplier.saltAmount ?? 0)}</td>
-          <td className="px-4 py-4 text-center text-slate-600">Tk {formatAmount(supplier.totalPurchaseAmount ?? (supplier.totalPaid ?? 0) + (supplier.totalDue ?? 0))}</td>
-          <td className="px-4 py-4 text-center text-slate-600">Tk {formatAmount(supplier.totalPaid ?? 0)}</td>
-          <td className={`px-4 py-4 text-center ${getBalanceClassName(supplier.totalDue ?? 0)}`}>
-            {formatTableBalanceStatus(supplier.totalDue ?? 0)}
-          </td>
           <td className="print-table-hidden px-4 py-4 text-center text-slate-600">
             {supplier.latestPurchaseId ? (
               <div className="flex flex-col items-center gap-1">
@@ -545,6 +536,11 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
             ) : (
               "-"
             )}
+          </td>
+          <td className="px-4 py-4 text-center text-slate-600">Tk {formatAmount(supplier.totalPurchaseAmount ?? (supplier.totalPaid ?? 0) + (supplier.totalDue ?? 0))}</td>
+          <td className="px-4 py-4 text-center text-slate-600">Tk {formatAmount(supplier.totalPaid ?? 0)}</td>
+          <td className={`px-4 py-4 text-center ${getBalanceClassName(supplier.totalDue ?? 0)}`}>
+            {formatTableBalanceStatus(supplier.totalDue ?? 0)}
           </td>
           <td className="print-table-hidden px-4 py-4 text-center">
             <span className="inline-flex rounded-lg border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
@@ -1003,20 +999,21 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
         </ModalShell>
       ) : null}
 
-      <div className="print-list-shell overflow-x-auto rounded-lg bg-white p-4 shadow-sm">
+      <div className="print-list-shell app-table-shell p-4">
         <div className="print-only border-b border-slate-200 px-4 py-4">
           <h2 className="text-xl font-semibold text-slate-900">{translate(language, "printSupplierList")}</h2>
           <p className="mt-1 text-sm text-slate-500">Date: {getPrintDateLabel(tableFilterDate)}</p>
         </div>
-        <table className="min-w-[60rem] w-full text-left text-sm">
-          <thead className="border-b border-slate-200 text-sm text-slate-500">
+        <div className="app-table-scroll">
+        <table className="app-table min-w-[60rem] w-full text-left text-sm">
+          <thead className="text-sm text-slate-500">
             <tr>
               <th className="px-4 py-3">{translate(language, "supplierNameLabel")}</th>
               <th className="print-table-hidden px-4 py-3 text-center">{translate(language, "saleStock")}</th>
+              <th className="print-table-hidden px-4 py-3 text-center">{translate(language, "pricePerMaund")}</th>
               <th className="px-4 py-3 text-center">{translate(language, "totalSalesLabel")}</th>
               <th className="px-4 py-3 text-center">{translate(language, "totalReceived")}</th>
               <th className="px-4 py-3 text-center">{translate(language, "dueOrAdvance")}</th>
-              <th className="print-table-hidden px-4 py-3 text-center">{translate(language, "pricePerMaund")}</th>
               <th className="print-table-hidden px-4 py-3 text-center">{translate(language, "editedBy")}</th>
               <th className="print-table-hidden px-4 py-3 text-center">{translate(language, "action")}</th>
             </tr>
@@ -1034,9 +1031,10 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
                 </tr>
               }
             />
-            <tr className="border-t border-slate-200 bg-slate-50 font-semibold text-slate-800">
+            <tr className="app-table-total font-semibold text-slate-800">
                   <td className="px-4 py-4">{translate(language, "totals")}</td>
                   <td className="print-table-hidden px-4 py-4 text-center">{formatAmount(totalSalt)}</td>
+                  <td className="print-table-hidden px-4 py-4 text-center"></td>
                   <td className="px-4 py-4 text-center">Tk {formatAmount(totalAmount)}</td>
                   <td className="px-4 py-4 text-center">Tk {formatAmount(totalPaid)}</td>
                   <td className={`px-4 py-4 text-center ${getTotalBalanceClassName(totalBalance.dueAmount, totalBalance.advanceAmount)}`}>
@@ -1044,10 +1042,10 @@ export default function SuppliersClient({ initialData }: SuppliersClientProps) {
                   </td>
                   <td className="print-table-hidden px-4 py-4 text-center"></td>
                   <td className="print-table-hidden px-4 py-4 text-center"></td>
-                  <td className="print-table-hidden px-4 py-4 text-center"></td>
               </tr>
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

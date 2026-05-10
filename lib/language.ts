@@ -6,6 +6,7 @@ export type TranslationKey =
   | "customers"
   | "stock"
   | "cost"
+  | "transportInfo"
   | "settings"
   | "main"
   | "management"
@@ -114,6 +115,7 @@ export type TranslationKey =
   | "cancelAction"
   | "pricePerMaund"
   | "pricePerKg"
+  | "pricePerBosta"
   | "hockExtendedSack"
   | "trackExpenses"
   | "totalMaund"
@@ -245,6 +247,35 @@ export type TranslationKey =
   | "costSavedSuccessfully"
   | "personNameRequired"
   | "purposeRequired"
+  | "transportInfoDescription"
+  | "driverName"
+  | "driverMobileNumber"
+  | "helperName"
+  | "transportCustomerName"
+  | "trackNumber"
+  | "drivingLicense"
+  | "drivingLicenseUpload"
+  | "helperIdCardUpload"
+  | "driverIdCardUpload"
+  | "transportLicenseUploadHint"
+  | "saveTransportInfo"
+  | "transportInfoTableTitle"
+  | "transportInfoTableDescription"
+  | "noTransportInfoFound"
+  | "driverNameRequired"
+  | "driverMobileNumberRequired"
+  | "helperNameRequired"
+  | "transportCustomerNameRequired"
+  | "trackNumberRequired"
+  | "transportLicenseFileRequired"
+  | "transportLicenseFileTooLarge"
+  | "transportLicenseReadError"
+  | "transportSaveFailed"
+  | "transportSavedSuccessfully"
+  | "transportTrackCount"
+  | "transportTracks"
+  | "viewLicense"
+  | "viewIdCard"
   | "unknownPerson"
   | "saltKg"
   | "amount"
@@ -352,6 +383,7 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     customers: "Customers",
     stock: "Stock",
     cost: "Cost",
+    transportInfo: "Transport Info",
     settings: "Settings",
     main: "MAIN",
     management: "MANAGEMENT",
@@ -463,6 +495,7 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     down: "Down",
     pricePerMaund: "Price per Maund (Tk)",
     pricePerKg: "Price per KG (Tk)",
+    pricePerBosta: "Price per Bosta/Sack (Tk)",
     hockExtendedSack: "Hock/Extended sack (Tk)",
     trackExpenses: "Track expenses (Tk)",
     totalMaund: "Total Maund",
@@ -592,6 +625,35 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     costSavedSuccessfully: "Cost entry saved successfully.",
     personNameRequired: "Person name is required.",
     purposeRequired: "Purpose is required.",
+    transportInfoDescription: "Keep transport team records, track numbers, and driving license files in one place.",
+    driverName: "Driver Name",
+    driverMobileNumber: "Driver Mobile Number",
+    helperName: "Helper Name",
+    transportCustomerName: "Customer Name",
+    trackNumber: "Track Number",
+    drivingLicense: "Driving License",
+    drivingLicenseUpload: "Upload Driving License",
+    helperIdCardUpload: "Upload Helper ID Card",
+    driverIdCardUpload: "Upload Driver ID Card",
+    transportLicenseUploadHint: "You can upload files of any format. Large images will be compressed automatically.",
+    saveTransportInfo: "Save Transport Info",
+    transportInfoTableTitle: "Transport Information List",
+    transportInfoTableDescription: "All saved transport entries appear here with quick license access.",
+    noTransportInfoFound: "No transport information found.",
+    driverNameRequired: "Driver name is required.",
+    driverMobileNumberRequired: "Driver mobile number must be exactly 11 digits.",
+    helperNameRequired: "Helper name is required.",
+    transportCustomerNameRequired: "Customer name is required.",
+    trackNumberRequired: "Track number is required.",
+    transportLicenseFileRequired: "Please upload a file.",
+    transportLicenseFileTooLarge: "File is too large. Please choose a smaller file.",
+    transportLicenseReadError: "Could not read the selected driving license file.",
+    transportSaveFailed: "Failed to save transport information.",
+    transportSavedSuccessfully: "Transport information saved successfully.",
+    transportTrackCount: "Active Tracks",
+    transportTracks: "tracks",
+    viewLicense: "View License",
+    viewIdCard: "View ID Card",
     unknownPerson: "Unknown person",
     saltKg: "Salt KG",
     amount: "Amount",
@@ -695,6 +757,7 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     customers: "গ্রাহক",
     stock: "স্টক",
     cost: "খরচ",
+    transportInfo: "পরিবহন তথ্য",
     settings: "সেটিংস",
     main: "প্রধান",
     management: "ম্যানেজমেন্ট",
@@ -769,6 +832,7 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     customerPaymentEntry: "গ্রাহক পেমেন্ট এন্ট্রি",
     pricePerMaund: "মণ প্রতি মূল্য (টাকা)",
     pricePerKg: "কেজি প্রতি মূল্য (টাকা)",
+    pricePerBosta: "বস্তা প্রতি মূল্য (টাকা)",
     hockExtendedSack: "হক/এক্সটেন্ডেড বস্তা (টাকা)",
     trackExpenses: "ট্র্যাক খরচ (টাকা)",
     totalMaund: "মোট মণ",
@@ -934,6 +998,35 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     costSavedSuccessfully: "খরচ এন্ট্রি সফলভাবে সেভ হয়েছে।",
     personNameRequired: "ব্যক্তির নাম প্রয়োজন।",
     purposeRequired: "উদ্দেশ্য লিখতে হবে।",
+    transportInfoDescription: "ড্রাইভার, হেল্পার, ট্র্যাক নম্বর এবং ড্রাইভিং লাইসেন্সের তথ্য এক জায়গায় সংরক্ষণ করুন।",
+    driverName: "ড্রাইভারের নাম",
+    driverMobileNumber: "ড্রাইভারের মোবাইল নম্বর",
+    helperName: "হেল্পারের নাম",
+    transportCustomerName: "যে গ্রাহকের কাছে যাবে",
+    trackNumber: "ট্র্যাক নম্বর",
+    drivingLicense: "ড্রাইভিং লাইসেন্স",
+    drivingLicenseUpload: "ড্রাইভিং লাইসেন্স আপলোড",
+    helperIdCardUpload: "হেল্পারের আইডি কার্ড আপলোড",
+    driverIdCardUpload: "ড্রাইভারের আইডি কার্ড আপলোড",
+    transportLicenseUploadHint: "এখানে যেকোনো ফরম্যাটের ফাইল আপলোড করতে পারবেন। বড় ছবি হলে অটো কমপ্রেস হবে।",
+    saveTransportInfo: "পরিবহন তথ্য সেভ করুন",
+    transportInfoTableTitle: "পরিবহন তথ্যের তালিকা",
+    transportInfoTableDescription: "সেভ করা সব পরিবহন তথ্য এখানে দেখা যাবে, সাথে লাইসেন্স দ্রুত খোলা যাবে।",
+    noTransportInfoFound: "কোনো পরিবহন তথ্য পাওয়া যায়নি।",
+    driverNameRequired: "ড্রাইভারের নাম প্রয়োজন।",
+    driverMobileNumberRequired: "ড্রাইভারের মোবাইল নম্বর অবশ্যই ১১ সংখ্যার হতে হবে।",
+    helperNameRequired: "হেল্পারের নাম প্রয়োজন।",
+    transportCustomerNameRequired: "গ্রাহকের নাম প্রয়োজন।",
+    trackNumberRequired: "ট্র্যাক নম্বর প্রয়োজন।",
+    transportLicenseFileRequired: "অনুগ্রহ করে একটি ফাইল আপলোড করুন।",
+    transportLicenseFileTooLarge: "ফাইল অনেক বড়। অনুগ্রহ করে ছোট ফাইল দিন।",
+    transportLicenseReadError: "নির্বাচিত ড্রাইভিং লাইসেন্স ফাইল পড়া যায়নি।",
+    transportSaveFailed: "পরিবহন তথ্য সেভ করা যায়নি।",
+    transportSavedSuccessfully: "পরিবহন তথ্য সফলভাবে সেভ হয়েছে।",
+    transportTrackCount: "মোট ট্র্যাক",
+    transportTracks: "টি ট্র্যাক",
+    viewLicense: "লাইসেন্স দেখুন",
+    viewIdCard: "আইডি কার্ড দেখুন",
     unknownPerson: "অজানা ব্যক্তি",
     saltKg: "লবণ কেজি",
     amount: "পরিমাণ",
