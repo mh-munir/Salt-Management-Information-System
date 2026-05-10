@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { attachMongooseDatabasePool, resetMongooseDatabasePoolAttachment } from "@/lib/mongodb";
+import { logWarn } from "@/lib/logger";
 
 const isProduction = process.env.NODE_ENV === "production";
 const envMongoUri = process.env.MONGODB_URI?.trim();
@@ -109,7 +110,7 @@ function logMongoConnectionFailure(error: unknown) {
       ? error.message.split("\n")[0]
       : "Unknown MongoDB connection error";
 
-  console.warn(`MongoDB connection failed: ${reason}`);
+  logWarn("mongodb_connection_failure", `MongoDB connection failed: ${reason}`);
 }
 
 function sleep(ms: number) {
@@ -153,9 +154,9 @@ export async function connectDB() {
 
   if (mongoose.connection.readyState === 1) {
     attachMongooseDatabasePool();
-    mongooseCache.conn = mongoose;
+    mongooseCache.conn = mongooseCache.conn ?? mongoose;
     mongooseCache.lastFailureAt = 0;
-    return mongoose;
+    return mongooseCache.conn;
   }
 
   if (

@@ -1,21 +1,9 @@
 import { randomBytes, scryptSync, timingSafeEqual } from "crypto";
 import jwt from "jsonwebtoken";
-
-const isProduction = process.env.NODE_ENV === "production";
-const DEV_FALLBACK_JWT_SECRET = "dev-only-insecure-secret-change-me";
+import { requireEnv } from "@/lib/env";
 
 function getJwtSecret(): string {
-  const rawJwtSecret = process.env.JWT_SECRET?.trim();
-
-  if (rawJwtSecret) {
-    return rawJwtSecret;
-  }
-
-  if (!isProduction) {
-    return DEV_FALLBACK_JWT_SECRET;
-  }
-
-  throw new Error("JWT_SECRET must be configured in production.");
+  return requireEnv("JWT_SECRET");
 }
 
 export const AUTH_COOKIE_NAME = "sms_auth";

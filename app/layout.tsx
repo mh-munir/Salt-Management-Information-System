@@ -5,6 +5,7 @@ import LanguageRootSync from "@/components/LanguageRootSync";
 import LazyToaster from "@/components/LazyToaster";
 import PrintTitleGuard from "@/components/PrintTitleGuard";
 import SiteFooter from "@/components/SiteFooter";
+import { getOptionalEnv } from "@/lib/env";
 import type { Language } from "@/lib/language";
 import { getSharedSiteSettingsSnapshot } from "@/lib/site-settings.server";
 import { DEFAULT_THEME, THEME_COOKIE_NAME } from "@/lib/theme";
@@ -28,14 +29,29 @@ const notoSansBengali = Noto_Sans_Bengali({
 
 export async function generateMetadata(): Promise<Metadata> {
   const siteSettings = await getSharedSiteSettingsSnapshot();
+  const metadataBaseUrl = getOptionalEnv("NEXT_PUBLIC_APP_URL");
 
   return {
     title: siteSettings.siteTitle,
     description: "Salt management dashboard and operations workspace.",
+    metadataBase: metadataBaseUrl ? new URL(metadataBaseUrl) : undefined,
     icons: {
       icon: siteSettings.faviconUrl,
       shortcut: siteSettings.faviconUrl,
       apple: siteSettings.faviconUrl,
+    },
+    openGraph: {
+      title: siteSettings.siteTitle,
+      description: "Salt management dashboard and operations workspace.",
+      siteName: siteSettings.siteTitle,
+      images: siteSettings.faviconUrl ? [{ url: siteSettings.faviconUrl }] : undefined,
+      type: "website",
+    },
+    twitter: {
+      card: "summary",
+      title: siteSettings.siteTitle,
+      description: "Salt management dashboard and operations workspace.",
+      images: siteSettings.faviconUrl ? [siteSettings.faviconUrl] : undefined,
     },
   };
 }

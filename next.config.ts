@@ -1,19 +1,24 @@
 import type { NextConfig } from "next";
 import { STATIC_ASSET_CACHE_CONTROL } from "./lib/cache-control";
+import { getCsvEnv } from "./lib/env";
+
+const imageRemoteHosts = getCsvEnv("NEXT_IMAGE_REMOTE_HOSTS");
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
   poweredByHeader: false,
   images: {
     remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "**",
-      },
-      {
-        protocol: "http",
-        hostname: "**",
-      },
+      ...imageRemoteHosts.map((hostname) => ({
+        protocol: "https" as const,
+        hostname,
+      })),
+      ...(process.env.NODE_ENV !== "production"
+        ? [
+            { protocol: "http" as const, hostname: "localhost" },
+            { protocol: "http" as const, hostname: "127.0.0.1" },
+          ]
+        : []),
     ],
   },
   async redirects() {

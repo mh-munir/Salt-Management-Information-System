@@ -1,4 +1,7 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
+import { apiError, handleRouteError, parseJsonBody } from "@/lib/api-response";
+import { logActivity } from "@/lib/activity-log";
 import { connectDB } from "@/lib/db";
 import {
   AUTH_COOKIE_NAME,
@@ -7,6 +10,7 @@ import {
   validateSameOrigin,
   verifyPassword,
 } from "@/lib/auth";
+import { sanitizeTextInput } from "@/lib/input-sanitization";
 import { ensureEnvSuperadminUser } from "@/lib/superadmin";
 import User from "@/models/User";
 
@@ -20,6 +24,10 @@ const SUPERUSER_PASSWORD = process.env.SUPERUSER_PASSWORD?.trim() ?? "";
 const isSuperuserBootstrapConfigured = Boolean(SUPERUSER_EMAIL && SUPERUSER_PASSWORD);
 const LOGIN_WINDOW_MS = 10 * 60 * 1000;
 const LOGIN_MAX_ATTEMPTS = 8;
+const loginSchema = z.object({
+  email: z.string().email().max(120),
+  password: z.string().min(1).max(200),
+});
 
 const loginAttempts = new Map<string, { count: number; resetAt: number }>();
 
@@ -42,10 +50,7 @@ function checkRateLimit(request: Request): Response | null {
   }
 
   if (existing.count >= LOGIN_MAX_ATTEMPTS) {
-    return Response.json(
-      { message: "Too many login attempts. Please wait and try again." },
-      { status: 429 }
-    );
+    return apiError("Too many login attempts. Please wait and try again.", 429, { code: "rate_limited" });
   }
 
   existing.count += 1;
@@ -59,109 +64,146 @@ function clearRateLimit(request: Request) {
 }
 
 export async function POST(req: Request) {
-  const originError = validateSameOrigin(req);
-  if (originError) return originError;
+  try {
+    const originError = validateSameOrigin(req);
+    if (originError) return originError;
 
-  const rateLimitResponse = checkRateLimit(req);
-  if (rateLimitResponse) return rateLimitResponse;
+    const rateLimitResponse = checkRateLimit(req);
+    if (rateLimitResponse) return rateLimitResponse;
 
-  const { email, password } = await req.json();
-  const normalizedEmail = String(email ?? "").trim().toLowerCase();
-  const rawPassword = String(password ?? "").trim();
+    const parsedBody = await parseJsonBody(req, loginSchema);
+    if (!parsedBody.success) return parsedBody.response;
 
-  if (!normalizedEmail || !rawPassword) {
-    return Response.json({ message: "Email and password are required." }, { status: 400 });
-  }
+    const normalizedEmail = sanitizeTextInput(parsedBody.data.email, { maxLength: 120 }).toLowerCase();
+    const rawPassword = String(parsedBody.data.password);
 
-  const normalizeSuccessResponse = (token: string, user: { email: string; role: string; avatarUrl: string }) => {
-    clearRateLimit(req);
+    const normalizeSuccessResponse = (token: string, user: { email: string; role: string; avatarUrl: string }) => {
+      clearRateLimit(req);
 
-    const response = NextResponse.json({
-      user,
-    });
-    response.headers.set("Cache-Control", "no-store");
+      const response = NextResponse.json({
+        success: true,
+        user,
+      });
+      response.headers.set("Cache-Control", "no-store");
 
-    response.cookies.set({
-      name: AUTH_COOKIE_NAME,
-      value: token,
-      httpOnly: true,
-      sameSite: "strict",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: AUTH_TOKEN_MAX_AGE_SECONDS,
-    });
+      response.cookies.set({
+        name: AUTH_COOKIE_NAME,
+        value: token,
+        httpOnly: true,
+        sameSite: "strict",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        maxAge: AUTH_TOKEN_MAX_AGE_SECONDS,
+      });
 
-    return response;
-  };
+      return response;
+    };
 
-  if (isProduction && !isSuperuserBootstrapConfigured) {
-    return Response.json(
-      { message: "Server auth is misconfigured. Configure SUPERUSER_EMAIL and SUPERUSER_PASSWORD." },
-      { status: 500 }
-    );
-  }
+    if (isProduction && !isSuperuserBootstrapConfigured) {
+      return apiError("Server auth is misconfigured. Configure SUPERUSER_EMAIL and SUPERUSER_PASSWORD.", 500, {
+        code: "auth_misconfigured",
+      });
+    }
 
-  const isBootstrapLogin =
-    isSuperuserBootstrapConfigured &&
-    normalizedEmail === SUPERUSER_EMAIL &&
-    rawPassword === SUPERUSER_PASSWORD;
+    const isBootstrapLogin =
+      isSuperuserBootstrapConfigured &&
+      normalizedEmail === SUPERUSER_EMAIL &&
+      rawPassword === SUPERUSER_PASSWORD;
 
-  await connectDB();
+    await connectDB();
 
-  if (isBootstrapLogin) {
-    const superAdminUser = await ensureEnvSuperadminUser({
-      email: normalizedEmail,
-      role: "superadmin",
-    });
+    if (isBootstrapLogin) {
+      const superAdminUser = await ensureEnvSuperadminUser({
+        email: normalizedEmail,
+        role: "superadmin",
+      });
 
-    if (!superAdminUser) {
-      return Response.json({ message: "Super admin bootstrap is not configured correctly." }, { status: 500 });
+      if (!superAdminUser) {
+        logActivity({
+          action: "auth.login",
+          actorEmail: normalizedEmail,
+          actorRole: "superadmin",
+          status: "failure",
+          metadata: { reason: "bootstrap_resolution_failed" },
+        });
+        return apiError("Super admin bootstrap is not configured correctly.", 500, { code: "bootstrap_error" });
+      }
+
+      await User.updateOne(
+        { _id: superAdminUser._id },
+        { $set: { lastLoginAt: new Date() } },
+        { strict: false }
+      );
+
+      logActivity({
+        action: "auth.login",
+        actorId: String(superAdminUser._id),
+        actorEmail: superAdminUser.email,
+        actorRole: superAdminUser.role,
+      });
+
+      const token = signAuthToken({
+        userId: String(superAdminUser._id),
+        email: normalizedEmail,
+        role: "superadmin",
+      });
+
+      return normalizeSuccessResponse(token, {
+        email: superAdminUser.email,
+        role: superAdminUser.role,
+        avatarUrl: superAdminUser.avatarUrl ?? "",
+      });
+    }
+
+    const user = await User.findOne({ email: normalizedEmail });
+    if (!user) {
+      logActivity({
+        action: "auth.login",
+        actorEmail: normalizedEmail,
+        status: "failure",
+        metadata: { reason: "user_not_found" },
+      });
+      return apiError("Invalid email or password.", 401, { code: "invalid_credentials" });
+    }
+
+    const isValidPassword = verifyPassword(rawPassword, user.passwordHash, user.passwordSalt);
+    if (!isValidPassword) {
+      logActivity({
+        action: "auth.login",
+        actorId: String(user._id),
+        actorEmail: user.email,
+        actorRole: user.role,
+        status: "failure",
+        metadata: { reason: "invalid_password" },
+      });
+      return apiError("Invalid email or password.", 401, { code: "invalid_credentials" });
     }
 
     await User.updateOne(
-      { _id: superAdminUser._id },
+      { _id: user._id },
       { $set: { lastLoginAt: new Date() } },
       { strict: false }
     );
 
+    logActivity({
+      action: "auth.login",
+      actorId: String(user._id),
+      actorEmail: user.email,
+      actorRole: user.role,
+    });
+
     const token = signAuthToken({
-      userId: String(superAdminUser._id),
-      email: normalizedEmail,
-      role: "superadmin",
+      userId: String(user._id),
+      email: user.email,
+      role: user.role,
     });
 
     return normalizeSuccessResponse(token, {
-      email: superAdminUser.email,
-      role: superAdminUser.role,
-      avatarUrl: superAdminUser.avatarUrl ?? "",
+      email: user.email,
+      role: user.role,
+      avatarUrl: user.avatarUrl ?? "",
     });
+  } catch (error) {
+    return handleRouteError(error, { route: "/api/auth/login" });
   }
-
-  const user = await User.findOne({ email: normalizedEmail });
-  if (!user) {
-    return Response.json({ message: "Invalid email or password." }, { status: 401 });
-  }
-
-  const isValidPassword = verifyPassword(rawPassword, user.passwordHash, user.passwordSalt);
-  if (!isValidPassword) {
-    return Response.json({ message: "Invalid email or password." }, { status: 401 });
-  }
-
-  await User.updateOne(
-    { _id: user._id },
-    { $set: { lastLoginAt: new Date() } },
-    { strict: false }
-  );
-
-  const token = signAuthToken({
-    userId: String(user._id),
-    email: user.email,
-    role: user.role,
-  });
-
-  return normalizeSuccessResponse(token, {
-    email: user.email,
-    role: user.role,
-    avatarUrl: user.avatarUrl ?? "",
-  });
 }

@@ -1,10 +1,29 @@
 import { connectDB, isMongoConnectionError } from "@/lib/db";
+import { z } from "zod";
+import { apiError, apiSuccess, handleRouteError, parseJsonBody } from "@/lib/api-response";
+import { logActivity } from "@/lib/activity-log";
 import { requireAuth, validateSameOrigin } from "@/lib/auth";
+import { sanitizeDataUrl, sanitizePhoneInput, sanitizeTextInput } from "@/lib/input-sanitization";
 import TransportInfo from "@/models/TransportInfo";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 export const revalidate = 0;
+
+const transportPayloadSchema = z.object({
+  driverName: z.string().min(1).max(80),
+  driverMobileNumber: z.string().min(11).max(20),
+  helperName: z.string().min(1).max(80),
+  customerName: z.string().min(1).max(120),
+  trackNumber: z.string().min(1).max(60),
+  drivingLicenseDataUrl: z.string().min(1).max(2_000_000),
+  drivingLicenseFileName: z.string().min(1).max(160),
+  helperIdCardDataUrl: z.string().max(2_000_000).optional().default(""),
+  helperIdCardFileName: z.string().max(160).optional().default(""),
+  driverIdCardDataUrl: z.string().max(2_000_000).optional().default(""),
+  driverIdCardFileName: z.string().max(160).optional().default(""),
+  date: z.string().min(1).max(40),
+});
 
 const getPreviewKind = (value: unknown) => {
   const normalized = String(value ?? "").trim();
@@ -75,100 +94,99 @@ export async function GET(request: Request) {
       };
     });
 
-    return Response.json(normalized);
+    return apiSuccess(normalized);
   } catch (error) {
     if (isMongoConnectionError(error)) {
-      console.warn("Transport info unavailable, returning empty list.");
-      return Response.json([]);
+      return apiSuccess([]);
     }
 
-    throw error;
+    return handleRouteError(error, { route: "/api/transport-info" });
   }
 }
 
 export async function POST(request: Request) {
-  const originError = validateSameOrigin(request);
-  if (originError) return originError;
+  try {
+    const originError = validateSameOrigin(request);
+    if (originError) return originError;
 
-  const authResult = requireAuth(request, ["admin", "superadmin"]);
-  if (authResult instanceof Response) return authResult;
+    const authResult = requireAuth(request, ["admin", "superadmin"]);
+    if (authResult instanceof Response) return authResult;
 
-  await connectDB();
-  const body = await request.json();
+    const parsedBody = await parseJsonBody(request, transportPayloadSchema);
+    if (!parsedBody.success) return parsedBody.response;
 
-  const driverName = String(body.driverName ?? "").trim();
-  const driverMobileNumber = String(body.driverMobileNumber ?? "").trim();
-  const helperName = String(body.helperName ?? "").trim();
-  const customerName = String(body.customerName ?? "").trim();
-  const trackNumber = String(body.trackNumber ?? "").trim();
-  const drivingLicenseDataUrl = String(body.drivingLicenseDataUrl ?? "").trim();
-  const drivingLicenseFileName = String(body.drivingLicenseFileName ?? "").trim();
-  const helperIdCardDataUrl = String(body.helperIdCardDataUrl ?? "").trim();
-  const helperIdCardFileName = String(body.helperIdCardFileName ?? "").trim();
-  const driverIdCardDataUrl = String(body.driverIdCardDataUrl ?? "").trim();
-  const driverIdCardFileName = String(body.driverIdCardFileName ?? "").trim();
-  const date = String(body.date ?? "").trim();
+    await connectDB();
 
-  if (!driverName) {
-    return Response.json({ message: "Driver name is required." }, { status: 400 });
+    const driverName = sanitizeTextInput(parsedBody.data.driverName, { maxLength: 80 });
+    const driverMobileNumber = sanitizePhoneInput(parsedBody.data.driverMobileNumber);
+    const helperName = sanitizeTextInput(parsedBody.data.helperName, { maxLength: 80 });
+    const customerName = sanitizeTextInput(parsedBody.data.customerName, { maxLength: 120 });
+    const trackNumber = sanitizeTextInput(parsedBody.data.trackNumber, { maxLength: 60 });
+    const drivingLicenseDataUrl = sanitizeDataUrl(parsedBody.data.drivingLicenseDataUrl);
+    const drivingLicenseFileName = sanitizeTextInput(parsedBody.data.drivingLicenseFileName, { maxLength: 160 });
+    const helperIdCardDataUrl = sanitizeDataUrl(parsedBody.data.helperIdCardDataUrl);
+    const helperIdCardFileName = sanitizeTextInput(parsedBody.data.helperIdCardFileName, { maxLength: 160 });
+    const driverIdCardDataUrl = sanitizeDataUrl(parsedBody.data.driverIdCardDataUrl);
+    const driverIdCardFileName = sanitizeTextInput(parsedBody.data.driverIdCardFileName, { maxLength: 160 });
+    const date = sanitizeTextInput(parsedBody.data.date, { maxLength: 40 });
+
+    if (!/^\d{11}$/.test(driverMobileNumber)) {
+      return apiError("Driver mobile number must be exactly 11 digits.", 400, { code: "invalid_mobile_number" });
+    }
+
+    if (!date || Number.isNaN(new Date(date).getTime())) {
+      return apiError("Valid date is required.", 400, { code: "invalid_date" });
+    }
+
+    const entry = await TransportInfo.create({
+      driverName,
+      driverMobileNumber,
+      helperName,
+      customerName,
+      trackNumber,
+      drivingLicenseDataUrl,
+      drivingLicenseFileName,
+      helperIdCardDataUrl,
+      helperIdCardFileName,
+      driverIdCardDataUrl,
+      driverIdCardFileName,
+      date: new Date(date),
+    });
+
+    logActivity({
+      action: "transport_info.create",
+      actorId: authResult.userId,
+      actorEmail: authResult.email,
+      actorRole: authResult.role,
+      targetType: "transport_info",
+      targetId: String(entry._id),
+      metadata: { trackNumber },
+    });
+
+    return apiSuccess(
+      {
+        _id: String(entry._id),
+        driverName: entry.driverName,
+        driverMobileNumber: entry.driverMobileNumber,
+        helperName: entry.helperName,
+        customerName: entry.customerName,
+        trackNumber: entry.trackNumber,
+        drivingLicenseDataUrl: entry.drivingLicenseDataUrl,
+        drivingLicenseFileName: entry.drivingLicenseFileName,
+        helperIdCardDataUrl: entry.helperIdCardDataUrl,
+        helperIdCardFileName: entry.helperIdCardFileName,
+        driverIdCardDataUrl: entry.driverIdCardDataUrl,
+        driverIdCardFileName: entry.driverIdCardFileName,
+        date: entry.date,
+        createdAt: entry.createdAt,
+      },
+      { status: 201 }
+    );
+  } catch (error) {
+    if (isMongoConnectionError(error)) {
+      return apiError("Database is temporarily unavailable. Please try again.", 503, { code: "db_unavailable" });
+    }
+
+    return handleRouteError(error, { route: "/api/transport-info" });
   }
-
-  if (!helperName) {
-    return Response.json({ message: "Helper name is required." }, { status: 400 });
-  }
-
-  if (!driverMobileNumber || !/^\d{11}$/.test(driverMobileNumber)) {
-    return Response.json({ message: "Driver mobile number must be exactly 11 digits." }, { status: 400 });
-  }
-
-  if (!customerName) {
-    return Response.json({ message: "Customer name is required." }, { status: 400 });
-  }
-
-  if (!trackNumber) {
-    return Response.json({ message: "Track number is required." }, { status: 400 });
-  }
-
-  if (!drivingLicenseDataUrl || !drivingLicenseFileName) {
-    return Response.json({ message: "Driving license file is required." }, { status: 400 });
-  }
-
-  if (!date || Number.isNaN(new Date(date).getTime())) {
-    return Response.json({ message: "Valid date is required." }, { status: 400 });
-  }
-
-  const entry = await TransportInfo.create({
-    driverName,
-    driverMobileNumber,
-    helperName,
-    customerName,
-    trackNumber,
-    drivingLicenseDataUrl,
-    drivingLicenseFileName,
-    helperIdCardDataUrl,
-    helperIdCardFileName,
-    driverIdCardDataUrl,
-    driverIdCardFileName,
-    date: new Date(date),
-  });
-
-  return Response.json(
-    {
-      _id: String(entry._id),
-      driverName: entry.driverName,
-      driverMobileNumber: entry.driverMobileNumber,
-      helperName: entry.helperName,
-      customerName: entry.customerName,
-      trackNumber: entry.trackNumber,
-      drivingLicenseDataUrl: entry.drivingLicenseDataUrl,
-      drivingLicenseFileName: entry.drivingLicenseFileName,
-      helperIdCardDataUrl: entry.helperIdCardDataUrl,
-      helperIdCardFileName: entry.helperIdCardFileName,
-      driverIdCardDataUrl: entry.driverIdCardDataUrl,
-      driverIdCardFileName: entry.driverIdCardFileName,
-      date: entry.date,
-      createdAt: entry.createdAt,
-    },
-    { status: 201 }
-  );
 }
